@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 class AppDelegate: NSObject, NSApplicationDelegate {
 
@@ -10,6 +11,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     nonisolated func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         true
+    }
+
+    // MARK: - Address Book
+
+    private var addressBookWindow: NSWindow?
+
+    @objc func showAddressBook() {
+        if let existing = addressBookWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+        let view = AddressBookView()
+        let hostingController = NSHostingController(rootView: view)
+        let window = NSPanel(contentViewController: hostingController)
+        window.title = "Address Book"
+        window.styleMask = [.titled, .closable, .resizable]
+        window.setContentSize(NSSize(width: 450, height: 400))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        addressBookWindow = window
     }
 
     // MARK: - Main Menu
@@ -102,6 +123,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         editMenu.addItem(withTitle: "Select All",
                          action: #selector(NSText.selectAll(_:)),
                          keyEquivalent: "a")
+
+        // Project menu
+        let projectMenuItem = NSMenuItem()
+        mainMenu.addItem(projectMenuItem)
+        let projectMenu = NSMenu(title: "Project")
+        projectMenuItem.submenu = projectMenu
+        projectMenu.addItem(withTitle: "Address Book…",
+                            action: #selector(showAddressBook),
+                            keyEquivalent: "")
 
         // Window menu
         let windowMenuItem = NSMenuItem()
