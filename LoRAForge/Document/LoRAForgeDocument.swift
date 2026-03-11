@@ -56,8 +56,25 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
 
     // MARK: - Writing (URL-based, for package documents)
 
-    nonisolated override func write(to url: URL, ofType typeName: String) throws {
+    nonisolated override func write(to url: URL, ofType typeName: String, for saveOperation: NSDocument.SaveOperationType, originalContentsURL: URL?) throws {
         let fm = FileManager.default
+
+        // If saving to a new location and we have original content, copy the package first
+        if let originalURL = originalContentsURL,
+           originalURL.standardizedFileURL != url.standardizedFileURL,
+           fm.fileExists(atPath: originalURL.path) {
+            // Copy subdirectories with their content from original to destination
+            if !fm.fileExists(atPath: url.path) {
+                try fm.createDirectory(at: url, withIntermediateDirectories: true)
+            }
+            for subdir in ["sources", "generated", "trash"] {
+                let srcDir = originalURL.appendingPathComponent(subdir)
+                let dstDir = url.appendingPathComponent(subdir)
+                if fm.fileExists(atPath: srcDir.path) && !fm.fileExists(atPath: dstDir.path) {
+                    try fm.copyItem(at: srcDir, to: dstDir)
+                }
+            }
+        }
 
         // Create the package directory if needed
         try fm.createDirectory(at: url, withIntermediateDirectories: true)
