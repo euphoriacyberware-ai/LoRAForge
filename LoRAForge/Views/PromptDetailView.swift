@@ -20,6 +20,7 @@ struct PromptDetailView: View {
                     sourceSlots(prompt: prompt, index: index)
                     generateCountSection(index: index)
                     configOverrideSection(prompt: prompt, index: index)
+                    baseConfigSection()
                     generatedImagesPlaceholder(prompt: prompt)
                 }
                 .padding()
@@ -171,12 +172,38 @@ struct PromptDetailView: View {
             .font(.headline)
 
             if hasOverride {
-                // Phase 9: Full JSON editor
-                Text("Configuration override JSON editor — coming in Phase 9")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                JSONEditorView(
+                    jsonString: Binding(
+                        get: { document.project.prompts[index].configurationOverrideJSON ?? "{}" },
+                        set: {
+                            document.project.prompts[index].configurationOverrideJSON = $0
+                            document.updateChangeCount(.changeDone)
+                        }
+                    ),
+                    label: "Override JSON"
+                )
             }
         }
+    }
+
+    // MARK: - Base Configuration
+
+    @State private var showBaseConfig = false
+
+    private func baseConfigSection() -> some View {
+        DisclosureGroup("Base Configuration", isExpanded: $showBaseConfig) {
+            JSONEditorView(
+                jsonString: Binding(
+                    get: { document.project.baseConfigurationJSON },
+                    set: {
+                        document.project.baseConfigurationJSON = $0
+                        document.updateChangeCount(.changeDone)
+                    }
+                ),
+                label: "Draw Things Configuration"
+            )
+        }
+        .font(.headline)
     }
 
     // MARK: - Generated Images Placeholder
