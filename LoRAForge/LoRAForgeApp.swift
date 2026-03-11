@@ -33,6 +33,34 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         addressBookWindow = window
     }
 
+    // MARK: - Template Library
+
+    private var templateLibraryWindow: NSWindow?
+
+    @objc func showTemplateLibrary() {
+        guard let document = NSDocumentController.shared.currentDocument as? LoRAForgeDocument else { return }
+
+        if let existing = templateLibraryWindow, existing.isVisible {
+            existing.makeKeyAndOrderFront(nil)
+            return
+        }
+        let isPresented = Binding<Bool>(
+            get: { true },
+            set: { [weak self] newValue in
+                if !newValue { self?.templateLibraryWindow?.close() }
+            }
+        )
+        let view = TemplateLibraryView(document: document, isPresented: isPresented)
+        let hostingController = NSHostingController(rootView: view)
+        let window = NSPanel(contentViewController: hostingController)
+        window.title = "Template Library"
+        window.styleMask = [.titled, .closable, .resizable]
+        window.setContentSize(NSSize(width: 450, height: 400))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        templateLibraryWindow = window
+    }
+
     // MARK: - Main Menu
 
     func buildMainMenu() {
@@ -131,6 +159,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         projectMenuItem.submenu = projectMenu
         projectMenu.addItem(withTitle: "Address Book…",
                             action: #selector(showAddressBook),
+                            keyEquivalent: "")
+        projectMenu.addItem(withTitle: "Template Library…",
+                            action: #selector(showTemplateLibrary),
                             keyEquivalent: "")
 
         // Window menu
