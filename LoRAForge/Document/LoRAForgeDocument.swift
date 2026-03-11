@@ -45,8 +45,12 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         decoder.dateDecodingStrategy = .iso8601
         let loadedProject = try decoder.decode(Project.self, from: data)
 
-        DispatchQueue.main.sync {
+        if Thread.isMainThread {
             self.project = loadedProject
+        } else {
+            DispatchQueue.main.sync {
+                self.project = loadedProject
+            }
         }
     }
 
@@ -66,10 +70,15 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
             }
         }
 
-        var projectToSave: Project!
-        DispatchQueue.main.sync {
+        let projectToSave: Project
+        if Thread.isMainThread {
             self.project.modifiedAt = Date()
             projectToSave = self.project
+        } else {
+            projectToSave = DispatchQueue.main.sync {
+                self.project.modifiedAt = Date()
+                return self.project
+            }
         }
 
         // Write project.json
