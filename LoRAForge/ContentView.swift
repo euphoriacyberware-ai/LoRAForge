@@ -1,10 +1,13 @@
 import SwiftUI
+import AppKit
+import UniformTypeIdentifiers
 
 struct ContentView: View {
     @ObservedObject var document: LoRAForgeDocument
     @ObservedObject var connectionManager = ConnectionManager.shared
     @State private var selectedPromptID: UUID?
     @State private var showingTrash = false
+    @State private var editingLabelID: UUID?
 
     var body: some View {
         NavigationSplitView {
@@ -85,22 +88,12 @@ struct ContentView: View {
     private var sidebar: some View {
         List(selection: $selectedPromptID) {
             Section("Source Images") {
-                if document.project.sourceImages.isEmpty {
-                    Text("No source images")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(document.project.sourceImages) { source in
-                        HStack {
-                            Image(systemName: "photo")
-                                .foregroundStyle(.secondary)
-                            Text(source.label ?? source.filename)
-                                .lineLimit(1)
-                        }
-                    }
+                ForEach(document.project.sourceImages) { source in
+                    sourceImageRow(source)
                 }
 
                 Button {
-                    // Phase 6: Import source images
+                    importSourceImages()
                 } label: {
                     Label("Import Images…", systemImage: "plus")
                 }
@@ -138,6 +131,91 @@ struct ContentView: View {
                 .buttonStyle(.borderless)
             }
         }
+    }
+
+    // MARK: - Source Image Row
+
+    private func sourceImageRow(_ source: SourceImage) -> some View {
+        HStack(spacing: 8) {
+            // Thumbnail
+            if let url = document.sourceImageURL(for: source),
+               let nsImage = NSImage(contentsOf: url) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 32, height: 32)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                Image(systemName: "photo")
+                    .frame(width: 32, height: 32)
+                    .foregroundStyle(.secondary)
+            }
+
+            // Label (inline editable)
+            if editingLabelID == source.id {
+                let labelBinding = Binding<String>(
+                    get: {
+                        document.project.sourceImages.first(where: { $0.id == source.id })?.label ?? ""
+                    },
+                    set: { newValue in
+                        if let idx = document.project.sourceImages.firstIndex(where: { $0.id == source.id }) {
+                            document.project.sourceImages[idx].label = newValue.isEmpty ? nil : newValue
+                        }
+                    }
+                )
+                TextField("Label", text: labelBinding)
+                    .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        editingLabelID = nil
+                        document.updateChangeCount(.changeDone)
+                    }
+            } else {
+                Text(source.label ?? source.filename)
+                    .lineLimit(1)
+                    .onTapGesture(count: 2) {
+                        editingLabelID = source.id
+                    }
+            }
+        }
+        .contextMenu {
+            Button("Rename…") {
+                editingLabelID = source.id
+            }
+            Button("Remove") {
+                document.removeSourceImage(id: source.id)
+            }
+            .disabled(document.isSourceImageReferenced(source.id))
+        }
+    }
+
+    // MARK: - Import
+
+    private func importSourceImages() {
+        // Document must be saved first so we have a fileURL for the package
+        guard document.fileURL != nil else {
+            // Trigger save first
+            document.save(withDelegate: nil, didSave: nil, contextInfo: nil)
+            // Retry after a short delay to allow the save panel to complete
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                if document.fileURL != nil {
+                    showImageOpenPanel()
+                }
+            }
+            return
+        }
+        showImageOpenPanel()
+    }
+
+    private func showImageOpenPanel() {
+        let panel = NSOpenPanel()
+        panel.allowsMultipleSelection = true
+        panel.canChooseDirectories = false
+        panel.canChooseFiles = true
+        panel.allowedContentTypes = [.png, .jpeg, .tiff, .bmp, .heic]
+        panel.message = "Select images to import as source images"
+
+        guard panel.runModal() == .OK else { return }
+        document.importSourceImages(from: panel.urls)
     }
 
     // MARK: - Detail

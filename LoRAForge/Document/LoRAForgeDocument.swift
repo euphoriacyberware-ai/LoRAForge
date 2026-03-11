@@ -80,6 +80,54 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         try data.write(to: url.appendingPathComponent("project.json"), options: .atomic)
     }
 
+    // MARK: - Source Image Management
+
+    func importSourceImages(from urls: [URL]) {
+        guard let packageURL = fileURL else { return }
+        let fm = FileManager.default
+        let sourcesDir = packageURL.appendingPathComponent("sources")
+        try? fm.createDirectory(at: sourcesDir, withIntermediateDirectories: true)
+
+        for url in urls {
+            let id = UUID()
+            let ext = url.pathExtension.lowercased()
+            let filename = "\(id.uuidString).\(ext.isEmpty ? "png" : ext)"
+            let destURL = sourcesDir.appendingPathComponent(filename)
+            do {
+                try fm.copyItem(at: url, to: destURL)
+                let source = SourceImage(
+                    id: id,
+                    filename: filename,
+                    label: url.deletingPathExtension().lastPathComponent
+                )
+                project.sourceImages.append(source)
+            } catch {
+                Swift.print("Failed to import \(url.lastPathComponent): \(error)")
+            }
+        }
+        updateChangeCount(.changeDone)
+    }
+
+    func removeSourceImage(id: UUID) {
+        guard let packageURL = fileURL else { return }
+        guard let index = project.sourceImages.firstIndex(where: { $0.id == id }) else { return }
+
+        let source = project.sourceImages[index]
+        let fileURL = packageURL.appendingPathComponent("sources").appendingPathComponent(source.filename)
+        try? FileManager.default.removeItem(at: fileURL)
+
+        project.sourceImages.remove(at: index)
+        updateChangeCount(.changeDone)
+    }
+
+    func sourceImageURL(for source: SourceImage) -> URL? {
+        fileURL?.appendingPathComponent("sources").appendingPathComponent(source.filename)
+    }
+
+    func isSourceImageReferenced(_ id: UUID) -> Bool {
+        project.prompts.contains { $0.sourceImageIDs.contains(id) }
+    }
+
     // MARK: - Package document support
 
     nonisolated override class func isNativeType(_ type: String) -> Bool {
