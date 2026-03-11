@@ -80,6 +80,21 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         try data.write(to: url.appendingPathComponent("project.json"), options: .atomic)
     }
 
+    // MARK: - Save with Completion
+
+    func ensureSaved(then completion: @escaping () -> Void) {
+        if fileURL != nil {
+            completion()
+            return
+        }
+        let helper = SaveCompletionHelper(completion: completion)
+        // Keep a strong reference until the callback fires
+        objc_setAssociatedObject(self, "saveHelper", helper, .OBJC_ASSOCIATION_RETAIN)
+        save(withDelegate: helper,
+             didSave: #selector(SaveCompletionHelper.document(_:didSave:contextInfo:)),
+             contextInfo: nil)
+    }
+
     // MARK: - Source Image Management
 
     func importSourceImages(from urls: [URL]) {

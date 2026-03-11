@@ -191,19 +191,9 @@ struct ContentView: View {
     // MARK: - Import
 
     private func importSourceImages() {
-        // Document must be saved first so we have a fileURL for the package
-        guard document.fileURL != nil else {
-            // Trigger save first
-            document.save(withDelegate: nil, didSave: nil, contextInfo: nil)
-            // Retry after a short delay to allow the save panel to complete
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                if document.fileURL != nil {
-                    showImageOpenPanel()
-                }
-            }
-            return
+        document.ensureSaved {
+            showImageOpenPanel()
         }
-        showImageOpenPanel()
     }
 
     private func showImageOpenPanel() {
