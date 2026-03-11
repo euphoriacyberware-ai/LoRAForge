@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A450AE932F62170E00B896EF /* DrawThingsClient in Frameworks */ = {isa = PBXBuildFile; productRef = A450AE312F62200000B896EF /* DrawThingsClient */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		A450AE0F2F62139800B896EF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -29,9 +33,22 @@
 		A450AE182F62139800B896EF /* LoRAForgeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoRAForgeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A450AE352F62200000B896EF /* Exceptions for "LoRAForge" folder in "LoRAForge" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A450ADFE2F62139600B896EF /* LoRAForge */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A450AE012F62139600B896EF /* LoRAForge */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A450AE352F62200000B896EF /* Exceptions for "LoRAForge" folder in "LoRAForge" target */,
+			);
 			path = LoRAForge;
 			sourceTree = "<group>";
 		};
@@ -52,6 +69,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A450AE932F62170E00B896EF /* DrawThingsClient in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +130,7 @@
 			);
 			name = LoRAForge;
 			packageProductDependencies = (
+				A450AE312F62200000B896EF /* DrawThingsClient */,
 			);
 			productName = LoRAForge;
 			productReference = A450ADFF2F62139600B896EF /* LoRAForge.app */;
@@ -195,6 +214,9 @@
 			);
 			mainGroup = A450ADF62F62139600B896EF;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				A450AE302F62200000B896EF /* XCRemoteSwiftPackageReference "DT-gRPC-Swift-Client" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A450AE002F62139600B896EF /* Products */;
 			projectDirPath = "";
@@ -394,6 +416,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LoRAForge/LoRAForge.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -401,8 +424,9 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LoRAForge/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -426,6 +450,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = LoRAForge/LoRAForge.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -433,8 +458,9 @@
 				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LoRAForge/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -573,6 +599,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		A450AE302F62200000B896EF /* XCRemoteSwiftPackageReference "DT-gRPC-Swift-Client" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 1.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A450AE312F62200000B896EF /* DrawThingsClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A450AE302F62200000B896EF /* XCRemoteSwiftPackageReference "DT-gRPC-Swift-Client" */;
+			productName = DrawThingsClient;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = A450ADF72F62139600B896EF /* Project object */;
 }
