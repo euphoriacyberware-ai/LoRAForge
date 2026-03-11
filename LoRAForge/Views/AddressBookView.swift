@@ -4,7 +4,6 @@ struct AddressBookView: View {
     @ObservedObject var manager = ConnectionManager.shared
     @State private var selectedType: ConnectionType = .drawThings
     @State private var selectedConnectionID: UUID?
-    @State private var isEditing = false
     @State private var editingConnection: ServerConnection?
     @State private var testResult: String?
     @State private var isTesting = false
@@ -52,19 +51,17 @@ struct AddressBookView: View {
                         id: UUID(),
                         name: "",
                         type: selectedType,
-                        host: selectedType == .drawThings ? "127.0.0.1" : "127.0.0.1",
+                        host: "127.0.0.1",
                         port: selectedType == .drawThings ? 7860 : 11434,
                         modelName: selectedType == .ollama ? "llava" : nil,
                         captionPrompt: selectedType == .ollama ? "Describe this image in detail for LoRA training captioning:" : nil
                     )
-                    isEditing = true
                 }
 
                 Button("Edit") {
                     guard let id = selectedConnectionID,
                           let conn = manager.connection(for: id) else { return }
                     editingConnection = conn
-                    isEditing = true
                 }
                 .disabled(selectedConnectionID == nil)
 
@@ -88,16 +85,17 @@ struct AddressBookView: View {
             .padding()
         }
         .frame(width: 450, height: 400)
-        .sheet(isPresented: $isEditing) {
-            if let connection = editingConnection {
-                ConnectionEditView(connection: connection, isPresented: $isEditing) { updated in
-                    if manager.connections.contains(where: { $0.id == updated.id }) {
-                        manager.update(updated)
-                    } else {
-                        manager.add(updated)
-                        selectedConnectionID = updated.id
-                    }
+        .sheet(item: $editingConnection) { connection in
+            ConnectionEditView(connection: connection) { updated in
+                editingConnection = nil
+                if manager.connections.contains(where: { $0.id == updated.id }) {
+                    manager.update(updated)
+                } else {
+                    manager.add(updated)
+                    selectedConnectionID = updated.id
                 }
+            } onCancel: {
+                editingConnection = nil
             }
         }
         .onChange(of: selectedType) {
@@ -130,7 +128,6 @@ struct AddressBookView: View {
     }
 
     private func testDrawThingsConnection(_ conn: ServerConnection) async -> String {
-        // Attempt a basic TCP connection to the gRPC port
         do {
             let url = URL(string: "http://\(conn.host):\(conn.port)")!
             var request = URLRequest(url: url)
@@ -165,8 +162,8 @@ struct AddressBookView: View {
 
 struct ConnectionEditView: View {
     @State var connection: ServerConnection
-    @Binding var isPresented: Bool
     var onSave: (ServerConnection) -> Void
+    var onCancel: () -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -198,13 +195,12 @@ struct ConnectionEditView: View {
             HStack {
                 Spacer()
                 Button("Cancel") {
-                    isPresented = false
+                    onCancel()
                 }
                 .keyboardShortcut(.cancelAction)
 
                 Button("Save") {
                     onSave(connection)
-                    isPresented = false
                 }
                 .keyboardShortcut(.defaultAction)
                 .disabled(connection.name.isEmpty || connection.host.isEmpty)
