@@ -1,23 +1,20 @@
 import AppKit
 
-@main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
-    func applicationWillFinishLaunching(_ notification: Notification) {
-        buildMainMenu()
+    nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
+        MainActor.assumeIsolated {
+            NSApp.activate(ignoringOtherApps: true)
+        }
     }
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        // NSDocumentController handles document lifecycle based on Info.plist
-    }
-
-    func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
+    nonisolated func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
         true
     }
 
     // MARK: - Main Menu
 
-    private func buildMainMenu() {
+    func buildMainMenu() {
         let mainMenu = NSMenu()
 
         // App menu
