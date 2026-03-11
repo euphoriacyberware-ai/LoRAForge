@@ -101,30 +101,43 @@ struct ContentView: View {
             }
 
             Section("Prompts") {
-                if document.project.prompts.isEmpty {
-                    Text("No prompts")
-                        .foregroundStyle(.secondary)
-                } else {
-                    ForEach(document.project.prompts) { prompt in
-                        HStack {
-                            VStack(alignment: .leading) {
-                                Text(prompt.text.isEmpty ? "Empty prompt" : prompt.text)
-                                    .lineLimit(1)
-                                    .foregroundStyle(prompt.text.isEmpty ? .secondary : .primary)
-                            }
-                            Spacer()
-                            if prompt.generatedImages.contains(where: { $0.rank == .final_ }) {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .foregroundStyle(.green)
-                                    .font(.caption)
-                            }
+                ForEach(document.project.prompts) { prompt in
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text(prompt.text.isEmpty ? "Empty prompt" : prompt.text)
+                                .lineLimit(1)
+                                .foregroundStyle(prompt.text.isEmpty ? .secondary : .primary)
+                            Text("\(prompt.generatedImages.count) image(s)")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
                         }
-                        .tag(prompt.id)
+                        Spacer()
+                        if prompt.generatedImages.contains(where: { $0.rank == .final_ }) {
+                            Image(systemName: "checkmark.seal.fill")
+                                .foregroundStyle(.green)
+                                .font(.caption)
+                        }
+                    }
+                    .tag(prompt.id)
+                    .contextMenu {
+                        Button("Delete Prompt") {
+                            deletePrompt(id: prompt.id)
+                        }
+                    }
+                }
+                .onMove { from, to in
+                    document.project.prompts.move(fromOffsets: from, toOffset: to)
+                    reorderPrompts()
+                }
+                .onDelete { offsets in
+                    for index in offsets.sorted().reversed() {
+                        let id = document.project.prompts[index].id
+                        deletePrompt(id: id)
                     }
                 }
 
                 Button {
-                    // Phase 7: Add prompt
+                    addPrompt()
                 } label: {
                     Label("Add Prompt", systemImage: "plus")
                 }
@@ -208,15 +221,46 @@ struct ContentView: View {
         document.importSourceImages(from: panel.urls)
     }
 
+    // MARK: - Prompt Management
+
+    private func addPrompt() {
+        let newPrompt = Prompt(
+            id: UUID(),
+            order: document.project.prompts.count,
+            text: "",
+            sourceImageIDs: [],
+            generateCount: 4,
+            configurationOverrideJSON: nil,
+            generatedImages: []
+        )
+        document.project.prompts.append(newPrompt)
+        selectedPromptID = newPrompt.id
+        document.updateChangeCount(.changeDone)
+    }
+
+    private func deletePrompt(id: UUID) {
+        document.project.prompts.removeAll { $0.id == id }
+        if selectedPromptID == id {
+            selectedPromptID = nil
+        }
+        reorderPrompts()
+        document.updateChangeCount(.changeDone)
+    }
+
+    private func reorderPrompts() {
+        for i in document.project.prompts.indices {
+            document.project.prompts[i].order = i
+        }
+        document.updateChangeCount(.changeDone)
+    }
+
     // MARK: - Detail
 
     private var detail: some View {
         Group {
             if let promptID = selectedPromptID,
-               let _ = document.project.prompts.first(where: { $0.id == promptID }) {
-                // Phase 7: Prompt detail view
-                Text("Prompt detail — coming in Phase 7")
-                    .foregroundStyle(.secondary)
+               document.project.prompts.contains(where: { $0.id == promptID }) {
+                PromptDetailView(document: document, promptID: promptID)
             } else {
                 Text("Select a prompt to get started")
                     .foregroundStyle(.secondary)
