@@ -8,7 +8,7 @@ struct PromptDetailView: View {
     let showingTrash: Bool
     @State private var showingSlotPicker = false
     @State private var editingSlotIndex: Int?
-    @State private var lightboxImage: GeneratedImage?
+    @State private var lightboxImageID: UUID?
 
     private var promptIndex: Int? {
         document.project.prompts.firstIndex(where: { $0.id == promptID })
@@ -28,8 +28,13 @@ struct PromptDetailView: View {
                 }
                 .padding()
             }
-            .sheet(item: $lightboxImage) { image in
-                LightboxView(document: document, promptID: promptID, image: image)
+            .onChange(of: lightboxImageID) { _, newValue in
+                guard let newValue,
+                      let idx = promptIndex,
+                      let image = document.project.prompts[idx].generatedImages.first(where: { $0.id == newValue }),
+                      let url = document.generatedImageURL(promptID: promptID, image: image) else { return }
+                LightboxController.show(imageURL: url, caption: image.caption)
+                lightboxImageID = nil
             }
         } else {
             Text("Prompt not found")
@@ -375,7 +380,7 @@ struct PromptDetailView: View {
             Divider()
 
             Button("View Full Size") {
-                lightboxImage = image
+                lightboxImageID = image.id
             }
 
             Button("Reveal in Finder") {
@@ -396,41 +401,55 @@ struct PromptDetailView: View {
             Divider()
 
             Button("View Full Size") {
-                lightboxImage = image
+                lightboxImageID = image.id
             }
         }
     }
 }
 
-// MARK: - Lightbox View
+// MARK: - Lightbox Controller
 
-struct LightboxView: View {
-    let document: LoRAForgeDocument
-    let promptID: UUID
-    let image: GeneratedImage
+enum LightboxController {
+    static func show(imageURL: URL, caption: String?) {
+        guard let nsImage = NSImage(contentsOf: imageURL) else { return }
 
-    var body: some View {
-        VStack(spacing: 0) {
-            if let url = document.generatedImageURL(promptID: promptID, image: image),
-               let nsImage = NSImage(contentsOf: url) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: 800, maxHeight: 800)
-            } else {
-                Text("Image not found")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 400, height: 300)
-            }
+        let pixelSize = nsImage.pixelSize
 
-            if let caption = image.caption, !caption.isEmpty {
-                Text(caption)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.top, 8)
-            }
-        }
-        .padding()
+        // Cap to 80% of screen, maintaining aspect ratio
+        let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
+        let maxW = screen.width * 0.8
+        let maxH = screen.height * 0.8
+        let scale = min(1.0, min(maxW / pixelSize.width, maxH / pixelSize.height))
+        let displayW = pixelSize.width * scale
+        let displayH = pixelSize.height * scale
+
+        let imageView = NSImageView(image: nsImage)
+        imageView.imageScaling = .scaleProportionallyUpOrDown
+        imageView.translatesAutoresizingMaskIntoConstraints = false
+
+        let container = NSView()
+        container.addSubview(imageView)
+
+        NSLayoutConstraint.activate([
+            imageView.topAnchor.constraint(equalTo: container.topAnchor),
+            imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            imageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            imageView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            imageView.widthAnchor.constraint(equalToConstant: displayW),
+            imageView.heightAnchor.constraint(equalToConstant: displayH),
+        ])
+
+        let window = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: displayW, height: displayH),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = container
+        window.title = caption ?? imageURL.deletingPathExtension().lastPathComponent
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 }
 
@@ -500,5 +519,14 @@ struct SourceImagePickerSheet: View {
             .padding()
         }
         .frame(width: 350, height: 300)
+    }
+}
+
+// MARK: - NSImage Pixel Size
+
+private extension NSImage {
+    var pixelSize: CGSize {
+        guard let rep = representations.first else { return size }
+        return CGSize(width: CGFloat(rep.pixelsWide), height: CGFloat(rep.pixelsHigh))
     }
 }
