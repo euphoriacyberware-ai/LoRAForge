@@ -1,4 +1,6 @@
 import SwiftUI
+import DrawThingsClient
+import GRPC
 
 struct AddressBookView: View {
     @ObservedObject var manager = ConnectionManager.shared
@@ -129,15 +131,25 @@ struct AddressBookView: View {
 
     private func testDrawThingsConnection(_ conn: ServerConnection) async -> String {
         do {
-            let url = URL(string: "http://\(conn.host):\(conn.port)")!
-            var request = URLRequest(url: url)
-            request.timeoutInterval = 5
-            let (_, response) = try await URLSession.shared.data(for: request)
-            if let httpResponse = response as? HTTPURLResponse {
-                return "OK — HTTP \(httpResponse.statusCode) (gRPC server responding)"
+            DrawThingsClientLogger.minimumLevel = .debug
+            let client = try DrawThingsClient(address: "\(conn.host):\(conn.port)")
+            Swift.print("Testing gRPC connection to \(conn.host):\(conn.port) (plaintext)…")
+            await client.connect()
+            if client.isConnected {
+                return "OK — gRPC echo succeeded"
+            } else {
+                let error = client.lastError
+                let detail = error?.localizedDescription ?? "Unknown error"
+                let fullError = error.map { String(describing: $0) } ?? "nil"
+                Swift.print("Connection test failed: \(fullError)")
+                if let poolError = error as? GRPCConnectionPoolError {
+                    Swift.print("  Pool error code: \(poolError.code)")
+                    Swift.print("  Underlying error: \(String(describing: poolError.underlyingError))")
+                }
+                return "Error: \(detail)"
             }
-            return "OK — Server responded"
         } catch {
+            Swift.print("Connection test exception: \(error)")
             return "Error: \(error.localizedDescription)"
         }
     }
