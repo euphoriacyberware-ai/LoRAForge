@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct ContentView: View {
     @ObservedObject var document: LoRAForgeDocument
     @ObservedObject var connectionManager = ConnectionManager.shared
+    @StateObject private var generationService = GenerationService()
     @State private var selectedPromptID: UUID?
     @State private var showingTrash = false
     @State private var editingLabelID: UUID?
@@ -17,33 +18,44 @@ struct ContentView: View {
             detail
         }
         .frame(minWidth: 700, minHeight: 400)
+        .safeAreaInset(edge: .bottom) {
+            if generationService.isRunning || !generationService.statusMessage.isEmpty {
+                generationStatusBar
+            }
+        }
         .toolbar(id: "main") {
             ToolbarItem(id: "serverPicker", placement: .automatic) {
                 serverPicker
             }
             ToolbarItem(id: "run", placement: .automatic) {
                 Button {
-                    // Phase 10: Run Generation
+                    document.ensureSaved {
+                        generationService.run(document: document, runAll: false)
+                    }
                 } label: {
                     Label("Run", systemImage: "play.fill")
                 }
+                .disabled(generationService.isRunning || document.project.generationConnectionID == nil)
                 .help("Generate images for prompts without a final image")
             }
             ToolbarItem(id: "runAll", placement: .automatic) {
                 Button {
-                    // Phase 10: Run All
+                    document.ensureSaved {
+                        generationService.run(document: document, runAll: true)
+                    }
                 } label: {
                     Label("Run All", systemImage: "arrow.clockwise")
                 }
+                .disabled(generationService.isRunning || document.project.generationConnectionID == nil)
                 .help("Regenerate all prompts")
             }
             ToolbarItem(id: "stop", placement: .automatic) {
                 Button {
-                    // Phase 10: Stop
+                    generationService.stop()
                 } label: {
                     Label("Stop", systemImage: "stop.fill")
                 }
-                .disabled(true)
+                .disabled(!generationService.isRunning)
                 .help("Stop generation")
             }
             ToolbarItem(id: "trash", placement: .automatic) {
@@ -69,6 +81,45 @@ struct ContentView: View {
                 .help("Export images and captions")
             }
         }
+    }
+
+    // MARK: - Generation Status Bar
+
+    private var generationStatusBar: some View {
+        HStack(spacing: 8) {
+            if generationService.isRunning {
+                ProgressView(value: generationService.progressFraction)
+                    .progressViewStyle(.linear)
+                    .frame(width: 120)
+            }
+
+            Text(generationService.statusMessage)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+
+            if let stage = generationService.generationStage {
+                Text("— \(stage)")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            if !generationService.isRunning && !generationService.statusMessage.isEmpty {
+                Button {
+                    generationService.statusMessage = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+        .background(.bar)
     }
 
     // MARK: - Server Picker
@@ -112,7 +163,10 @@ struct ContentView: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
-                        if prompt.generatedImages.contains(where: { $0.rank == .final_ }) {
+                        if generationService.isRunning && generationService.currentPromptID == prompt.id {
+                            ProgressView()
+                                .controlSize(.small)
+                        } else if prompt.generatedImages.contains(where: { $0.rank == .final_ }) {
                             Image(systemName: "checkmark.seal.fill")
                                 .foregroundStyle(.green)
                                 .font(.caption)
@@ -260,7 +314,11 @@ struct ContentView: View {
         Group {
             if let promptID = selectedPromptID,
                document.project.prompts.contains(where: { $0.id == promptID }) {
-                PromptDetailView(document: document, promptID: promptID)
+                PromptDetailView(
+                    document: document,
+                    promptID: promptID,
+                    generationService: generationService
+                )
             } else {
                 Text("Select a prompt to get started")
                     .foregroundStyle(.secondary)

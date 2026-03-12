@@ -4,6 +4,7 @@ import AppKit
 struct PromptDetailView: View {
     @ObservedObject var document: LoRAForgeDocument
     let promptID: UUID
+    @ObservedObject var generationService: GenerationService
     @State private var showingSlotPicker = false
     @State private var editingSlotIndex: Int?
 
@@ -21,7 +22,7 @@ struct PromptDetailView: View {
                     generateCountSection(index: index)
                     configOverrideSection(prompt: prompt, index: index)
                     baseConfigSection()
-                    generatedImagesPlaceholder(prompt: prompt)
+                    generatedImagesSection(prompt: prompt)
                 }
                 .padding()
             }
@@ -206,24 +207,90 @@ struct PromptDetailView: View {
         .font(.headline)
     }
 
-    // MARK: - Generated Images Placeholder
+    // MARK: - Generated Images
 
-    private func generatedImagesPlaceholder(prompt: Prompt) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Generated Images")
-                .font(.headline)
+    private var isGeneratingThisPrompt: Bool {
+        generationService.isRunning && generationService.currentPromptID == promptID
+    }
 
-            if prompt.generatedImages.isEmpty {
+    private func generatedImagesSection(prompt: Prompt) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Generated Images")
+                    .font(.headline)
+                Spacer()
+                if isGeneratingThisPrompt {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text(generationService.statusMessage)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if prompt.generatedImages.isEmpty && !isGeneratingThisPrompt {
                 Text("No generated images yet. Use Run to generate.")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 100)
                     .background(Color.secondary.opacity(0.05))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else if !prompt.generatedImages.isEmpty {
+                generatedImageGrid(prompt: prompt)
+            }
+        }
+    }
+
+    private func generatedImageGrid(prompt: Prompt) -> some View {
+        let columns = [GridItem(.adaptive(minimum: 120), spacing: 8)]
+        return LazyVGrid(columns: columns, spacing: 8) {
+            ForEach(prompt.generatedImages) { image in
+                generatedImageCell(image: image)
+            }
+        }
+    }
+
+    private func generatedImageCell(image: GeneratedImage) -> some View {
+        VStack(spacing: 4) {
+            if let url = generatedImageURL(for: image),
+               let nsImage = NSImage(contentsOf: url) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(minWidth: 100, maxWidth: .infinity, minHeight: 100, maxHeight: 150)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
-                // Phase 11: Image grid
-                Text("\(prompt.generatedImages.count) image(s) — grid coming in Phase 11")
+                Image(systemName: "photo")
+                    .font(.largeTitle)
+                    .foregroundStyle(.secondary)
+                    .frame(minWidth: 100, maxWidth: .infinity, minHeight: 100, maxHeight: 150)
+                    .background(Color.secondary.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            }
+
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(rankColor(image.rank))
+                    .frame(width: 8, height: 8)
+                Text(image.rank.rawValue)
+                    .font(.caption2)
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    private func generatedImageURL(for image: GeneratedImage) -> URL? {
+        document.fileURL?
+            .appendingPathComponent("generated")
+            .appendingPathComponent(promptID.uuidString)
+            .appendingPathComponent(image.filename)
+    }
+
+    private func rankColor(_ rank: ImageRank) -> Color {
+        switch rank {
+        case .candidate: .gray
+        case .shortlisted: .blue
+        case .final_: .green
+        case .discarded: .red
         }
     }
 }
