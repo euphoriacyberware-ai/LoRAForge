@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A450AE932F62170E00B896EF /* DrawThingsClient in Frameworks */ = {isa = PBXBuildFile; productRef = A450AE312F62200000B896EF /* DrawThingsClient */; };
+		E16E16E16E160002 /* ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16E16E16E160001 /* ExportView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -31,6 +32,7 @@
 		A450ADFF2F62139600B896EF /* LoRAForge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LoRAForge.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A450AE0E2F62139800B896EF /* LoRAForgeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoRAForgeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A450AE182F62139800B896EF /* LoRAForgeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoRAForgeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		E16E16E16E160001 /* ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */

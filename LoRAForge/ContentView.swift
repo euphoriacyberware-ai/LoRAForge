@@ -9,6 +9,7 @@ struct ContentView: View {
     @StateObject private var captionService = CaptionService()
     @State private var selectedPromptID: UUID?
     @State private var showingTrash = false
+    @State private var showingExport = false
     @State private var editingLabelID: UUID?
 
     var body: some View {
@@ -91,12 +92,15 @@ struct ContentView: View {
             }
             ToolbarItem(id: "export", placement: .automatic) {
                 Button {
-                    // Phase 16: Export
+                    showingExport = true
                 } label: {
                     Label("Export", systemImage: "square.and.arrow.up")
                 }
                 .help("Export images and captions")
             }
+        }
+        .sheet(isPresented: $showingExport) {
+            ExportView(document: document, isPresented: $showingExport)
         }
     }
 

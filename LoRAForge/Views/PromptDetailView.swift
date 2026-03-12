@@ -815,11 +815,3 @@ struct SourceImagePickerSheet: View {
     }
 }
 
-// MARK: - NSImage Pixel Size
-
-private extension NSImage {
-    var pixelSize: CGSize {
-        guard let rep = representations.first else { return size }
-        return CGSize(width: CGFloat(rep.pixelsWide), height: CGFloat(rep.pixelsHigh))
-    }
-}
