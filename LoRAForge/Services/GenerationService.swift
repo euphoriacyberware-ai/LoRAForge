@@ -91,9 +91,15 @@ final class GenerationService: ObservableObject {
             promptsToProcess = document.project.prompts
         } else {
             promptsToProcess = document.project.prompts.filter { prompt in
-                !prompt.generatedImages.contains(where: { $0.rank == .final_ })
+                let hasFinal = prompt.generatedImages.contains(where: { $0.rank == .final_ })
+                if hasFinal {
+                    Swift.print("Skipping prompt \(prompt.order + 1) — has final image")
+                }
+                return !hasFinal
             }
         }
+
+        Swift.print("Run (runAll=\(runAll)): \(promptsToProcess.count)/\(document.project.prompts.count) prompts to process")
 
         guard !promptsToProcess.isEmpty else {
             statusMessage = "No prompts to process"

@@ -436,6 +436,8 @@ enum LightboxController {
         let winW = screen.width * 0.8
         let winH = screen.height * 0.85
 
+        hostingController.sizingOptions = []
+
         let window = NSPanel(
             contentRect: NSRect(x: 0, y: 0, width: winW, height: winH),
             styleMask: [.titled, .closable, .resizable],
@@ -443,6 +445,7 @@ enum LightboxController {
             defer: false
         )
         window.contentViewController = hostingController
+        window.setContentSize(NSSize(width: winW, height: winH))
         window.title = "Lightbox"
         window.isReleasedWhenClosed = false
         window.center()
