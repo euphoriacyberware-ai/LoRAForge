@@ -317,7 +317,8 @@ struct ContentView: View {
                 PromptDetailView(
                     document: document,
                     promptID: promptID,
-                    generationService: generationService
+                    generationService: generationService,
+                    showingTrash: showingTrash
                 )
             } else {
                 Text("Select a prompt to get started")

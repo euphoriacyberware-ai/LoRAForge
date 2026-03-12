@@ -5,8 +5,10 @@ struct PromptDetailView: View {
     @ObservedObject var document: LoRAForgeDocument
     let promptID: UUID
     @ObservedObject var generationService: GenerationService
+    let showingTrash: Bool
     @State private var showingSlotPicker = false
     @State private var editingSlotIndex: Int?
+    @State private var lightboxImage: GeneratedImage?
 
     private var promptIndex: Int? {
         document.project.prompts.firstIndex(where: { $0.id == promptID })
@@ -22,9 +24,12 @@ struct PromptDetailView: View {
                     generateCountSection(index: index)
                     configOverrideSection(prompt: prompt, index: index)
                     baseConfigSection()
-                    generatedImagesSection(prompt: prompt)
+                    generatedImagesSection(prompt: prompt, promptIndex: index)
                 }
                 .padding()
+            }
+            .sheet(item: $lightboxImage) { image in
+                LightboxView(document: document, promptID: promptID, image: image)
             }
         } else {
             Text("Prompt not found")
@@ -213,10 +218,18 @@ struct PromptDetailView: View {
         generationService.isRunning && generationService.currentPromptID == promptID
     }
 
-    private func generatedImagesSection(prompt: Prompt) -> some View {
+    private func filteredImages(prompt: Prompt) -> [GeneratedImage] {
+        if showingTrash {
+            return prompt.generatedImages.filter { $0.rank == .discarded }
+        } else {
+            return prompt.generatedImages.filter { $0.rank != .discarded }
+        }
+    }
+
+    private func generatedImagesSection(prompt: Prompt, promptIndex: Int) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Generated Images")
+                Text(showingTrash ? "Trash" : "Generated Images")
                     .font(.headline)
                 Spacer()
                 if isGeneratingThisPrompt {
@@ -228,61 +241,105 @@ struct PromptDetailView: View {
                 }
             }
 
-            if prompt.generatedImages.isEmpty && !isGeneratingThisPrompt {
-                Text("No generated images yet. Use Run to generate.")
+            let images = filteredImages(prompt: prompt)
+
+            if images.isEmpty {
+                let message = showingTrash
+                    ? "No discarded images."
+                    : "No generated images yet. Use Run to generate."
+                Text(message)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 100)
                     .background(Color.secondary.opacity(0.05))
                     .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else if !prompt.generatedImages.isEmpty {
-                generatedImageGrid(prompt: prompt)
-            }
-        }
-    }
-
-    private func generatedImageGrid(prompt: Prompt) -> some View {
-        let columns = [GridItem(.adaptive(minimum: 120), spacing: 8)]
-        return LazyVGrid(columns: columns, spacing: 8) {
-            ForEach(prompt.generatedImages) { image in
-                generatedImageCell(image: image)
-            }
-        }
-    }
-
-    private func generatedImageCell(image: GeneratedImage) -> some View {
-        VStack(spacing: 4) {
-            if let url = generatedImageURL(for: image),
-               let nsImage = NSImage(contentsOf: url) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(minWidth: 100, maxWidth: .infinity, minHeight: 100, maxHeight: 150)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
-                Image(systemName: "photo")
-                    .font(.largeTitle)
-                    .foregroundStyle(.secondary)
-                    .frame(minWidth: 100, maxWidth: .infinity, minHeight: 100, maxHeight: 150)
-                    .background(Color.secondary.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            }
-
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(rankColor(image.rank))
-                    .frame(width: 8, height: 8)
-                Text(image.rank.rawValue)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                generatedImageGrid(images: images, promptIndex: promptIndex)
             }
         }
     }
 
-    private func generatedImageURL(for image: GeneratedImage) -> URL? {
-        document.fileURL?
-            .appendingPathComponent("generated")
-            .appendingPathComponent(promptID.uuidString)
-            .appendingPathComponent(image.filename)
+    private func generatedImageGrid(images: [GeneratedImage], promptIndex: Int) -> some View {
+        let columns = [GridItem(.adaptive(minimum: 140), spacing: 12)]
+        return LazyVGrid(columns: columns, spacing: 12) {
+            ForEach(images) { image in
+                generatedImageCell(image: image, promptIndex: promptIndex)
+            }
+        }
+    }
+
+    private func generatedImageCell(image: GeneratedImage, promptIndex: Int) -> some View {
+        let imageIndex = document.project.prompts[promptIndex].generatedImages.firstIndex(where: { $0.id == image.id })
+
+        return VStack(spacing: 4) {
+            // Thumbnail with rank badge
+            ZStack(alignment: .topTrailing) {
+                if let url = document.generatedImageURL(promptID: promptID, image: image),
+                   let nsImage = NSImage(contentsOf: url) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(minWidth: 120, maxWidth: .infinity, minHeight: 120, maxHeight: 160)
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                } else {
+                    Image(systemName: "photo")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 120, maxWidth: .infinity, minHeight: 120, maxHeight: 160)
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                }
+
+                // Rank badge
+                rankBadge(image.rank)
+                    .padding(4)
+            }
+
+            // Caption field
+            if let idx = imageIndex {
+                TextField(
+                    "Caption…",
+                    text: Binding(
+                        get: {
+                            document.project.prompts[promptIndex].generatedImages[idx].caption ?? ""
+                        },
+                        set: { newValue in
+                            document.project.prompts[promptIndex].generatedImages[idx].caption = newValue.isEmpty ? nil : newValue
+                            document.updateChangeCount(.changeDone)
+                        }
+                    ),
+                    axis: .vertical
+                )
+                .font(.caption)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(2...4)
+            }
+        }
+        .contextMenu {
+            if let idx = imageIndex {
+                imageContextMenu(promptIndex: promptIndex, imageIndex: idx, image: image)
+            }
+        }
+    }
+
+    // MARK: - Rank Badge
+
+    private func rankBadge(_ rank: ImageRank) -> some View {
+        Text(rankLabel(rank))
+            .font(.caption2.bold())
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(rankColor(rank).opacity(0.85))
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private func rankLabel(_ rank: ImageRank) -> String {
+        switch rank {
+        case .candidate: "C"
+        case .shortlisted: "S"
+        case .final_: "F"
+        case .discarded: "D"
+        }
     }
 
     private func rankColor(_ rank: ImageRank) -> Color {
@@ -292,6 +349,88 @@ struct PromptDetailView: View {
         case .final_: .green
         case .discarded: .red
         }
+    }
+
+    // MARK: - Context Menu
+
+    @ViewBuilder
+    private func imageContextMenu(promptIndex: Int, imageIndex: Int, image: GeneratedImage) -> some View {
+        if !showingTrash {
+            // Normal view actions
+            if image.rank != .final_ {
+                Button("Promote Rank") {
+                    document.promoteImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                }
+            }
+            if image.rank != .candidate {
+                Button("Demote Rank") {
+                    document.demoteImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                }
+            }
+
+            Button("Discard") {
+                document.discardImage(promptIndex: promptIndex, imageIndex: imageIndex)
+            }
+
+            Divider()
+
+            Button("View Full Size") {
+                lightboxImage = image
+            }
+
+            Button("Reveal in Finder") {
+                if let url = document.generatedImageURL(promptID: promptID, image: image) {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+            }
+        } else {
+            // Trash view actions
+            Button("Restore") {
+                document.restoreImage(promptIndex: promptIndex, imageIndex: imageIndex)
+            }
+
+            Button("Delete Permanently") {
+                document.deleteImagePermanently(promptIndex: promptIndex, imageIndex: imageIndex)
+            }
+
+            Divider()
+
+            Button("View Full Size") {
+                lightboxImage = image
+            }
+        }
+    }
+}
+
+// MARK: - Lightbox View
+
+struct LightboxView: View {
+    let document: LoRAForgeDocument
+    let promptID: UUID
+    let image: GeneratedImage
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let url = document.generatedImageURL(promptID: promptID, image: image),
+               let nsImage = NSImage(contentsOf: url) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: 800, maxHeight: 800)
+            } else {
+                Text("Image not found")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 400, height: 300)
+            }
+
+            if let caption = image.caption, !caption.isEmpty {
+                Text(caption)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.top, 8)
+            }
+        }
+        .padding()
     }
 }
 

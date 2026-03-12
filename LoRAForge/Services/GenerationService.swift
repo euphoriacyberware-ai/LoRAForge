@@ -3,7 +3,6 @@ import SwiftUI
 import AppKit
 import Combine
 import DrawThingsClient
-import GRPC
 
 @MainActor
 final class GenerationService: ObservableObject {
@@ -77,20 +76,11 @@ final class GenerationService: ObservableObject {
         self.client = dtClient
 
         // Connect
-        DrawThingsClientLogger.minimumLevel = .debug
         statusMessage = "Connecting to \(connection.name)…"
-        Swift.print("Attempting gRPC connection to \(connection.host):\(connection.port) (plaintext)…")
         await dtClient.connect()
 
         guard dtClient.isConnected else {
-            let error = dtClient.lastError
-            let errorDetail = error?.localizedDescription ?? "Unknown error"
-            let fullError = error.map { String(describing: $0) } ?? "nil"
-            Swift.print("DrawThingsClient connection failed: \(fullError)")
-            if let poolError = error as? GRPCConnectionPoolError {
-                Swift.print("  Pool error code: \(poolError.code)")
-                Swift.print("  Underlying error: \(String(describing: poolError.underlyingError))")
-            }
+            let errorDetail = dtClient.lastError?.localizedDescription ?? "Unknown error"
             statusMessage = "Failed to connect: \(errorDetail)"
             return
         }

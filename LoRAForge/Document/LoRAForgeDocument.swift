@@ -169,6 +169,94 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         project.prompts.contains { $0.sourceImageIDs.contains(id) }
     }
 
+    // MARK: - Generated Image Management
+
+    func generatedImageURL(promptID: UUID, image: GeneratedImage) -> URL? {
+        guard let packageURL = fileURL else { return nil }
+        let folder = image.rank == .discarded ? "trash" : "generated"
+        return packageURL
+            .appendingPathComponent(folder)
+            .appendingPathComponent(promptID.uuidString)
+            .appendingPathComponent(image.filename)
+    }
+
+    func promoteImage(promptIndex: Int, imageIndex: Int) {
+        let current = project.prompts[promptIndex].generatedImages[imageIndex].rank
+        let next: ImageRank? = switch current {
+        case .candidate: .shortlisted
+        case .shortlisted: .final_
+        case .final_: nil
+        case .discarded: nil
+        }
+        guard let next else { return }
+        project.prompts[promptIndex].generatedImages[imageIndex].rank = next
+        updateChangeCount(.changeDone)
+    }
+
+    func demoteImage(promptIndex: Int, imageIndex: Int) {
+        let current = project.prompts[promptIndex].generatedImages[imageIndex].rank
+        let next: ImageRank? = switch current {
+        case .candidate: nil
+        case .shortlisted: .candidate
+        case .final_: .shortlisted
+        case .discarded: nil
+        }
+        guard let next else { return }
+        project.prompts[promptIndex].generatedImages[imageIndex].rank = next
+        updateChangeCount(.changeDone)
+    }
+
+    func discardImage(promptIndex: Int, imageIndex: Int) {
+        guard let packageURL = fileURL else { return }
+        let promptID = project.prompts[promptIndex].id
+        let image = project.prompts[promptIndex].generatedImages[imageIndex]
+        guard image.rank != .discarded else { return }
+
+        let srcDir = packageURL.appendingPathComponent("generated").appendingPathComponent(promptID.uuidString)
+        let dstDir = packageURL.appendingPathComponent("trash").appendingPathComponent(promptID.uuidString)
+        let fm = FileManager.default
+        try? fm.createDirectory(at: dstDir, withIntermediateDirectories: true)
+
+        let src = srcDir.appendingPathComponent(image.filename)
+        let dst = dstDir.appendingPathComponent(image.filename)
+        try? fm.moveItem(at: src, to: dst)
+
+        project.prompts[promptIndex].generatedImages[imageIndex].rank = .discarded
+        updateChangeCount(.changeDone)
+    }
+
+    func restoreImage(promptIndex: Int, imageIndex: Int) {
+        guard let packageURL = fileURL else { return }
+        let promptID = project.prompts[promptIndex].id
+        let image = project.prompts[promptIndex].generatedImages[imageIndex]
+        guard image.rank == .discarded else { return }
+
+        let srcDir = packageURL.appendingPathComponent("trash").appendingPathComponent(promptID.uuidString)
+        let dstDir = packageURL.appendingPathComponent("generated").appendingPathComponent(promptID.uuidString)
+        let fm = FileManager.default
+        try? fm.createDirectory(at: dstDir, withIntermediateDirectories: true)
+
+        let src = srcDir.appendingPathComponent(image.filename)
+        let dst = dstDir.appendingPathComponent(image.filename)
+        try? fm.moveItem(at: src, to: dst)
+
+        project.prompts[promptIndex].generatedImages[imageIndex].rank = .candidate
+        updateChangeCount(.changeDone)
+    }
+
+    func deleteImagePermanently(promptIndex: Int, imageIndex: Int) {
+        guard let packageURL = fileURL else { return }
+        let promptID = project.prompts[promptIndex].id
+        let image = project.prompts[promptIndex].generatedImages[imageIndex]
+
+        let trashDir = packageURL.appendingPathComponent("trash").appendingPathComponent(promptID.uuidString)
+        let fileURL = trashDir.appendingPathComponent(image.filename)
+        try? FileManager.default.removeItem(at: fileURL)
+
+        project.prompts[promptIndex].generatedImages.remove(at: imageIndex)
+        updateChangeCount(.changeDone)
+    }
+
     // MARK: - Package document support
 
     nonisolated override class func isNativeType(_ type: String) -> Bool {
