@@ -20,8 +20,9 @@ struct ContentView: View {
         }
         .frame(minWidth: 700, minHeight: 400)
         .safeAreaInset(edge: .bottom) {
-            if generationService.isRunning || !generationService.statusMessage.isEmpty {
-                generationStatusBar
+            if generationService.isRunning || !generationService.statusMessage.isEmpty
+                || captionService.isBulkCaptioning || !captionService.bulkStatusMessage.isEmpty {
+                statusBar
             }
         }
         .toolbar(id: "main") {
@@ -69,12 +70,24 @@ struct ContentView: View {
                 .help("Toggle trash view")
             }
             ToolbarItem(id: "autoCaption", placement: .automatic) {
-                Button {
-                    // Phase 14: Auto-caption All
-                } label: {
-                    Label("Auto-caption", systemImage: "sparkles")
+                if captionService.isBulkCaptioning {
+                    Button {
+                        captionService.stopBulkCaption()
+                    } label: {
+                        Label("Stop Captioning", systemImage: "stop.fill")
+                    }
+                    .help("Stop auto-captioning")
+                } else {
+                    Button {
+                        document.ensureSaved {
+                            captionService.captionAll(document: document)
+                        }
+                    } label: {
+                        Label("Auto-caption", systemImage: "sparkles")
+                    }
+                    .disabled(document.project.captionConnectionID == nil)
+                    .help("Auto-caption all uncaptioned images")
                 }
-                .help("Auto-caption all uncaptioned images")
             }
             ToolbarItem(id: "export", placement: .automatic) {
                 Button {
@@ -87,33 +100,58 @@ struct ContentView: View {
         }
     }
 
-    // MARK: - Generation Status Bar
+    // MARK: - Status Bar
 
-    private var generationStatusBar: some View {
+    private var statusBar: some View {
         HStack(spacing: 8) {
+            // Generation progress
             if generationService.isRunning {
                 ProgressView(value: generationService.progressFraction)
                     .progressViewStyle(.linear)
                     .frame(width: 120)
             }
 
-            Text(generationService.statusMessage)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-
-            if let stage = generationService.generationStage {
-                Text("— \(stage)")
+            if !generationService.statusMessage.isEmpty {
+                Text(generationService.statusMessage)
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+
+                if let stage = generationService.generationStage {
+                    Text("— \(stage)")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .lineLimit(1)
+                }
+            }
+
+            // Caption progress
+            if captionService.isBulkCaptioning {
+                if !generationService.statusMessage.isEmpty {
+                    Text("│")
+                        .font(.caption)
+                        .foregroundStyle(.quaternary)
+                }
+                ProgressView(value: Double(captionService.bulkProgress), total: Double(max(captionService.bulkTotal, 1)))
+                    .progressViewStyle(.linear)
+                    .frame(width: 100)
+            }
+
+            if !captionService.bulkStatusMessage.isEmpty {
+                Text(captionService.bulkStatusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
             Spacer()
 
-            if !generationService.isRunning && !generationService.statusMessage.isEmpty {
+            // Dismiss button for completed messages
+            if !generationService.isRunning && !captionService.isBulkCaptioning
+                && (!generationService.statusMessage.isEmpty || !captionService.bulkStatusMessage.isEmpty) {
                 Button {
                     generationService.statusMessage = ""
+                    captionService.bulkStatusMessage = ""
                 } label: {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
