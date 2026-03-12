@@ -355,12 +355,10 @@ struct ContentView: View {
     }
 
     private func deletePrompt(id: UUID) {
-        document.project.prompts.removeAll { $0.id == id }
+        document.trashPrompt(id: id)
         if selection == .prompt(id) {
             selection = nil
         }
-        reorderPrompts()
-        document.updateChangeCount(.changeDone)
     }
 
     private func reorderPrompts() {

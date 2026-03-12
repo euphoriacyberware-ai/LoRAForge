@@ -200,7 +200,8 @@ struct LoadTemplateSheet: View {
     private func loadTemplate(replace: Bool) {
         let startOrder: Int
         if replace {
-            document.project.prompts.removeAll()
+            let ids = Set(document.project.prompts.map(\.id))
+            document.trashPrompts(ids: ids)
             startOrder = 0
         } else {
             startOrder = document.project.prompts.count

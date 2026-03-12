@@ -257,6 +257,112 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         updateChangeCount(.changeDone)
     }
 
+    // MARK: - Prompt Deletion (with Undo)
+
+    func trashPrompt(id: UUID) {
+        guard let index = project.prompts.firstIndex(where: { $0.id == id }) else { return }
+        let prompt = project.prompts[index]
+
+        // Move all non-discarded images to trash on disk
+        movePromptImagesToTrash(prompt)
+
+        // Remove from model
+        project.prompts.remove(at: index)
+
+        // Register undo
+        undoManager?.registerUndo(withTarget: self) { doc in
+            doc.restorePrompt(prompt, at: index)
+        }
+        undoManager?.setActionName("Delete Prompt")
+        updateChangeCount(.changeDone)
+    }
+
+    func trashPrompts(ids: Set<UUID>) {
+        // Collect prompts to remove, preserving order for undo
+        var removed: [(index: Int, prompt: Prompt)] = []
+        for (index, prompt) in project.prompts.enumerated() where ids.contains(prompt.id) {
+            movePromptImagesToTrash(prompt)
+            removed.append((index, prompt))
+        }
+        guard !removed.isEmpty else { return }
+
+        project.prompts.removeAll { ids.contains($0.id) }
+
+        undoManager?.registerUndo(withTarget: self) { doc in
+            doc.restorePrompts(removed)
+        }
+        undoManager?.setActionName("Delete \(removed.count) Prompt(s)")
+        updateChangeCount(.changeDone)
+    }
+
+    private func restorePrompt(_ prompt: Prompt, at index: Int) {
+        // Move images back from trash to generated
+        movePromptImagesFromTrash(prompt)
+
+        // Re-insert at original position (clamped to valid range)
+        let insertIndex = min(index, project.prompts.count)
+        project.prompts.insert(prompt, at: insertIndex)
+
+        undoManager?.registerUndo(withTarget: self) { doc in
+            doc.trashPrompt(id: prompt.id)
+        }
+        undoManager?.setActionName("Delete Prompt")
+        updateChangeCount(.changeDone)
+    }
+
+    private func restorePrompts(_ removed: [(index: Int, prompt: Prompt)]) {
+        var ids = Set<UUID>()
+        // Restore in reverse order so indices remain valid
+        for (index, prompt) in removed.reversed() {
+            movePromptImagesFromTrash(prompt)
+            let insertIndex = min(index, project.prompts.count)
+            project.prompts.insert(prompt, at: insertIndex)
+            ids.insert(prompt.id)
+        }
+
+        undoManager?.registerUndo(withTarget: self) { doc in
+            doc.trashPrompts(ids: ids)
+        }
+        undoManager?.setActionName("Delete \(removed.count) Prompt(s)")
+        updateChangeCount(.changeDone)
+    }
+
+    private func movePromptImagesToTrash(_ prompt: Prompt) {
+        guard let packageURL = fileURL else { return }
+        let fm = FileManager.default
+        let srcDir = packageURL.appendingPathComponent("generated").appendingPathComponent(prompt.id.uuidString)
+        let dstDir = packageURL.appendingPathComponent("trash").appendingPathComponent(prompt.id.uuidString)
+
+        for image in prompt.generatedImages where image.rank != .discarded {
+            try? fm.createDirectory(at: dstDir, withIntermediateDirectories: true)
+            let src = srcDir.appendingPathComponent(image.filename)
+            let dst = dstDir.appendingPathComponent(image.filename)
+            try? fm.moveItem(at: src, to: dst)
+        }
+
+        // Clean up empty generated directory
+        try? fm.removeItem(at: srcDir)
+    }
+
+    private func movePromptImagesFromTrash(_ prompt: Prompt) {
+        guard let packageURL = fileURL else { return }
+        let fm = FileManager.default
+        let srcDir = packageURL.appendingPathComponent("trash").appendingPathComponent(prompt.id.uuidString)
+        let dstDir = packageURL.appendingPathComponent("generated").appendingPathComponent(prompt.id.uuidString)
+
+        for image in prompt.generatedImages where image.rank != .discarded {
+            try? fm.createDirectory(at: dstDir, withIntermediateDirectories: true)
+            let src = srcDir.appendingPathComponent(image.filename)
+            let dst = dstDir.appendingPathComponent(image.filename)
+            try? fm.moveItem(at: src, to: dst)
+        }
+
+        // Clean up empty trash subdirectory
+        if let contents = try? fm.contentsOfDirectory(at: srcDir, includingPropertiesForKeys: nil), contents.isEmpty {
+            try? fm.removeItem(at: srcDir)
+        }
+    }
+
     // MARK: - Empty Trash
 
     func emptyTrash() {
