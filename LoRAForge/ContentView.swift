@@ -6,6 +6,7 @@ struct ContentView: View {
     @ObservedObject var document: LoRAForgeDocument
     @ObservedObject var connectionManager = ConnectionManager.shared
     @StateObject private var generationService = GenerationService()
+    @StateObject private var captionService = CaptionService()
     @State private var selectedPromptID: UUID?
     @State private var showingTrash = false
     @State private var editingLabelID: UUID?
@@ -26,6 +27,9 @@ struct ContentView: View {
         .toolbar(id: "main") {
             ToolbarItem(id: "serverPicker", placement: .automatic) {
                 serverPicker
+            }
+            ToolbarItem(id: "captionPicker", placement: .automatic) {
+                captionServerPicker
             }
             ToolbarItem(id: "run", placement: .automatic) {
                 Button {
@@ -128,6 +132,16 @@ struct ContentView: View {
         Picker("Server", selection: $document.project.generationConnectionID) {
             Text("No Server").tag(UUID?.none)
             ForEach(connectionManager.connections(ofType: .drawThings)) { conn in
+                Text(conn.name).tag(UUID?.some(conn.id))
+            }
+        }
+        .frame(width: 150)
+    }
+
+    private var captionServerPicker: some View {
+        Picker("Caption", selection: $document.project.captionConnectionID) {
+            Text("No Caption Server").tag(UUID?.none)
+            ForEach(connectionManager.connections(ofType: .ollama)) { conn in
                 Text(conn.name).tag(UUID?.some(conn.id))
             }
         }
@@ -318,6 +332,7 @@ struct ContentView: View {
                     document: document,
                     promptID: promptID,
                     generationService: generationService,
+                    captionService: captionService,
                     showingTrash: showingTrash
                 )
             } else {

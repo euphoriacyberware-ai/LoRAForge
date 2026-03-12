@@ -5,6 +5,7 @@ struct PromptDetailView: View {
     @ObservedObject var document: LoRAForgeDocument
     let promptID: UUID
     @ObservedObject var generationService: GenerationService
+    @ObservedObject var captionService: CaptionService
     let showingTrash: Bool
     @State private var showingSlotPicker = false
     @State private var editingSlotIndex: Int?
@@ -303,29 +304,70 @@ struct PromptDetailView: View {
                     .padding(4)
             }
 
-            // Caption field
+            // Caption field + auto-caption button
             if let idx = imageIndex {
-                TextField(
-                    "Caption…",
-                    text: Binding(
-                        get: {
-                            document.project.prompts[promptIndex].generatedImages[idx].caption ?? ""
-                        },
-                        set: { newValue in
-                            document.project.prompts[promptIndex].generatedImages[idx].caption = newValue.isEmpty ? nil : newValue
-                            document.updateChangeCount(.changeDone)
-                        }
-                    ),
-                    axis: .vertical
-                )
-                .font(.caption)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(2...4)
+                HStack(alignment: .top, spacing: 4) {
+                    TextField(
+                        "Caption…",
+                        text: Binding(
+                            get: {
+                                document.project.prompts[promptIndex].generatedImages[idx].caption ?? ""
+                            },
+                            set: { newValue in
+                                document.project.prompts[promptIndex].generatedImages[idx].caption = newValue.isEmpty ? nil : newValue
+                                document.updateChangeCount(.changeDone)
+                            }
+                        ),
+                        axis: .vertical
+                    )
+                    .font(.caption)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(2...4)
+
+                    autoCaptionButton(image: image, promptIndex: promptIndex, imageIndex: idx)
+                }
             }
         }
         .contextMenu {
             if let idx = imageIndex {
                 imageContextMenu(promptIndex: promptIndex, imageIndex: idx, image: image)
+            }
+        }
+    }
+
+    // MARK: - Auto-Caption Button
+
+    private func autoCaptionButton(image: GeneratedImage, promptIndex: Int, imageIndex: Int) -> some View {
+        let isCaptioning = captionService.captioningImageIDs.contains(image.id)
+        let captionConnectionID = document.project.captionConnectionID
+        let hasConnection = captionConnectionID != nil
+            && ConnectionManager.shared.connection(for: captionConnectionID) != nil
+
+        return Group {
+            if isCaptioning {
+                ProgressView()
+                    .controlSize(.small)
+                    .frame(width: 20, height: 20)
+            } else {
+                Button {
+                    guard let connID = document.project.captionConnectionID,
+                          let conn = ConnectionManager.shared.connection(for: connID),
+                          let url = document.generatedImageURL(promptID: promptID, image: image) else { return }
+                    captionService.caption(
+                        imageID: image.id,
+                        imageURL: url,
+                        connection: conn,
+                        document: document,
+                        promptIndex: promptIndex,
+                        imageIndex: imageIndex
+                    )
+                } label: {
+                    Image(systemName: "sparkles")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .disabled(!hasConnection)
+                .help(hasConnection ? "Auto-caption with Ollama" : "Set a caption server in the toolbar")
             }
         }
     }
