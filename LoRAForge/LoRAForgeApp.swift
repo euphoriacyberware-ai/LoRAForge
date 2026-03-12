@@ -61,6 +61,29 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         templateLibraryWindow = window
     }
 
+    // MARK: - Empty Trash
+
+    @objc func emptyTrash() {
+        guard let document = NSDocumentController.shared.currentDocument as? LoRAForgeDocument else { return }
+
+        let discardedCount = document.project.prompts.reduce(0) { total, prompt in
+            total + prompt.generatedImages.filter { $0.rank == .discarded }.count
+        }
+
+        guard discardedCount > 0 else { return }
+
+        let alert = NSAlert()
+        alert.messageText = "Empty Trash?"
+        alert.informativeText = "This will permanently delete \(discardedCount) discarded image(s). This cannot be undone."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Empty Trash")
+        alert.addButton(withTitle: "Cancel")
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        document.emptyTrash()
+    }
+
     // MARK: - Main Menu
 
     func buildMainMenu() {
@@ -162,6 +185,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                             keyEquivalent: "")
         projectMenu.addItem(withTitle: "Template Library…",
                             action: #selector(showTemplateLibrary),
+                            keyEquivalent: "")
+        projectMenu.addItem(.separator())
+        projectMenu.addItem(withTitle: "Empty Trash…",
+                            action: #selector(emptyTrash),
                             keyEquivalent: "")
 
         // Window menu

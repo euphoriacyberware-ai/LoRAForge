@@ -257,6 +257,28 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         updateChangeCount(.changeDone)
     }
 
+    // MARK: - Empty Trash
+
+    func emptyTrash() {
+        guard let packageURL = fileURL else { return }
+        let fm = FileManager.default
+        let trashDir = packageURL.appendingPathComponent("trash")
+
+        // Remove all discarded images from the model
+        for pIdx in project.prompts.indices {
+            project.prompts[pIdx].generatedImages.removeAll { $0.rank == .discarded }
+        }
+
+        // Delete the entire trash directory contents
+        if let contents = try? fm.contentsOfDirectory(at: trashDir, includingPropertiesForKeys: nil) {
+            for item in contents {
+                try? fm.removeItem(at: item)
+            }
+        }
+
+        updateChangeCount(.changeDone)
+    }
+
     // MARK: - Package document support
 
     nonisolated override class func isNativeType(_ type: String) -> Bool {
