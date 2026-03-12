@@ -7,10 +7,15 @@ struct ContentView: View {
     @ObservedObject var connectionManager = ConnectionManager.shared
     @StateObject private var generationService = GenerationService()
     @StateObject private var captionService = CaptionService()
-    @State private var selectedPromptID: UUID?
+    @State private var selection: SidebarSelection?
     @State private var showingTrash = false
     @State private var showingExport = false
     @State private var editingLabelID: UUID?
+
+    enum SidebarSelection: Hashable {
+        case sourceImage(UUID)
+        case prompt(UUID)
+    }
 
     var body: some View {
         NavigationSplitView {
@@ -193,10 +198,11 @@ struct ContentView: View {
     // MARK: - Sidebar
 
     private var sidebar: some View {
-        List(selection: $selectedPromptID) {
+        List(selection: $selection) {
             Section("Source Images") {
                 ForEach(document.project.sourceImages) { source in
                     sourceImageRow(source)
+                        .tag(SidebarSelection.sourceImage(source.id))
                 }
 
                 Button {
@@ -228,7 +234,7 @@ struct ContentView: View {
                                 .font(.caption)
                         }
                     }
-                    .tag(prompt.id)
+                    .tag(SidebarSelection.prompt(prompt.id))
                     .contextMenu {
                         Button("Delete Prompt") {
                             deletePrompt(id: prompt.id)
@@ -344,14 +350,14 @@ struct ContentView: View {
             generatedImages: []
         )
         document.project.prompts.append(newPrompt)
-        selectedPromptID = newPrompt.id
+        selection = .prompt(newPrompt.id)
         document.updateChangeCount(.changeDone)
     }
 
     private func deletePrompt(id: UUID) {
         document.project.prompts.removeAll { $0.id == id }
-        if selectedPromptID == id {
-            selectedPromptID = nil
+        if selection == .prompt(id) {
+            selection = nil
         }
         reorderPrompts()
         document.updateChangeCount(.changeDone)
@@ -368,8 +374,8 @@ struct ContentView: View {
 
     private var detail: some View {
         Group {
-            if let promptID = selectedPromptID,
-               document.project.prompts.contains(where: { $0.id == promptID }) {
+            switch selection {
+            case .prompt(let promptID) where document.project.prompts.contains(where: { $0.id == promptID }):
                 PromptDetailView(
                     document: document,
                     promptID: promptID,
@@ -377,10 +383,40 @@ struct ContentView: View {
                     captionService: captionService,
                     showingTrash: showingTrash
                 )
-            } else {
+            case .sourceImage(let sourceID):
+                if let source = document.project.sourceImages.first(where: { $0.id == sourceID }) {
+                    sourceImageDetail(source)
+                } else {
+                    Text("Select a prompt to get started")
+                        .foregroundStyle(.secondary)
+                }
+            default:
                 Text("Select a prompt to get started")
                     .foregroundStyle(.secondary)
             }
+        }
+    }
+
+    // MARK: - Source Image Detail
+
+    private func sourceImageDetail(_ source: SourceImage) -> some View {
+        VStack {
+            if let url = document.sourceImageURL(for: source),
+               let nsImage = NSImage(contentsOf: url) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+            } else {
+                Image(systemName: "photo")
+                    .font(.system(size: 48))
+                    .foregroundStyle(.secondary)
+            }
+
+            Text(source.label ?? source.filename)
+                .font(.headline)
+                .padding(.bottom)
         }
     }
 }
