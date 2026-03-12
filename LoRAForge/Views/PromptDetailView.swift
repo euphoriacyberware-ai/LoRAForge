@@ -29,11 +29,15 @@ struct PromptDetailView: View {
                 .padding()
             }
             .onChange(of: lightboxImageID) { _, newValue in
-                guard let newValue,
-                      let idx = promptIndex,
-                      let image = document.project.prompts[idx].generatedImages.first(where: { $0.id == newValue }),
-                      let url = document.generatedImageURL(promptID: promptID, image: image) else { return }
-                LightboxController.show(imageURL: url, caption: image.caption)
+                guard let newValue, let idx = promptIndex else { return }
+                let images = filteredImages(prompt: document.project.prompts[idx])
+                guard let startIndex = images.firstIndex(where: { $0.id == newValue }) else { return }
+                LightboxController.show(
+                    document: document,
+                    promptID: promptID,
+                    showingTrash: showingTrash,
+                    startingImageID: newValue
+                )
                 lightboxImageID = nil
             }
         } else {
@@ -410,46 +414,290 @@ struct PromptDetailView: View {
 // MARK: - Lightbox Controller
 
 enum LightboxController {
-    static func show(imageURL: URL, caption: String?) {
-        guard let nsImage = NSImage(contentsOf: imageURL) else { return }
+    private static var currentWindow: NSPanel?
 
-        let pixelSize = nsImage.pixelSize
+    static func show(
+        document: LoRAForgeDocument,
+        promptID: UUID,
+        showingTrash: Bool,
+        startingImageID: UUID
+    ) {
+        currentWindow?.close()
 
-        // Cap to 80% of screen, maintaining aspect ratio
+        let view = LightboxContentView(
+            document: document,
+            promptID: promptID,
+            showingTrash: showingTrash,
+            currentImageID: startingImageID
+        )
+        let hostingController = NSHostingController(rootView: view)
+
         let screen = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let maxW = screen.width * 0.8
-        let maxH = screen.height * 0.8
-        let scale = min(1.0, min(maxW / pixelSize.width, maxH / pixelSize.height))
-        let displayW = pixelSize.width * scale
-        let displayH = pixelSize.height * scale
-
-        let imageView = NSImageView(image: nsImage)
-        imageView.imageScaling = .scaleProportionallyUpOrDown
-        imageView.translatesAutoresizingMaskIntoConstraints = false
-
-        let container = NSView()
-        container.addSubview(imageView)
-
-        NSLayoutConstraint.activate([
-            imageView.topAnchor.constraint(equalTo: container.topAnchor),
-            imageView.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            imageView.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            imageView.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            imageView.widthAnchor.constraint(equalToConstant: displayW),
-            imageView.heightAnchor.constraint(equalToConstant: displayH),
-        ])
+        let winW = screen.width * 0.8
+        let winH = screen.height * 0.85
 
         let window = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: displayW, height: displayH),
+            contentRect: NSRect(x: 0, y: 0, width: winW, height: winH),
             styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )
-        window.contentView = container
-        window.title = caption ?? imageURL.deletingPathExtension().lastPathComponent
+        window.contentViewController = hostingController
+        window.title = "Lightbox"
         window.isReleasedWhenClosed = false
         window.center()
         window.makeKeyAndOrderFront(nil)
+        currentWindow = window
+    }
+}
+
+// MARK: - Lightbox Content View
+
+struct LightboxContentView: View {
+    @ObservedObject var document: LoRAForgeDocument
+    let promptID: UUID
+    let showingTrash: Bool
+    @State var currentImageID: UUID
+
+    private var promptIndex: Int? {
+        document.project.prompts.firstIndex(where: { $0.id == promptID })
+    }
+
+    private var visibleImages: [GeneratedImage] {
+        guard let idx = promptIndex else { return [] }
+        let all = document.project.prompts[idx].generatedImages
+        return showingTrash
+            ? all.filter { $0.rank == .discarded }
+            : all.filter { $0.rank != .discarded }
+    }
+
+    private var currentIndex: Int? {
+        visibleImages.firstIndex(where: { $0.id == currentImageID })
+    }
+
+    private var currentImage: GeneratedImage? {
+        visibleImages.first(where: { $0.id == currentImageID })
+    }
+
+    private var currentImageModelIndex: Int? {
+        guard let idx = promptIndex else { return nil }
+        return document.project.prompts[idx].generatedImages.firstIndex(where: { $0.id == currentImageID })
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Image area
+            imageDisplay
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Divider()
+
+            // Controls bar
+            controlsBar
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+        }
+        .background(Color.black)
+    }
+
+    // MARK: - Image Display
+
+    private var imageDisplay: some View {
+        ZStack {
+            if let image = currentImage,
+               let url = document.generatedImageURL(promptID: promptID, image: image),
+               let nsImage = NSImage(contentsOf: url) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .padding(8)
+            } else {
+                Text("Image not found")
+                    .foregroundStyle(.secondary)
+            }
+
+            // Navigation arrows
+            HStack {
+                navButton(systemImage: "chevron.left") {
+                    navigatePrevious()
+                }
+                .disabled(currentIndex == nil || currentIndex == 0)
+
+                Spacer()
+
+                navButton(systemImage: "chevron.right") {
+                    navigateNext()
+                }
+                .disabled(currentIndex == nil || currentIndex == visibleImages.count - 1)
+            }
+            .padding(.horizontal, 8)
+        }
+    }
+
+    private func navButton(systemImage: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.title)
+                .foregroundStyle(.white)
+                .padding(12)
+                .background(Color.black.opacity(0.5))
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    // MARK: - Controls Bar
+
+    private var controlsBar: some View {
+        HStack(spacing: 16) {
+            // Navigation position
+            if let idx = currentIndex {
+                Text("\(idx + 1) / \(visibleImages.count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+
+            Spacer()
+
+            // Rank controls
+            if let pIdx = promptIndex, let iIdx = currentImageModelIndex {
+                rankControls(promptIndex: pIdx, imageIndex: iIdx)
+            }
+
+            Spacer()
+
+            // Caption editor
+            captionEditor
+                .frame(maxWidth: 400)
+        }
+    }
+
+    @ViewBuilder
+    private func rankControls(promptIndex: Int, imageIndex: Int) -> some View {
+        let image = document.project.prompts[promptIndex].generatedImages[imageIndex]
+
+        if showingTrash {
+            Button("Restore") {
+                document.restoreImage(promptIndex: promptIndex, imageIndex: imageIndex)
+            }
+            .buttonStyle(.bordered)
+
+            Button("Delete Permanently") {
+                let next = navigateAfterRemoval()
+                document.deleteImagePermanently(promptIndex: promptIndex, imageIndex: imageIndex)
+                if let next { currentImageID = next } else { closeWindow() }
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
+        } else {
+            HStack(spacing: 4) {
+                rankBadge(image.rank)
+            }
+
+            Button {
+                document.promoteImage(promptIndex: promptIndex, imageIndex: imageIndex)
+            } label: {
+                Label("Promote", systemImage: "arrow.up.circle")
+            }
+            .disabled(image.rank == .final_)
+            .buttonStyle(.bordered)
+
+            Button {
+                document.demoteImage(promptIndex: promptIndex, imageIndex: imageIndex)
+            } label: {
+                Label("Demote", systemImage: "arrow.down.circle")
+            }
+            .disabled(image.rank == .candidate)
+            .buttonStyle(.bordered)
+
+            Button {
+                let next = navigateAfterRemoval()
+                document.discardImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                if let next { currentImageID = next } else { closeWindow() }
+            } label: {
+                Label("Discard", systemImage: "trash")
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
+        }
+    }
+
+    private func rankBadge(_ rank: ImageRank) -> some View {
+        Text(rankLabel(rank))
+            .font(.caption.bold())
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(rankColor(rank).opacity(0.85))
+            .foregroundStyle(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 4))
+    }
+
+    private func rankLabel(_ rank: ImageRank) -> String {
+        switch rank {
+        case .candidate: "Candidate"
+        case .shortlisted: "Shortlisted"
+        case .final_: "Final"
+        case .discarded: "Discarded"
+        }
+    }
+
+    private func rankColor(_ rank: ImageRank) -> Color {
+        switch rank {
+        case .candidate: .gray
+        case .shortlisted: .blue
+        case .final_: .green
+        case .discarded: .red
+        }
+    }
+
+    // MARK: - Caption Editor
+
+    private var captionEditor: some View {
+        Group {
+            if let pIdx = promptIndex, let iIdx = currentImageModelIndex {
+                TextField(
+                    "Caption…",
+                    text: Binding(
+                        get: {
+                            document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
+                        },
+                        set: { newValue in
+                            document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
+                            document.updateChangeCount(.changeDone)
+                        }
+                    ),
+                    axis: .vertical
+                )
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(2...4)
+            }
+        }
+    }
+
+    // MARK: - Navigation
+
+    private func navigatePrevious() {
+        guard let idx = currentIndex, idx > 0 else { return }
+        currentImageID = visibleImages[idx - 1].id
+    }
+
+    private func navigateNext() {
+        guard let idx = currentIndex, idx < visibleImages.count - 1 else { return }
+        currentImageID = visibleImages[idx + 1].id
+    }
+
+    private func navigateAfterRemoval() -> UUID? {
+        guard let idx = currentIndex else { return nil }
+        if visibleImages.count <= 1 { return nil }
+        if idx < visibleImages.count - 1 {
+            return visibleImages[idx + 1].id
+        }
+        return visibleImages[idx - 1].id
+    }
+
+    private func closeWindow() {
+        NSApp.keyWindow?.close()
     }
 }
 
