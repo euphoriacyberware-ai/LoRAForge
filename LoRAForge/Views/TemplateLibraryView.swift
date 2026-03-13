@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct TemplateLibraryView: View {
     @ObservedObject var document: LoRAForgeDocument
@@ -8,6 +9,8 @@ struct TemplateLibraryView: View {
     @State private var showingSaveSheet = false
     @State private var showingLoadConfirm = false
     @State private var loadMode: LoadMode = .append
+    @State private var importError: String?
+    @State private var showingImportError = false
 
     enum LoadMode {
         case append, replace
@@ -47,7 +50,16 @@ struct TemplateLibraryView: View {
                 }
                 .disabled(document.project.prompts.isEmpty)
 
+                Button("Import…") {
+                    importTemplate()
+                }
+
                 Spacer()
+
+                Button("Export…") {
+                    exportTemplate()
+                }
+                .disabled(selectedTemplateID == nil)
 
                 Button("Delete") {
                     if let id = selectedTemplateID {
@@ -74,7 +86,7 @@ struct TemplateLibraryView: View {
             .padding(.horizontal)
             .padding(.bottom)
         }
-        .frame(width: 450, height: 400)
+        .frame(width: 520, height: 400)
         .sheet(isPresented: $showingSaveSheet) {
             SaveTemplateSheet(document: document, isPresented: $showingSaveSheet)
         }
@@ -87,6 +99,43 @@ struct TemplateLibraryView: View {
                     isPresented: $showingLoadConfirm
                 )
             }
+        }
+        .alert("Import Failed", isPresented: $showingImportError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(importError ?? "Unknown error")
+        }
+    }
+
+    // MARK: - Import / Export
+
+    private func importTemplate() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = [UTType.json]
+        panel.allowsMultipleSelection = false
+        panel.message = "Select a template JSON file to import"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try templateManager.importTemplate(from: url)
+        } catch {
+            importError = error.localizedDescription
+            showingImportError = true
+        }
+    }
+
+    private func exportTemplate() {
+        guard let id = selectedTemplateID,
+              let template = templateManager.templates.first(where: { $0.id == id }) else { return }
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [UTType.json]
+        panel.nameFieldStringValue = "\(template.name).json"
+        panel.message = "Export template as JSON"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try templateManager.exportTemplate(template, to: url)
+        } catch {
+            importError = error.localizedDescription
+            showingImportError = true
         }
     }
 }

@@ -33,6 +33,51 @@ final class TemplateManager: ObservableObject {
         save()
     }
 
+    // MARK: - Import / Export
+
+    func exportTemplate(_ template: Template, to url: URL) throws {
+        let envelope = TemplateExportEnvelope(version: TemplateExportEnvelope.currentVersion, template: template)
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(envelope)
+        try data.write(to: url, options: .atomic)
+    }
+
+    @discardableResult
+    func importTemplate(from url: URL) throws -> Template {
+        let data = try Data(contentsOf: url)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let envelope = try decoder.decode(TemplateExportEnvelope.self, from: data)
+
+        guard envelope.version <= TemplateExportEnvelope.currentVersion else {
+            throw TemplateImportError.unsupportedVersion(envelope.version)
+        }
+
+        var imported = envelope.template
+        imported.id = UUID()
+        imported.prompts = imported.prompts.map { prompt in
+            var p = prompt
+            p.id = UUID()
+            return p
+        }
+
+        add(imported)
+        return imported
+    }
+
+    enum TemplateImportError: LocalizedError {
+        case unsupportedVersion(Int)
+
+        var errorDescription: String? {
+            switch self {
+            case .unsupportedVersion(let v):
+                return "This template file requires a newer version of LoRAForge (file version \(v))."
+            }
+        }
+    }
+
     // MARK: - Persistence
 
     private func load() {

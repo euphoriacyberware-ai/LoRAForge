@@ -65,7 +65,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let window = NSPanel(contentViewController: hostingController)
         window.title = "Template Library"
         window.styleMask = [.titled, .closable, .resizable]
-        window.setContentSize(NSSize(width: 450, height: 400))
+        window.setContentSize(NSSize(width: 520, height: 400))
         window.center()
         window.makeKeyAndOrderFront(nil)
         templateLibraryWindow = window
