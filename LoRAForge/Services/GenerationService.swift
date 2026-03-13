@@ -135,8 +135,8 @@ final class GenerationService: ObservableObject {
             let configJSON = prompt.configurationOverrideJSON ?? document.project.baseConfigurationJSON
             let parsed = ConfigurationMapper.parse(fromJSON: configJSON)
 
-            // Load first source image (if any)
-            let sourceImage: NSImage? = loadSourceImage(prompt: prompt, document: document)
+            // Build hints from source images
+            let hints = buildHints(prompt: prompt, document: document)
 
             // Generate images one at a time
             for i in 0..<prompt.generateCount {
@@ -150,7 +150,7 @@ final class GenerationService: ObservableObject {
                         prompt: prompt.text,
                         negativePrompt: parsed.negativePrompt,
                         configuration: parsed.configuration,
-                        image: sourceImage
+                        hints: hints
                     )
 
                     // Save each returned image
@@ -198,13 +198,25 @@ final class GenerationService: ObservableObject {
 
     // MARK: - Helpers
 
-    private func loadSourceImage(prompt: Prompt, document: LoRAForgeDocument) -> NSImage? {
-        guard let firstImageID = prompt.sourceImageIDs.first,
-              let source = document.project.sourceImages.first(where: { $0.id == firstImageID }),
-              let url = document.sourceImageURL(for: source) else {
-            return nil
+    private func buildHints(prompt: Prompt, document: LoRAForgeDocument) -> [HintProto] {
+        var tensors: [TensorAndWeight] = []
+        for sourceID in prompt.sourceImageIDs {
+            guard let source = document.project.sourceImages.first(where: { $0.id == sourceID }),
+                  let url = document.sourceImageURL(for: source),
+                  let nsImage = NSImage(contentsOf: url),
+                  let tensorData = try? ImageHelpers.imageToDTTensor(nsImage) else {
+                continue
+            }
+            var tw = TensorAndWeight()
+            tw.tensor = tensorData
+            tw.weight = 1.0
+            tensors.append(tw)
         }
-        return NSImage(contentsOf: url)
+        guard !tensors.isEmpty else { return [] }
+        var hint = HintProto()
+        hint.hintType = "shuffle"
+        hint.tensors = tensors
+        return [hint]
     }
 
     private func saveGeneratedImage(
