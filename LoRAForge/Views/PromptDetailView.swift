@@ -303,6 +303,9 @@ struct PromptDetailView: View {
                 rankBadge(image.rank)
                     .padding(4)
             }
+            .onTapGesture(count: 2) {
+                lightboxImageID = image.id
+            }
 
             // Caption field + auto-caption button
             if let idx = imageIndex {
