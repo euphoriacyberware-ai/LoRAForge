@@ -28,7 +28,15 @@ final class GenerationService: ObservableObject {
         guard !isRunning else { return }
 
         generationTask = Task {
-            await performGeneration(document: document, runAll: runAll)
+            await performGeneration(document: document, runAll: runAll, onlyPromptID: nil)
+        }
+    }
+
+    func runSingle(document: LoRAForgeDocument, promptID: UUID) {
+        guard !isRunning else { return }
+
+        generationTask = Task {
+            await performGeneration(document: document, runAll: true, onlyPromptID: promptID)
         }
     }
 
@@ -45,7 +53,7 @@ final class GenerationService: ObservableObject {
 
     // MARK: - Generation Loop
 
-    private func performGeneration(document: LoRAForgeDocument, runAll: Bool) async {
+    private func performGeneration(document: LoRAForgeDocument, runAll: Bool, onlyPromptID: UUID?) async {
         isRunning = true
         statusMessage = ""
         generationStage = nil
@@ -87,7 +95,9 @@ final class GenerationService: ObservableObject {
 
         // Determine prompts to process
         let promptsToProcess: [Prompt]
-        if runAll {
+        if let onlyPromptID {
+            promptsToProcess = document.project.prompts.filter { $0.id == onlyPromptID }
+        } else if runAll {
             promptsToProcess = document.project.prompts
         } else {
             promptsToProcess = document.project.prompts.filter { prompt in

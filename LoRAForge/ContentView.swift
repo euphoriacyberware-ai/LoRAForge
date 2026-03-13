@@ -17,6 +17,11 @@ struct ContentView: View {
         case prompt(UUID)
     }
 
+    private var selectedPromptID: UUID? {
+        if case .prompt(let id) = selection { return id }
+        return nil
+    }
+
     var body: some View {
         NavigationSplitView {
             sidebar
@@ -37,6 +42,19 @@ struct ContentView: View {
             }
             ToolbarItem(id: "captionPicker", placement: .automatic) {
                 captionServerPicker
+            }
+            ToolbarItem(id: "runSelected", placement: .automatic) {
+                Button {
+                    if let promptID = selectedPromptID {
+                        document.ensureSaved {
+                            generationService.runSingle(document: document, promptID: promptID)
+                        }
+                    }
+                } label: {
+                    Label("Run Selected", systemImage: "play")
+                }
+                .disabled(generationService.isRunning || document.project.generationConnectionID == nil || selectedPromptID == nil)
+                .help("Generate images for the selected prompt")
             }
             ToolbarItem(id: "run", placement: .automatic) {
                 Button {
