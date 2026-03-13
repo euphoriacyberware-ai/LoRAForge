@@ -13,6 +13,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         true
     }
 
+    // MARK: - About
+
+    @objc func showAboutPanel() {
+        let options: [NSApplication.AboutPanelOptionKey: Any] = [
+            .applicationIcon: NSApp.applicationIconImage as Any,
+            .init(rawValue: "Copyright"): "\u{00A9} 2025-2026 Euphoria Cyberware AI. All rights reserved."
+        ]
+        NSApp.orderFrontStandardAboutPanel(options: options)
+    }
+
     // MARK: - Address Book
 
     private var addressBookWindow: NSWindow?
@@ -95,7 +105,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let appMenu = NSMenu()
         appMenuItem.submenu = appMenu
         appMenu.addItem(withTitle: "About LoRAForge",
-                        action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
+                        action: #selector(showAboutPanel),
                         keyEquivalent: "")
         appMenu.addItem(.separator())
         let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
