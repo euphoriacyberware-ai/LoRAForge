@@ -180,80 +180,87 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
             .appendingPathComponent(image.filename)
     }
 
-    func promoteImage(promptIndex: Int, imageIndex: Int) {
-        let current = project.prompts[promptIndex].generatedImages[imageIndex].rank
-        let next: ImageRank? = switch current {
+    private func imageIndices(promptID: UUID, imageID: UUID) -> (promptIndex: Int, imageIndex: Int)? {
+        guard let pIdx = project.prompts.firstIndex(where: { $0.id == promptID }),
+              let iIdx = project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == imageID }) else {
+            return nil
+        }
+        return (pIdx, iIdx)
+    }
+
+    func promoteImage(promptID: UUID, imageID: UUID) {
+        guard let (pIdx, iIdx) = imageIndices(promptID: promptID, imageID: imageID) else { return }
+        let next: ImageRank? = switch project.prompts[pIdx].generatedImages[iIdx].rank {
         case .candidate: .shortlisted
         case .shortlisted: .final_
         case .final_: nil
         case .discarded: nil
         }
         guard let next else { return }
-        project.prompts[promptIndex].generatedImages[imageIndex].rank = next
+        project.prompts[pIdx].generatedImages[iIdx].rank = next
         updateChangeCount(.changeDone)
     }
 
-    func demoteImage(promptIndex: Int, imageIndex: Int) {
-        let current = project.prompts[promptIndex].generatedImages[imageIndex].rank
-        let next: ImageRank? = switch current {
+    func demoteImage(promptID: UUID, imageID: UUID) {
+        guard let (pIdx, iIdx) = imageIndices(promptID: promptID, imageID: imageID) else { return }
+        let next: ImageRank? = switch project.prompts[pIdx].generatedImages[iIdx].rank {
         case .candidate: nil
         case .shortlisted: .candidate
         case .final_: .shortlisted
         case .discarded: nil
         }
         guard let next else { return }
-        project.prompts[promptIndex].generatedImages[imageIndex].rank = next
+        project.prompts[pIdx].generatedImages[iIdx].rank = next
         updateChangeCount(.changeDone)
     }
 
-    func discardImage(promptIndex: Int, imageIndex: Int) {
-        guard let packageURL = fileURL else { return }
-        let promptID = project.prompts[promptIndex].id
-        let image = project.prompts[promptIndex].generatedImages[imageIndex]
+    func discardImage(promptID: UUID, imageID: UUID) {
+        guard let packageURL = fileURL,
+              let (pIdx, iIdx) = imageIndices(promptID: promptID, imageID: imageID) else { return }
+        let image = project.prompts[pIdx].generatedImages[iIdx]
         guard image.rank != .discarded else { return }
 
         let srcDir = packageURL.appendingPathComponent("generated").appendingPathComponent(promptID.uuidString)
         let dstDir = packageURL.appendingPathComponent("trash").appendingPathComponent(promptID.uuidString)
         let fm = FileManager.default
         try? fm.createDirectory(at: dstDir, withIntermediateDirectories: true)
+        try? fm.moveItem(
+            at: srcDir.appendingPathComponent(image.filename),
+            to: dstDir.appendingPathComponent(image.filename)
+        )
 
-        let src = srcDir.appendingPathComponent(image.filename)
-        let dst = dstDir.appendingPathComponent(image.filename)
-        try? fm.moveItem(at: src, to: dst)
-
-        project.prompts[promptIndex].generatedImages[imageIndex].rank = .discarded
+        project.prompts[pIdx].generatedImages[iIdx].rank = .discarded
         updateChangeCount(.changeDone)
     }
 
-    func restoreImage(promptIndex: Int, imageIndex: Int) {
-        guard let packageURL = fileURL else { return }
-        let promptID = project.prompts[promptIndex].id
-        let image = project.prompts[promptIndex].generatedImages[imageIndex]
+    func restoreImage(promptID: UUID, imageID: UUID) {
+        guard let packageURL = fileURL,
+              let (pIdx, iIdx) = imageIndices(promptID: promptID, imageID: imageID) else { return }
+        let image = project.prompts[pIdx].generatedImages[iIdx]
         guard image.rank == .discarded else { return }
 
         let srcDir = packageURL.appendingPathComponent("trash").appendingPathComponent(promptID.uuidString)
         let dstDir = packageURL.appendingPathComponent("generated").appendingPathComponent(promptID.uuidString)
         let fm = FileManager.default
         try? fm.createDirectory(at: dstDir, withIntermediateDirectories: true)
+        try? fm.moveItem(
+            at: srcDir.appendingPathComponent(image.filename),
+            to: dstDir.appendingPathComponent(image.filename)
+        )
 
-        let src = srcDir.appendingPathComponent(image.filename)
-        let dst = dstDir.appendingPathComponent(image.filename)
-        try? fm.moveItem(at: src, to: dst)
-
-        project.prompts[promptIndex].generatedImages[imageIndex].rank = .candidate
+        project.prompts[pIdx].generatedImages[iIdx].rank = .candidate
         updateChangeCount(.changeDone)
     }
 
-    func deleteImagePermanently(promptIndex: Int, imageIndex: Int) {
-        guard let packageURL = fileURL else { return }
-        let promptID = project.prompts[promptIndex].id
-        let image = project.prompts[promptIndex].generatedImages[imageIndex]
+    func deleteImagePermanently(promptID: UUID, imageID: UUID) {
+        guard let packageURL = fileURL,
+              let (pIdx, iIdx) = imageIndices(promptID: promptID, imageID: imageID) else { return }
+        let image = project.prompts[pIdx].generatedImages[iIdx]
 
         let trashDir = packageURL.appendingPathComponent("trash").appendingPathComponent(promptID.uuidString)
-        let fileURL = trashDir.appendingPathComponent(image.filename)
-        try? FileManager.default.removeItem(at: fileURL)
+        try? FileManager.default.removeItem(at: trashDir.appendingPathComponent(image.filename))
 
-        project.prompts[promptIndex].generatedImages.remove(at: imageIndex)
+        project.prompts[pIdx].generatedImages.remove(at: iIdx)
         updateChangeCount(.changeDone)
     }
 

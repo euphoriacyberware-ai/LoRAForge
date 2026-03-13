@@ -20,8 +20,7 @@ final class CaptionService: ObservableObject {
         imageURL: URL,
         connection: ServerConnection,
         document: LoRAForgeDocument,
-        promptIndex: Int,
-        imageIndex: Int
+        promptID: UUID
     ) {
         guard !captioningImageIDs.contains(imageID) else { return }
         captioningImageIDs.insert(imageID)
@@ -34,7 +33,11 @@ final class CaptionService: ObservableObject {
                     imageURL: imageURL,
                     connection: connection
                 )
-                document.project.prompts[promptIndex].generatedImages[imageIndex].caption = caption
+                guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                      let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == imageID }) else {
+                    return
+                }
+                document.project.prompts[pIdx].generatedImages[iIdx].caption = caption
                 document.updateChangeCount(.changeDone)
             } catch {
                 if !Task.isCancelled {
@@ -76,12 +79,12 @@ final class CaptionService: ObservableObject {
             bulkTask = nil
         }
 
-        // Collect all uncaptioned, non-discarded images
-        var targets: [(promptIndex: Int, imageIndex: Int, imageID: UUID)] = []
-        for (pIdx, prompt) in document.project.prompts.enumerated() {
-            for (iIdx, image) in prompt.generatedImages.enumerated() {
+        // Collect all uncaptioned, non-discarded images by ID
+        var targets: [(promptID: UUID, imageID: UUID)] = []
+        for prompt in document.project.prompts {
+            for image in prompt.generatedImages {
                 if image.rank != .discarded && image.caption == nil {
-                    targets.append((pIdx, iIdx, image.id))
+                    targets.append((prompt.id, image.id))
                 }
             }
         }
@@ -99,18 +102,26 @@ final class CaptionService: ObservableObject {
             bulkProgress = index + 1
             bulkStatusMessage = "Captioning \(bulkProgress) / \(bulkTotal)"
 
-            // Re-verify the image still needs captioning (may have been captioned individually)
-            let image = document.project.prompts[target.promptIndex].generatedImages[target.imageIndex]
-            guard image.caption == nil, image.id == target.imageID else { continue }
+            // Re-verify the image still exists and needs captioning
+            guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == target.promptID }),
+                  let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == target.imageID }),
+                  document.project.prompts[pIdx].generatedImages[iIdx].caption == nil else {
+                continue
+            }
 
-            guard let url = document.generatedImageURL(promptID: document.project.prompts[target.promptIndex].id, image: image) else {
+            let image = document.project.prompts[pIdx].generatedImages[iIdx]
+            guard let url = document.generatedImageURL(promptID: target.promptID, image: image) else {
                 continue
             }
 
             do {
                 let caption = try await requestCaption(imageURL: url, connection: connection)
-                document.project.prompts[target.promptIndex].generatedImages[target.imageIndex].caption = caption
-                document.updateChangeCount(.changeDone)
+                // Re-resolve indices in case array changed during async call
+                if let pIdx2 = document.project.prompts.firstIndex(where: { $0.id == target.promptID }),
+                   let iIdx2 = document.project.prompts[pIdx2].generatedImages.firstIndex(where: { $0.id == target.imageID }) {
+                    document.project.prompts[pIdx2].generatedImages[iIdx2].caption = caption
+                    document.updateChangeCount(.changeDone)
+                }
 
                 // Autosave periodically
                 if bulkProgress % 5 == 0 || bulkProgress == bulkTotal {

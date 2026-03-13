@@ -278,9 +278,7 @@ struct PromptDetailView: View {
     }
 
     private func generatedImageCell(image: GeneratedImage, promptIndex: Int) -> some View {
-        let imageIndex = document.project.prompts[promptIndex].generatedImages.firstIndex(where: { $0.id == image.id })
-
-        return VStack(spacing: 4) {
+        VStack(spacing: 4) {
             // Thumbnail with rank badge
             ZStack(alignment: .topTrailing) {
                 if let url = document.generatedImageURL(promptID: promptID, image: image),
@@ -308,39 +306,43 @@ struct PromptDetailView: View {
             }
 
             // Caption field + auto-caption button
-            if let idx = imageIndex {
-                HStack(alignment: .top, spacing: 4) {
-                    TextField(
-                        "Caption…",
-                        text: Binding(
-                            get: {
-                                document.project.prompts[promptIndex].generatedImages[idx].caption ?? ""
-                            },
-                            set: { newValue in
-                                document.project.prompts[promptIndex].generatedImages[idx].caption = newValue.isEmpty ? nil : newValue
-                                document.updateChangeCount(.changeDone)
+            HStack(alignment: .top, spacing: 4) {
+                TextField(
+                    "Caption…",
+                    text: Binding(
+                        get: {
+                            guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                                  let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
+                                return ""
                             }
-                        ),
-                        axis: .vertical
-                    )
-                    .font(.caption)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(2...4)
+                            return document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
+                        },
+                        set: { newValue in
+                            guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                                  let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
+                                return
+                            }
+                            document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
+                            document.updateChangeCount(.changeDone)
+                        }
+                    ),
+                    axis: .vertical
+                )
+                .font(.caption)
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(2...4)
 
-                    autoCaptionButton(image: image, promptIndex: promptIndex, imageIndex: idx)
-                }
+                autoCaptionButton(image: image, promptIndex: promptIndex)
             }
         }
         .contextMenu {
-            if let idx = imageIndex {
-                imageContextMenu(promptIndex: promptIndex, imageIndex: idx, image: image)
-            }
+            imageContextMenu(image: image)
         }
     }
 
     // MARK: - Auto-Caption Button
 
-    private func autoCaptionButton(image: GeneratedImage, promptIndex: Int, imageIndex: Int) -> some View {
+    private func autoCaptionButton(image: GeneratedImage, promptIndex: Int) -> some View {
         let isCaptioning = captionService.captioningImageIDs.contains(image.id)
         let captionConnectionID = document.project.captionConnectionID
         let hasConnection = captionConnectionID != nil
@@ -361,8 +363,7 @@ struct PromptDetailView: View {
                         imageURL: url,
                         connection: conn,
                         document: document,
-                        promptIndex: promptIndex,
-                        imageIndex: imageIndex
+                        promptID: promptID
                     )
                 } label: {
                     Image(systemName: "sparkles")
@@ -408,22 +409,22 @@ struct PromptDetailView: View {
     // MARK: - Context Menu
 
     @ViewBuilder
-    private func imageContextMenu(promptIndex: Int, imageIndex: Int, image: GeneratedImage) -> some View {
+    private func imageContextMenu(image: GeneratedImage) -> some View {
         if !showingTrash {
             // Normal view actions
             if image.rank != .final_ {
                 Button("Promote Rank") {
-                    document.promoteImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                    document.promoteImage(promptID: promptID, imageID: image.id)
                 }
             }
             if image.rank != .candidate {
                 Button("Demote Rank") {
-                    document.demoteImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                    document.demoteImage(promptID: promptID, imageID: image.id)
                 }
             }
 
             Button("Discard") {
-                document.discardImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                document.discardImage(promptID: promptID, imageID: image.id)
             }
 
             Divider()
@@ -440,11 +441,11 @@ struct PromptDetailView: View {
         } else {
             // Trash view actions
             Button("Restore") {
-                document.restoreImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                document.restoreImage(promptID: promptID, imageID: image.id)
             }
 
             Button("Delete Permanently") {
-                document.deleteImagePermanently(promptIndex: promptIndex, imageIndex: imageIndex)
+                document.deleteImagePermanently(promptID: promptID, imageID: image.id)
             }
 
             Divider()
@@ -609,8 +610,8 @@ struct LightboxContentView: View {
             Spacer()
 
             // Rank controls
-            if let pIdx = promptIndex, let iIdx = currentImageModelIndex {
-                rankControls(promptIndex: pIdx, imageIndex: iIdx)
+            if let image = currentImage {
+                rankControls(image: image)
             }
 
             Spacer()
@@ -622,18 +623,16 @@ struct LightboxContentView: View {
     }
 
     @ViewBuilder
-    private func rankControls(promptIndex: Int, imageIndex: Int) -> some View {
-        let image = document.project.prompts[promptIndex].generatedImages[imageIndex]
-
+    private func rankControls(image: GeneratedImage) -> some View {
         if showingTrash {
             Button("Restore") {
-                document.restoreImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                document.restoreImage(promptID: promptID, imageID: image.id)
             }
             .buttonStyle(.bordered)
 
             Button("Delete Permanently") {
                 let next = navigateAfterRemoval()
-                document.deleteImagePermanently(promptIndex: promptIndex, imageIndex: imageIndex)
+                document.deleteImagePermanently(promptID: promptID, imageID: image.id)
                 if let next { currentImageID = next } else { closeWindow() }
             }
             .buttonStyle(.bordered)
@@ -644,7 +643,7 @@ struct LightboxContentView: View {
             }
 
             Button {
-                document.promoteImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                document.promoteImage(promptID: promptID, imageID: image.id)
             } label: {
                 Label("Promote", systemImage: "arrow.up.circle")
             }
@@ -652,7 +651,7 @@ struct LightboxContentView: View {
             .buttonStyle(.bordered)
 
             Button {
-                document.demoteImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                document.demoteImage(promptID: promptID, imageID: image.id)
             } label: {
                 Label("Demote", systemImage: "arrow.down.circle")
             }
@@ -661,7 +660,7 @@ struct LightboxContentView: View {
 
             Button {
                 let next = navigateAfterRemoval()
-                document.discardImage(promptIndex: promptIndex, imageIndex: imageIndex)
+                document.discardImage(promptID: promptID, imageID: image.id)
                 if let next { currentImageID = next } else { closeWindow() }
             } label: {
                 Label("Discard", systemImage: "trash")
@@ -702,25 +701,29 @@ struct LightboxContentView: View {
     // MARK: - Caption Editor
 
     private var captionEditor: some View {
-        Group {
-            if let pIdx = promptIndex, let iIdx = currentImageModelIndex {
-                TextField(
-                    "Caption…",
-                    text: Binding(
-                        get: {
-                            document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
-                        },
-                        set: { newValue in
-                            document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
-                            document.updateChangeCount(.changeDone)
-                        }
-                    ),
-                    axis: .vertical
-                )
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(2...4)
-            }
-        }
+        TextField(
+            "Caption…",
+            text: Binding(
+                get: {
+                    guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                          let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == currentImageID }) else {
+                        return ""
+                    }
+                    return document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
+                },
+                set: { newValue in
+                    guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                          let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == currentImageID }) else {
+                        return
+                    }
+                    document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
+                    document.updateChangeCount(.changeDone)
+                }
+            ),
+            axis: .vertical
+        )
+        .textFieldStyle(.roundedBorder)
+        .lineLimit(2...4)
     }
 
     // MARK: - Navigation
