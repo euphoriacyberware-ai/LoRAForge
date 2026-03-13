@@ -328,6 +328,16 @@ struct ContentView: View {
             Button("Rename…") {
                 editingLabelID = source.id
             }
+            Divider()
+            Button("Append to All Prompts") {
+                appendSourceToAllPrompts(source.id)
+            }
+            .disabled(document.project.prompts.isEmpty)
+            Button("Replace on All Prompts") {
+                replaceSourceOnAllPrompts(source.id)
+            }
+            .disabled(document.project.prompts.isEmpty)
+            Divider()
             Button("Remove") {
                 document.removeSourceImage(id: source.id)
             }
@@ -377,6 +387,22 @@ struct ContentView: View {
         if selection == .prompt(id) {
             selection = nil
         }
+    }
+
+    private func appendSourceToAllPrompts(_ sourceID: UUID) {
+        for i in document.project.prompts.indices {
+            if !document.project.prompts[i].sourceImageIDs.contains(sourceID) {
+                document.project.prompts[i].sourceImageIDs.append(sourceID)
+            }
+        }
+        document.updateChangeCount(.changeDone)
+    }
+
+    private func replaceSourceOnAllPrompts(_ sourceID: UUID) {
+        for i in document.project.prompts.indices {
+            document.project.prompts[i].sourceImageIDs = [sourceID]
+        }
+        document.updateChangeCount(.changeDone)
     }
 
     private func reorderPrompts() {
