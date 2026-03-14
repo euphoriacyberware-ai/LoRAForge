@@ -1,0 +1,49 @@
+{
+  "template" : {
+    "createdAt" : "2026-03-12T01:40:44Z",
+    "name" : "Close Up Portraits",
+    "prompts" : [
+      {
+        "generateCount" : 1,
+        "order" : 0,
+        "text" : "close-up portrait, front view, looking directly at camera, neutral expression, soft studio lighting, clean background, head and shoulders visible"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 1,
+        "text" : "close-up portrait, front view, slight smile, gentle expression, soft diffused lighting, clean background, head and shoulders framing"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 2,
+        "text" : "close-up portrait, front view, eyes looking to the left, neutral expression, soft lighting from the right, clean background"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 3,
+        "text" : "close-up portrait, three-quarter view facing left, neutral expression, soft lighting, clean background, head and neck visible"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 4,
+        "text" : "close-up portrait, three-quarter view facing right, neutral expression, soft lighting, clean background, head and neck visible"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 5,
+        "text" : "profile portrait, side view, facing left, neutral expression, rim lighting from behind, clean background, head and neck visible"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 6,
+        "text" : "close-up portrait, low angle looking up, chin visible, neutral expression, dramatic lighting from above, clean background"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 7,
+        "text" : "close-up portrait, high angle looking down, looking up at camera, soft expression, gentle overhead lighting, clean background"
+      }
+    ]
+  },
+  "version" : 1
+}

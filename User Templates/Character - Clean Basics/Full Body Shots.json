@@ -1,0 +1,29 @@
+{
+  "template" : {
+    "createdAt" : "2026-03-12T03:14:57Z",
+    "name" : "Full Body Shots",
+    "prompts" : [
+      {
+        "generateCount" : 1,
+        "order" : 0,
+        "text" : "full body shot, three-quarter angle, standing pose, relaxed stance, soft studio lighting, clean background, entire figure visible"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 1,
+        "text" : "full body shot, back view, standing straight, head turned slightly, soft lighting, clean background, full figure from behind"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 2,
+        "text" : "full body shot, seated pose, relaxed posture, hands resting on knees, soft lighting, clean background, full figure visible"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 3,
+        "text" : "full body shot, mid-stride walking pose, natural movement, three-quarter angle, soft lighting, clean background"
+      }
+    ]
+  },
+  "version" : 1
+}

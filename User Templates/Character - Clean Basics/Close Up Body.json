@@ -1,0 +1,19 @@
+{
+  "template" : {
+    "createdAt" : "2026-03-12T03:55:21Z",
+    "name" : "Close Up Body",
+    "prompts" : [
+      {
+        "generateCount" : 1,
+        "order" : 0,
+        "text" : "a close up lower body shot from belly to feet, standing with feet shoulder width apart"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 1,
+        "text" : "a close up torso shot"
+      }
+    ]
+  },
+  "version" : 1
+}

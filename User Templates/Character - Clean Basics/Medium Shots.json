@@ -1,0 +1,34 @@
+{
+  "template" : {
+    "createdAt" : "2026-03-12T03:14:04Z",
+    "name" : "Medium Shots",
+    "prompts" : [
+      {
+        "generateCount" : 1,
+        "order" : 0,
+        "text" : "upper body shot, front view, arms relaxed at sides, neutral standing pose, soft studio lighting, clean background, waist-up framing"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 1,
+        "text" : "upper body shot, three-quarter angle, relaxed pose, soft directional lighting, clean background, torso and arms visible"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 2,
+        "text" : "upper body shot, front view, arms crossed over chest, confident pose, soft studio lighting, clean background"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 3,
+        "text" : "upper body shot, back view, head turned slightly to show profile, soft lighting, clean background, shoulders and back visible"
+      },
+      {
+        "generateCount" : 1,
+        "order" : 4,
+        "text" : "upper body shot, side profile view, arms relaxed, soft rim lighting, clean background, torso silhouette visible"
+      }
+    ]
+  },
+  "version" : 1
+}
