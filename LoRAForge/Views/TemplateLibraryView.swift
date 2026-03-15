@@ -86,7 +86,7 @@ struct TemplateLibraryView: View {
             .padding(.horizontal)
             .padding(.bottom)
         }
-        .frame(width: 520, height: 400)
+        .frame(minWidth: 520, idealWidth: 600, minHeight: 400, idealHeight: 500)
         .sheet(isPresented: $showingSaveSheet) {
             SaveTemplateSheet(document: document, isPresented: $showingSaveSheet)
         }
