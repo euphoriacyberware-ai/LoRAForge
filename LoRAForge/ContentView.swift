@@ -137,8 +137,10 @@ struct ContentView: View {
                 if let preview = generationService.previewImage {
                     Image(nsImage: preview)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(height: 40)
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: 40, height: 40)
+                        .clipped()
+                        .clipShape(RoundedRectangle(cornerRadius: 4))
                 }
 
                 ProgressView(value: generationService.progressFraction)
@@ -163,12 +165,14 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 if let stage = generationService.generationStage {
                     Text("— \(stage)")
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                         .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
 
@@ -189,9 +193,10 @@ struct ContentView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
 
-            Spacer()
+            Spacer(minLength: 0)
 
             // Dismiss button for completed messages
             if !generationService.isRunning && !captionService.isBulkCaptioning
@@ -208,6 +213,7 @@ struct ContentView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
+        .frame(height: 52)
         .background(.bar)
     }
 
