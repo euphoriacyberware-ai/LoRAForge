@@ -3,8 +3,7 @@ import DrawThingsQueue
 
 struct QueuePopoverView: View {
     @ObservedObject var generationService: GenerationService
-
-    private var queue: DrawThingsQueue? { generationService.queue }
+    @ObservedObject var queue: DrawThingsQueue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -29,7 +28,7 @@ struct QueuePopoverView: View {
             Text("Generation Queue")
                 .font(.headline)
             Spacer()
-            if let queue, !queue.pendingRequests.isEmpty {
+            if !queue.pendingRequests.isEmpty {
                 Button("Cancel All") {
                     generationService.stop()
                 }
@@ -45,7 +44,7 @@ struct QueuePopoverView: View {
 
     @ViewBuilder
     private var currentRequestSection: some View {
-        if let queue, let current = queue.currentRequest {
+        if let current = queue.currentRequest {
             let mapping = generationService.requestMappings[current.id]
 
             VStack(alignment: .leading, spacing: 8) {
@@ -96,7 +95,7 @@ struct QueuePopoverView: View {
 
     @ViewBuilder
     private var pendingSection: some View {
-        if let queue, !queue.pendingRequests.isEmpty {
+        if !queue.pendingRequests.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 Label("Pending (\(queue.pendingRequests.count))", systemImage: "clock")
                     .font(.caption.bold())
@@ -160,7 +159,7 @@ struct QueuePopoverView: View {
 
     @ViewBuilder
     private var errorsSection: some View {
-        if let queue, !queue.errors.isEmpty {
+        if !queue.errors.isEmpty {
             VStack(alignment: .leading, spacing: 4) {
                 Label("Errors (\(queue.errors.count))", systemImage: "exclamationmark.triangle")
                     .font(.caption.bold())

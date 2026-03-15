@@ -38,6 +38,10 @@ final class GenerationService: ObservableObject {
     // MARK: - Run
 
     func run(document: LoRAForgeDocument, runAll: Bool) {
+        if isRunning, let queue {
+            enqueuePrompts(document: document, runAll: runAll, onlyPromptID: nil, into: queue)
+            return
+        }
         guard !isRunning else { return }
 
         generationTask = Task {
@@ -46,6 +50,10 @@ final class GenerationService: ObservableObject {
     }
 
     func runSingle(document: LoRAForgeDocument, promptID: UUID) {
+        if isRunning, let queue {
+            enqueuePrompts(document: document, runAll: true, onlyPromptID: promptID, into: queue)
+            return
+        }
         guard !isRunning else { return }
 
         generationTask = Task {
@@ -69,6 +77,59 @@ final class GenerationService: ObservableObject {
     func cancelRequest(id: UUID) {
         queue?.cancel(id: id)
         requestMappings.removeValue(forKey: id)
+    }
+
+    // MARK: - Enqueue into existing queue
+
+    private func enqueuePrompts(document: LoRAForgeDocument, runAll: Bool, onlyPromptID: UUID?, into dtQueue: DrawThingsQueue) {
+        let promptsToProcess: [Prompt]
+        if let onlyPromptID {
+            promptsToProcess = document.project.prompts.filter { $0.id == onlyPromptID }
+        } else if runAll {
+            promptsToProcess = document.project.prompts
+        } else {
+            promptsToProcess = document.project.prompts.filter { prompt in
+                !prompt.generatedImages.contains(where: { $0.rank == .final_ })
+            }
+        }
+
+        guard !promptsToProcess.isEmpty else { return }
+
+        let addedCount = promptsToProcess.reduce(0) { $0 + $1.generateCount }
+        totalImages += addedCount
+
+        for prompt in promptsToProcess {
+            guard let promptIndex = document.project.prompts.firstIndex(where: { $0.id == prompt.id }) else {
+                continue
+            }
+
+            let configJSON = prompt.configurationOverrideJSON ?? document.project.baseConfigurationJSON
+            let parsed = ConfigurationMapper.parse(fromJSON: configJSON)
+            let hints = buildHints(prompt: prompt, document: document)
+            let promptDisplayNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
+
+            for i in 0..<prompt.generateCount {
+                let request = dtQueue.enqueue(
+                    prompt: prompt.text,
+                    negativePrompt: parsed.negativePrompt,
+                    configuration: parsed.configuration,
+                    hints: hints
+                )
+
+                requestMappings[request.id] = RequestMapping(
+                    promptID: prompt.id,
+                    promptIndex: promptIndex,
+                    imageNumber: i,
+                    promptDisplayNumber: promptDisplayNumber,
+                    totalForPrompt: prompt.generateCount,
+                    promptText: prompt.text
+                )
+            }
+
+            if completedPerPrompt[prompt.id] == nil {
+                completedPerPrompt[prompt.id] = 0
+            }
+        }
     }
 
     // MARK: - Generation Loop
@@ -171,23 +232,34 @@ final class GenerationService: ObservableObject {
             completedPerPrompt[prompt.id] = 0
         }
 
-        // Phase 2: Observe progress and consume results
-        let progressTask = Task { [weak dtQueue] in
-            guard let dtQueue else { return }
-            for await progress in dtQueue.$currentProgress.values {
-                guard !Task.isCancelled else { break }
+        // Phase 2: Observe progress via Combine
+        var progressCancellable: AnyCancellable?
+        var innerCancellable: AnyCancellable?
+
+        progressCancellable = dtQueue.$currentProgress
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] progress in
+                guard let self else { return }
+                innerCancellable?.cancel()
                 if let progress {
                     self.generationStage = progress.stage.description
                     self.previewImage = progress.previewImage
+                    innerCancellable = progress.objectWillChange
+                        .receive(on: DispatchQueue.main)
+                        .sink { [weak self, weak progress] _ in
+                            guard let self, let progress else { return }
+                            self.generationStage = progress.stage.description
+                            self.previewImage = progress.previewImage
+                        }
                 } else {
                     self.generationStage = nil
                     self.previewImage = nil
                 }
             }
-        }
 
         defer {
-            progressTask.cancel()
+            progressCancellable?.cancel()
+            innerCancellable?.cancel()
         }
 
         for await result in dtQueue.results {

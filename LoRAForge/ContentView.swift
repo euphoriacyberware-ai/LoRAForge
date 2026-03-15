@@ -54,7 +54,7 @@ struct ContentView: View {
                 } label: {
                     Label("Run Selected", systemImage: "play")
                 }
-                .disabled(generationService.isRunning || document.project.generationConnectionID == nil || selectedPromptID == nil)
+                .disabled(document.project.generationConnectionID == nil || selectedPromptID == nil)
                 .help("Generate images for the selected prompt")
             }
             ToolbarItem(id: "run", placement: .automatic) {
@@ -65,7 +65,7 @@ struct ContentView: View {
                 } label: {
                     Label("Run", systemImage: "play.fill")
                 }
-                .disabled(generationService.isRunning || document.project.generationConnectionID == nil)
+                .disabled(document.project.generationConnectionID == nil)
                 .help("Generate images for prompts without a final image")
             }
             ToolbarItem(id: "runAll", placement: .automatic) {
@@ -76,7 +76,7 @@ struct ContentView: View {
                 } label: {
                     Label("Run All", systemImage: "arrow.clockwise")
                 }
-                .disabled(generationService.isRunning || document.project.generationConnectionID == nil)
+                .disabled(document.project.generationConnectionID == nil)
                 .help("Regenerate all prompts")
             }
             ToolbarItem(id: "stop", placement: .automatic) {
@@ -156,7 +156,9 @@ struct ContentView: View {
                 .buttonStyle(.plain)
                 .help("Show generation queue")
                 .popover(isPresented: $showingQueue) {
-                    QueuePopoverView(generationService: generationService)
+                    if let queue = generationService.queue {
+                        QueuePopoverView(generationService: generationService, queue: queue)
+                    }
                 }
             }
 
