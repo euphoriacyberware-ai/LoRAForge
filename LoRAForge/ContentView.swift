@@ -10,6 +10,7 @@ struct ContentView: View {
     @State private var selection: SidebarSelection?
     @State private var showingTrash = false
     @State private var showingExport = false
+    @State private var showingQueue = false
     @State private var editingLabelID: UUID?
 
     enum SidebarSelection: Hashable {
@@ -143,6 +144,18 @@ struct ContentView: View {
                 ProgressView(value: generationService.progressFraction)
                     .progressViewStyle(.linear)
                     .frame(width: 120)
+
+                Button {
+                    showingQueue.toggle()
+                } label: {
+                    Image(systemName: "list.bullet.rectangle")
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("Show generation queue")
+                .popover(isPresented: $showingQueue) {
+                    QueuePopoverView(generationService: generationService)
+                }
             }
 
             if !generationService.statusMessage.isEmpty {
