@@ -133,6 +133,13 @@ struct ContentView: View {
         HStack(spacing: 8) {
             // Generation progress
             if generationService.isRunning {
+                if let preview = generationService.previewImage {
+                    Image(nsImage: preview)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 40)
+                }
+
                 ProgressView(value: generationService.progressFraction)
                     .progressViewStyle(.linear)
                     .frame(width: 120)

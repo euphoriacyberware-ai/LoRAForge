@@ -1,13 +1,22 @@
 {
-  "originHash" : "41867f617f45b3a58ac6f4d9c6664be971553155932f834d3cb1945c6c938197",
+  "originHash" : "ee21dfeddf40ccc2e3aec5806f3849da8c84c46bd7dfd588a87906c11c8e0fbb",
   "pins" : [
+    {
+      "identity" : "drawthingsqueue",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/euphoriacyberware-ai/DrawThingsQueue",
+      "state" : {
+        "branch" : "main",
+        "revision" : "a64eb2c447b7eee9e4bf6f859c9ba8bf8ca5b888"
+      }
+    },
     {
       "identity" : "dt-grpc-swift-client",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client",
+      "location" : "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client.git",
       "state" : {
-        "revision" : "86e5f8ad8ac84e7eabf0607fca4648c712811305",
-        "version" : "1.2.5"
+        "branch" : "main",
+        "revision" : "8cb32922da3ef826b054ada55e0473aaba33174a"
       }
     },
     {

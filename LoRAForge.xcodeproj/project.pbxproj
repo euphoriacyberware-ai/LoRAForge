@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		A450AE932F62170E00B896EF /* DrawThingsClient in Frameworks */ = {isa = PBXBuildFile; productRef = A450AE312F62200000B896EF /* DrawThingsClient */; };
+		A450AE942F66100000B896EF /* DrawThingsQueue in Frameworks */ = {isa = PBXBuildFile; productRef = A450AE952F66100000B896EF /* DrawThingsQueue */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -70,6 +71,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A450AE932F62170E00B896EF /* DrawThingsClient in Frameworks */,
+				A450AE942F66100000B896EF /* DrawThingsQueue in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,6 +133,7 @@
 			name = LoRAForge;
 			packageProductDependencies = (
 				A450AE312F62200000B896EF /* DrawThingsClient */,
+				A450AE952F66100000B896EF /* DrawThingsQueue */,
 			);
 			productName = LoRAForge;
 			productReference = A450ADFF2F62139600B896EF /* LoRAForge.app */;
@@ -216,6 +219,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				A450AE302F62200000B896EF /* XCRemoteSwiftPackageReference "DT-gRPC-Swift-Client" */,
+				A450AE962F66100000B896EF /* XCRemoteSwiftPackageReference "DrawThingsQueue" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A450AE002F62139600B896EF /* Products */;
@@ -609,6 +613,14 @@
 				minimumVersion = 1.2.5;
 			};
 		};
+		A450AE962F66100000B896EF /* XCRemoteSwiftPackageReference "DrawThingsQueue" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/euphoriacyberware-ai/DrawThingsQueue";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -616,6 +628,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A450AE302F62200000B896EF /* XCRemoteSwiftPackageReference "DT-gRPC-Swift-Client" */;
 			productName = DrawThingsClient;
+		};
+		A450AE952F66100000B896EF /* DrawThingsQueue */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A450AE962F66100000B896EF /* XCRemoteSwiftPackageReference "DrawThingsQueue" */;
+			productName = DrawThingsQueue;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

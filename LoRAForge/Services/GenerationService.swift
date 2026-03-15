@@ -3,6 +3,7 @@ import SwiftUI
 import AppKit
 import Combine
 import DrawThingsClient
+import DrawThingsQueue
 
 @MainActor
 final class GenerationService: ObservableObject {
@@ -13,9 +14,21 @@ final class GenerationService: ObservableObject {
     @Published var totalImages = 0
     @Published var statusMessage = ""
     @Published var generationStage: String?
+    @Published var previewImage: NSImage?
 
     private var generationTask: Task<Void, Never>?
-    private var client: DrawThingsClient?
+    private(set) var queue: DrawThingsQueue?
+    private(set) var requestMappings: [UUID: RequestMapping] = [:]
+    private var completedPerPrompt: [UUID: Int] = [:]
+
+    struct RequestMapping {
+        let promptID: UUID
+        let promptIndex: Int
+        let imageNumber: Int        // 0-based within generateCount
+        let promptDisplayNumber: Int // 1-based for status message
+        let totalForPrompt: Int     // prompt.generateCount
+        let promptText: String
+    }
 
     var progressFraction: Double {
         guard totalImages > 0 else { return 0 }
@@ -45,10 +58,17 @@ final class GenerationService: ObservableObject {
     func stop() {
         generationTask?.cancel()
         generationTask = nil
+        queue?.cancelAll()
         isRunning = false
         currentPromptID = nil
         generationStage = nil
+        previewImage = nil
         statusMessage = "Stopped"
+    }
+
+    func cancelRequest(id: UUID) {
+        queue?.cancel(id: id)
+        requestMappings.removeValue(forKey: id)
     }
 
     // MARK: - Generation Loop
@@ -57,13 +77,17 @@ final class GenerationService: ObservableObject {
         isRunning = true
         statusMessage = ""
         generationStage = nil
+        previewImage = nil
         currentImageIndex = 0
+        requestMappings = [:]
+        completedPerPrompt = [:]
 
         defer {
             isRunning = false
             currentPromptID = nil
             generationStage = nil
-            client = nil
+            previewImage = nil
+            queue = nil
         }
 
         // Resolve connection
@@ -73,25 +97,15 @@ final class GenerationService: ObservableObject {
             return
         }
 
-        // Create client
-        let dtClient: DrawThingsClient
+        // Create queue
+        let dtQueue: DrawThingsQueue
         do {
-            dtClient = try DrawThingsClient(address: "\(connection.host):\(connection.port)")
+            dtQueue = try DrawThingsQueue(address: "\(connection.host):\(connection.port)")
         } catch {
-            statusMessage = "Failed to create client: \(error.localizedDescription)"
+            statusMessage = "Failed to create queue: \(error.localizedDescription)"
             return
         }
-        self.client = dtClient
-
-        // Connect
-        statusMessage = "Connecting to \(connection.name)…"
-        await dtClient.connect()
-
-        guard dtClient.isConnected else {
-            let errorDetail = dtClient.lastError?.localizedDescription ?? "Unknown error"
-            statusMessage = "Failed to connect: \(errorDetail)"
-            return
-        }
+        self.queue = dtQueue
 
         // Determine prompts to process
         let promptsToProcess: [Prompt]
@@ -122,70 +136,107 @@ final class GenerationService: ObservableObject {
 
         statusMessage = "Generating…"
 
+        // Phase 1: Enqueue all requests
         for prompt in promptsToProcess {
             guard !Task.isCancelled else { break }
-
-            currentPromptID = prompt.id
 
             guard let promptIndex = document.project.prompts.firstIndex(where: { $0.id == prompt.id }) else {
                 continue
             }
 
-            // Parse configuration
             let configJSON = prompt.configurationOverrideJSON ?? document.project.baseConfigurationJSON
             let parsed = ConfigurationMapper.parse(fromJSON: configJSON)
-
-            // Build hints from source images
             let hints = buildHints(prompt: prompt, document: document)
 
-            // Generate images one at a time
+            let promptDisplayNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
+
             for i in 0..<prompt.generateCount {
+                let request = dtQueue.enqueue(
+                    prompt: prompt.text,
+                    negativePrompt: parsed.negativePrompt,
+                    configuration: parsed.configuration,
+                    hints: hints
+                )
+
+                requestMappings[request.id] = RequestMapping(
+                    promptID: prompt.id,
+                    promptIndex: promptIndex,
+                    imageNumber: i,
+                    promptDisplayNumber: promptDisplayNumber,
+                    totalForPrompt: prompt.generateCount,
+                    promptText: prompt.text
+                )
+            }
+
+            completedPerPrompt[prompt.id] = 0
+        }
+
+        // Phase 2: Observe progress and consume results
+        let progressTask = Task { [weak dtQueue] in
+            guard let dtQueue else { return }
+            for await progress in dtQueue.$currentProgress.values {
                 guard !Task.isCancelled else { break }
+                if let progress {
+                    self.generationStage = progress.stage.description
+                    self.previewImage = progress.previewImage
+                } else {
+                    self.generationStage = nil
+                    self.previewImage = nil
+                }
+            }
+        }
 
-                let promptNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
-                statusMessage = "Prompt \(promptNumber): image \(i + 1)/\(prompt.generateCount)"
+        defer {
+            progressTask.cancel()
+        }
 
+        for await result in dtQueue.results {
+            guard !Task.isCancelled else { break }
+
+            guard let mapping = requestMappings[result.id] else {
+                continue
+            }
+
+            currentPromptID = mapping.promptID
+            statusMessage = "Prompt \(mapping.promptDisplayNumber): image \(mapping.imageNumber + 1)/\(mapping.totalForPrompt)"
+
+            for nsImage in result.images {
                 do {
-                    let images = try await dtClient.generateImage(
-                        prompt: prompt.text,
-                        negativePrompt: parsed.negativePrompt,
-                        configuration: parsed.configuration,
-                        hints: hints
+                    try saveGeneratedImage(
+                        nsImage,
+                        promptID: mapping.promptID,
+                        promptIndex: mapping.promptIndex,
+                        document: document
                     )
-
-                    // Save each returned image
-                    for nsImage in images {
-                        try saveGeneratedImage(
-                            nsImage,
-                            promptID: prompt.id,
-                            promptIndex: promptIndex,
-                            document: document
-                        )
-                    }
-
-                    currentImageIndex += 1
-
-                    // Update stage from client progress
-                    if let progress = dtClient.currentProgress {
-                        generationStage = progress.stage.description
-                    }
-
                 } catch {
-                    if Task.isCancelled { break }
-                    Swift.print("Generation error for prompt \(prompt.id): \(error)")
-                    statusMessage = "Error: \(error.localizedDescription)"
-                    // Continue to next image rather than aborting the whole run
-                    currentImageIndex += 1
+                    Swift.print("Save error for prompt \(mapping.promptID): \(error)")
                 }
             }
 
-            // Persist after each prompt completes
-            document.updateChangeCount(.changeDone)
-            document.autosave(withImplicitCancellability: false) { error in
-                if let error {
-                    Swift.print("Autosave error: \(error)")
+            currentImageIndex += 1
+            completedPerPrompt[mapping.promptID, default: 0] += 1
+            requestMappings.removeValue(forKey: result.id)
+
+            // Autosave when all images for a prompt complete
+            if completedPerPrompt[mapping.promptID] == mapping.totalForPrompt {
+                document.updateChangeCount(.changeDone)
+                document.autosave(withImplicitCancellability: false) { error in
+                    if let error {
+                        Swift.print("Autosave error: \(error)")
+                    }
                 }
             }
+
+            // Break when all requests are done
+            if requestMappings.isEmpty {
+                break
+            }
+        }
+
+        // Report any incomplete mappings as failures
+        if !requestMappings.isEmpty {
+            let incompleteCount = requestMappings.count
+            Swift.print("\(incompleteCount) request(s) did not complete")
         }
 
         if Task.isCancelled {
@@ -194,6 +245,7 @@ final class GenerationService: ObservableObject {
             statusMessage = "Generation complete (\(currentImageIndex) images)"
         }
         generationStage = nil
+        previewImage = nil
     }
 
     // MARK: - Helpers
