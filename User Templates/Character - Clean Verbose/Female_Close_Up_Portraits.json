@@ -1,0 +1,49 @@
+{
+  "template" : {
+    "createdAt" : "2026-03-12T01:40:44Z",
+    "name" : "Female : Close-Up Portraits",
+    "prompts" : [
+      {
+        "generateCount" : 1,
+        "order" : 0,
+        "text" : "A close-up portrait of her looking directly into the camera with a calm, neutral expression. She is evenly lit with soft studio lighting against a clean background, framed from the head to the shoulders."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 1,
+        "text" : "A close-up portrait showing a gentle smile and a warm, relaxed expression. Soft, diffused lighting falls evenly across her face against a clean background, with her head and shoulders in frame."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 2,
+        "text" : "A close-up portrait with her gaze drifting naturally to the left. Soft light falls from the right side, creating a gentle sense of depth, with her head and shoulders visible against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 3,
+        "text" : "A close-up portrait at a three-quarter angle with her face turned slightly to the left, wearing a neutral expression. Soft, even lighting illuminates her features against a clean background, showing her head and neck."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 4,
+        "text" : "A close-up portrait at a three-quarter angle with her face turned gently to the right, wearing a neutral expression. Soft lighting plays across her features against a clean background, with her head and neck visible."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 5,
+        "text" : "A clean side-profile portrait with her face turned fully to the left. Soft rim lighting from behind defines the outline of her head and neck against a simple, uncluttered background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 6,
+        "text" : "A close-up portrait captured from a low angle looking upward, her chin prominent in the frame. Dramatic lighting falls from above, casting soft shadows across her face against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 7,
+        "text" : "A close-up portrait shot from a high angle looking downward, with her eyes gazing softly up toward the camera. Gentle overhead lighting illuminates her face against a clean background."
+      }
+    ]
+  },
+  "version" : 1
+}

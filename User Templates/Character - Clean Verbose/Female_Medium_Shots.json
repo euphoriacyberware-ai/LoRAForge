@@ -1,0 +1,34 @@
+{
+  "template" : {
+    "createdAt" : "2026-03-12T03:14:04Z",
+    "name" : "Female : Medium Shots",
+    "prompts" : [
+      {
+        "generateCount" : 1,
+        "order" : 0,
+        "text" : "An upper body shot from the front, framed from the waist up, with her arms relaxed at her sides in a neutral standing pose. Soft studio lighting illuminates her evenly against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 1,
+        "text" : "An upper body shot at a three-quarter angle, showing her torso and arms in a relaxed pose. Soft directional lighting falls across her figure against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 2,
+        "text" : "An upper body front-view shot with her arms crossed confidently over her chest. Soft studio lighting falls evenly across her figure against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 3,
+        "text" : "An upper body shot from behind, with her head turned slightly to reveal her profile. Soft lighting highlights her shoulders and back against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 4,
+        "text" : "An upper body side-profile shot with her arms relaxed at her sides. Soft rim lighting defines the silhouette of her torso against a clean background."
+      }
+    ]
+  },
+  "version" : 1
+}

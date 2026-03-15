@@ -1,0 +1,29 @@
+{
+  "template" : {
+    "createdAt" : "2026-03-12T03:14:57Z",
+    "name" : "Female : Full Body Shots",
+    "prompts" : [
+      {
+        "generateCount" : 1,
+        "order" : 0,
+        "text" : "A full body shot at a three-quarter angle, her entire figure visible in a relaxed, natural standing pose. Soft studio lighting falls evenly across her against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 1,
+        "text" : "A full body shot from behind, her figure standing straight with her head turned slightly to one side. Soft, even lighting illuminates her full form against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 2,
+        "text" : "A full body shot of her seated in a relaxed posture, with her hands resting gently on her knees. Soft lighting illuminates her complete figure against a clean background."
+      },
+      {
+        "generateCount" : 1,
+        "order" : 3,
+        "text" : "A full body shot capturing her mid-stride in a natural, easy walking pose, viewed at a three-quarter angle. Soft lighting follows her movement against a clean background."
+      }
+    ]
+  },
+  "version" : 1
+}
