@@ -227,23 +227,83 @@ struct ContentView: View {
     // MARK: - Server Picker
 
     private var serverPicker: some View {
-        Picker("Server", selection: $document.project.generationConnectionID) {
-            Text("No Server").tag(UUID?.none)
-            ForEach(connectionManager.connections(ofType: .drawThings)) { conn in
-                Text(conn.name).tag(UUID?.some(conn.id))
+        Menu {
+            Button {
+                document.project.generationConnectionID = nil
+            } label: {
+                if document.project.generationConnectionID == nil {
+                    Label("No Server", systemImage: "checkmark")
+                } else {
+                    Text("No Server")
+                }
             }
+            ForEach(connectionManager.connections(ofType: .drawThings)) { conn in
+                Button {
+                    document.project.generationConnectionID = conn.id
+                } label: {
+                    if document.project.generationConnectionID == conn.id {
+                        Label(conn.name, systemImage: "checkmark")
+                    } else {
+                        Text(conn.name)
+                    }
+                }
+            }
+            Divider()
+            Button("Address Book…") {
+                NSApp.sendAction(#selector(AppDelegate.showAddressBook), to: nil, from: nil)
+            }
+        } label: {
+            Label(serverPickerLabel, systemImage: "server.rack")
         }
-        .frame(width: 150)
+        .frame(width: 170)
+    }
+
+    private var serverPickerLabel: String {
+        if let id = document.project.generationConnectionID,
+           let conn = connectionManager.connection(for: id) {
+            return conn.name
+        }
+        return "No Server"
     }
 
     private var captionServerPicker: some View {
-        Picker("Caption", selection: $document.project.captionConnectionID) {
-            Text("No Caption Server").tag(UUID?.none)
-            ForEach(connectionManager.connections(ofType: .ollama)) { conn in
-                Text(conn.name).tag(UUID?.some(conn.id))
+        Menu {
+            Button {
+                document.project.captionConnectionID = nil
+            } label: {
+                if document.project.captionConnectionID == nil {
+                    Label("No Caption Server", systemImage: "checkmark")
+                } else {
+                    Text("No Caption Server")
+                }
             }
+            ForEach(connectionManager.connections(ofType: .ollama)) { conn in
+                Button {
+                    document.project.captionConnectionID = conn.id
+                } label: {
+                    if document.project.captionConnectionID == conn.id {
+                        Label(conn.name, systemImage: "checkmark")
+                    } else {
+                        Text(conn.name)
+                    }
+                }
+            }
+            Divider()
+            Button("Address Book…") {
+                NSApp.sendAction(#selector(AppDelegate.showAddressBook), to: nil, from: nil)
+            }
+        } label: {
+            Label(captionPickerLabel, systemImage: "text.bubble")
         }
-        .frame(width: 150)
+        .frame(width: 170)
+    }
+
+    private var captionPickerLabel: String {
+        if let id = document.project.captionConnectionID,
+           let conn = connectionManager.connection(for: id) {
+            return conn.name
+        }
+        return "No Caption Server"
     }
 
     // MARK: - Sidebar
