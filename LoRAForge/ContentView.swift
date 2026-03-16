@@ -254,6 +254,7 @@ struct ContentView: View {
             }
         } label: {
             Label(serverPickerLabel, systemImage: "server.rack")
+                .labelStyle(.titleAndIcon)
         }
         .frame(width: 170)
     }
@@ -294,6 +295,7 @@ struct ContentView: View {
             }
         } label: {
             Label(captionPickerLabel, systemImage: "text.bubble")
+                .labelStyle(.titleAndIcon)
         }
         .frame(width: 170)
     }
