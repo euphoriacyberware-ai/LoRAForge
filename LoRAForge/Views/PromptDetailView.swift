@@ -821,3 +821,64 @@ struct SourceImagePickerSheet: View {
     }
 }
 
+// MARK: - Previews
+
+#if DEBUG
+#Preview("Prompt Detail") {
+    let doc = PreviewData.sampleDocument
+    PromptDetailView(
+        document: doc,
+        promptID: PreviewData.promptID1,
+        generationService: GenerationService(),
+        captionService: CaptionService(),
+        showingTrash: false
+    )
+    .frame(width: 600, height: 500)
+}
+
+#Preview("Prompt Detail — Trash") {
+    let doc = PreviewData.sampleDocument
+    PromptDetailView(
+        document: doc,
+        promptID: PreviewData.promptID1,
+        generationService: GenerationService(),
+        captionService: CaptionService(),
+        showingTrash: true
+    )
+    .frame(width: 600, height: 500)
+}
+
+#Preview("Prompt Detail — Empty Prompt") {
+    let doc = PreviewData.sampleDocument
+    PromptDetailView(
+        document: doc,
+        promptID: PreviewData.promptID3,
+        generationService: GenerationService(),
+        captionService: CaptionService(),
+        showingTrash: false
+    )
+    .frame(width: 600, height: 500)
+}
+
+#Preview("Lightbox") {
+    let doc = PreviewData.sampleDocument
+    let imageID = doc.project.prompts[0].generatedImages[0].id
+    LightboxContentView(
+        document: doc,
+        promptID: PreviewData.promptID1,
+        showingTrash: false,
+        currentImageID: imageID
+    )
+    .frame(width: 800, height: 600)
+}
+
+#Preview("Source Image Picker") {
+    let doc = PreviewData.sampleDocument
+    SourceImagePickerSheet(
+        document: doc,
+        isPresented: .constant(true),
+        onSelect: { _ in }
+    )
+}
+#endif
+

@@ -312,3 +312,14 @@ extension NSImage {
         return CGSize(width: CGFloat(rep.pixelsWide), height: CGFloat(rep.pixelsHigh))
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("Export View") {
+    ExportView(
+        document: PreviewData.sampleDocument,
+        isPresented: .constant(true)
+    )
+}
+#endif

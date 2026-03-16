@@ -211,3 +211,42 @@ struct ConnectionEditView: View {
         .frame(width: 400, height: connection.type == .ollama ? 380 : 200)
     }
 }
+
+// MARK: - Previews
+
+#if DEBUG
+#Preview("Address Book") {
+    AddressBookView()
+        .frame(width: 500, height: 400)
+}
+
+#Preview("Connection Edit — Draw Things") {
+    ConnectionEditView(
+        connection: ServerConnection(
+            id: UUID(),
+            name: "Local Server",
+            type: .drawThings,
+            host: "127.0.0.1",
+            port: 7860
+        ),
+        onSave: { _ in },
+        onCancel: {}
+    )
+}
+
+#Preview("Connection Edit — Ollama") {
+    ConnectionEditView(
+        connection: ServerConnection(
+            id: UUID(),
+            name: "Ollama",
+            type: .ollama,
+            host: "127.0.0.1",
+            port: 11434,
+            modelName: "llava",
+            captionPrompt: "Describe this image in detail:"
+        ),
+        onSave: { _ in },
+        onCancel: {}
+    )
+}
+#endif

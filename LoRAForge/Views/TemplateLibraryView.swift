@@ -278,3 +278,38 @@ struct LoadTemplateSheet: View {
         return [document.project.sourceImages[index].id]
     }
 }
+
+// MARK: - Previews
+
+#if DEBUG
+#Preview("Template Library") {
+    TemplateLibraryView(
+        document: PreviewData.sampleDocument,
+        isPresented: .constant(true)
+    )
+    .frame(width: 500, height: 400)
+}
+
+#Preview("Save Template") {
+    SaveTemplateSheet(
+        document: PreviewData.sampleDocument,
+        isPresented: .constant(true)
+    )
+}
+
+#Preview("Load Template") {
+    LoadTemplateSheet(
+        document: PreviewData.sampleDocument,
+        template: Template(
+            id: UUID(),
+            name: "Portrait Set",
+            createdAt: Date(),
+            prompts: [
+                TemplatePrompt(id: UUID(), order: 0, text: "A portrait in oil paint style", sourceSlotIndex: 0, generateCount: 4),
+                TemplatePrompt(id: UUID(), order: 1, text: "A portrait in watercolor style", sourceSlotIndex: 0, generateCount: 4),
+            ]
+        ),
+        isPresented: .constant(true)
+    )
+}
+#endif

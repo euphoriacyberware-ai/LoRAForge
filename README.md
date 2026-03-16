@@ -75,6 +75,7 @@ Export options include:
 ## Dependencies
 
 - [DrawThingsClient](https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client) — Swift gRPC client for the Draw Things image generation API
+- [DrawThingsQueue](https://github.com/euphoriacyberware-ai/DrawThingsQueue) - Swift API for queue functionality for the DrawThingsClient
 
 ## License
 

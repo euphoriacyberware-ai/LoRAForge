@@ -555,3 +555,17 @@ struct ContentView: View {
         }
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("Content View") {
+    ContentView(document: PreviewData.sampleDocument)
+        .frame(width: 900, height: 600)
+}
+
+#Preview("Content View — Empty") {
+    ContentView(document: LoRAForgeDocument())
+        .frame(width: 900, height: 600)
+}
+#endif

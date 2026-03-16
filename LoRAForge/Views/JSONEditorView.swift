@@ -78,3 +78,25 @@ struct JSONEditorView: View {
         editText = str
     }
 }
+
+// MARK: - Preview
+
+#if DEBUG
+#Preview("JSON Editor") {
+    JSONEditorView(
+        jsonString: .constant("{\n  \"steps\": 20,\n  \"seed\": 0\n}"),
+        label: "Configuration"
+    )
+    .frame(width: 400, height: 200)
+    .padding()
+}
+
+#Preview("JSON Editor — Empty") {
+    JSONEditorView(
+        jsonString: .constant("{}"),
+        label: "Override"
+    )
+    .frame(width: 400, height: 200)
+    .padding()
+}
+#endif
