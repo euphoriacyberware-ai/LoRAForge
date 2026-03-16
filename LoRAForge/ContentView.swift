@@ -25,19 +25,18 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationSplitView {
-            sidebar
-                .navigationSplitViewColumnWidth(min: 200, ideal: 250)
-        } detail: {
-            detail
+        VStack(spacing: 0) {
+            NavigationSplitView {
+                sidebar
+                    .navigationSplitViewColumnWidth(min: 200, ideal: 250)
+            } detail: {
+                detail
+            }
+
+            Divider()
+            statusBar
         }
         .frame(minWidth: 700, minHeight: 400)
-        .safeAreaInset(edge: .bottom) {
-            if generationService.isRunning || !generationService.statusMessage.isEmpty
-                || captionService.isBulkCaptioning || !captionService.bulkStatusMessage.isEmpty {
-                statusBar
-            }
-        }
         .toolbar(id: "main") {
             ToolbarItem(id: "serverPicker", placement: .automatic) {
                 serverPicker
@@ -133,7 +132,7 @@ struct ContentView: View {
 
     private var statusBar: some View {
         HStack(spacing: 8) {
-            // Generation progress
+            // Generation preview + progress
             if generationService.isRunning {
                 if let preview = generationService.previewImage {
                     Image(nsImage: preview)
@@ -153,22 +152,9 @@ struct ContentView: View {
                 ProgressView(value: generationService.progressFraction)
                     .progressViewStyle(.linear)
                     .frame(width: 120)
-
-                Button {
-                    showingQueue.toggle()
-                } label: {
-                    Image(systemName: "list.bullet.rectangle")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Show generation queue")
-                .popover(isPresented: $showingQueue) {
-                    if let queue = generationService.queue {
-                        QueuePopoverView(generationService: generationService, queue: queue)
-                    }
-                }
             }
 
+            // Generation status
             if !generationService.statusMessage.isEmpty {
                 Text(generationService.statusMessage)
                     .font(.caption)
@@ -205,19 +191,31 @@ struct ContentView: View {
                     .fixedSize(horizontal: true, vertical: false)
             }
 
+            // Idle state
+            if !generationService.isRunning && generationService.statusMessage.isEmpty
+                && !captionService.isBulkCaptioning && captionService.bulkStatusMessage.isEmpty {
+                Text("Ready")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+
             Spacer(minLength: 0)
 
-            // Dismiss button for completed messages
-            if !generationService.isRunning && !captionService.isBulkCaptioning
-                && (!generationService.statusMessage.isEmpty || !captionService.bulkStatusMessage.isEmpty) {
+            // Queue button — always visible when queue exists
+            if generationService.queue != nil {
                 Button {
-                    generationService.statusMessage = ""
-                    captionService.bulkStatusMessage = ""
+                    showingQueue.toggle()
                 } label: {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(systemName: "list.bullet.rectangle")
                         .foregroundStyle(.secondary)
                 }
                 .buttonStyle(.plain)
+                .help("Show generation queue")
+                .popover(isPresented: $showingQueue) {
+                    if let queue = generationService.queue {
+                        QueuePopoverView(generationService: generationService, queue: queue)
+                    }
+                }
             }
         }
         .padding(.horizontal)

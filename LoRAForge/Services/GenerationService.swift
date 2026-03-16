@@ -246,8 +246,8 @@ final class GenerationService: ObservableObject {
                 guard let self else { return }
                 innerCancellable?.cancel()
                 if let progress {
-                    self.generationStage = progress.stage.description
-                    self.previewImage = progress.previewImage
+                    self.generationStage = "Waiting for server…"
+                    self.previewImage = nil
                     innerCancellable = progress.objectWillChange
                         .receive(on: DispatchQueue.main)
                         .sink { [weak self, weak progress] _ in
