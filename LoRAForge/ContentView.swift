@@ -1,6 +1,7 @@
 import SwiftUI
 import AppKit
 import UniformTypeIdentifiers
+import DrawThingsQueue
 
 struct ContentView: View {
     @ObservedObject var document: LoRAForgeDocument
@@ -141,6 +142,12 @@ struct ContentView: View {
                         .frame(width: 40, height: 40)
                         .clipped()
                         .clipShape(RoundedRectangle(cornerRadius: 4))
+                }
+
+                if let queue = generationService.queue, queue.isPaused {
+                    Image(systemName: queue.lastError != nil ? "wifi.exclamationmark" : "pause.fill")
+                        .foregroundStyle(queue.lastError != nil ? .orange : .yellow)
+                        .font(.caption)
                 }
 
                 ProgressView(value: generationService.progressFraction)

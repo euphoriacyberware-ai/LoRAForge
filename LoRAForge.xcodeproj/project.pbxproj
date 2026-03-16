@@ -440,7 +440,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 0.0.3;
+				MARKETING_VERSION = 0.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForge";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -478,7 +478,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 0.0.3;
+				MARKETING_VERSION = 0.0.4;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForge";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -617,16 +617,16 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 1.2.5;
+				branch = main;
+				kind = branch;
 			};
 		};
 		A450AE962F66100000B896EF /* XCRemoteSwiftPackageReference "DrawThingsQueue" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/euphoriacyberware-ai/DrawThingsQueue";
 			requirement = {
-				kind = upToNextMinorVersion;
-				minimumVersion = 0.0.1;
+				branch = main;
+				kind = branch;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

@@ -109,11 +109,13 @@ final class GenerationService: ObservableObject {
             let promptDisplayNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
 
             for i in 0..<prompt.generateCount {
+                let name = "Prompt \(promptDisplayNumber) — image \(i + 1)/\(prompt.generateCount)"
                 let request = dtQueue.enqueue(
                     prompt: prompt.text,
                     negativePrompt: parsed.negativePrompt,
                     configuration: parsed.configuration,
-                    hints: hints
+                    hints: hints,
+                    name: name
                 )
 
                 requestMappings[request.id] = RequestMapping(
@@ -212,11 +214,13 @@ final class GenerationService: ObservableObject {
             let promptDisplayNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
 
             for i in 0..<prompt.generateCount {
+                let name = "Prompt \(promptDisplayNumber) — image \(i + 1)/\(prompt.generateCount)"
                 let request = dtQueue.enqueue(
                     prompt: prompt.text,
                     negativePrompt: parsed.negativePrompt,
                     configuration: parsed.configuration,
-                    hints: hints
+                    hints: hints,
+                    name: name
                 )
 
                 requestMappings[request.id] = RequestMapping(
