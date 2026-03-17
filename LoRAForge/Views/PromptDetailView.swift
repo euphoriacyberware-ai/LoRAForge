@@ -54,10 +54,10 @@ struct PromptDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Prompt Text")
                 .font(.headline)
-            TextEditor(text: $document.project.prompts[index].text)
+            TextField("Enter prompt…", text: $document.project.prompts[index].text, axis: .vertical)
                 .font(.body)
-                .frame(minHeight: 80, maxHeight: 150)
-                .border(Color.secondary.opacity(0.3))
+                .textFieldStyle(.roundedBorder)
+                .lineLimit(4...8)
                 .onChange(of: document.project.prompts[index].text) {
                     document.updateChangeCount(.changeDone)
                 }
