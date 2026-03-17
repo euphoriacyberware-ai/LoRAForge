@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var selection: SidebarSelection?
     @State private var showingTrash = false
     @State private var showingExport = false
+    @State private var showingBaseConfigEditor = false
     @State private var showingQueue = false
     @State private var editingLabelID: UUID?
 
@@ -22,6 +23,11 @@ struct ContentView: View {
     private var selectedPromptID: UUID? {
         if case .prompt(let id) = selection { return id }
         return nil
+    }
+
+    private var hasValidConfiguration: Bool {
+        let trimmed = document.project.baseConfigurationJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed != "{}" && trimmed != "{ }"
     }
 
     var body: some View {
@@ -38,14 +44,28 @@ struct ContentView: View {
         }
         .frame(minWidth: 700, minHeight: 400)
         .toolbar(id: "main") {
+            ToolbarItem(id: "config", placement: .automatic) {
+                Button {
+                    showingBaseConfigEditor = true
+                } label: {
+                    Label("Configuration", systemImage: "gearshape")
+                }
+                .help("Edit DrawThings configuration")
+            }
+            
             ToolbarItem(id: "serverPicker", placement: .automatic) {
                 serverPicker
             }
             ToolbarItem(id: "captionPicker", placement: .automatic) {
                 captionServerPicker
             }
+            
             ToolbarItem(id: "runSelected", placement: .automatic) {
                 Button {
+                    guard hasValidConfiguration else {
+                        showingBaseConfigEditor = true
+                        return
+                    }
                     if let promptID = selectedPromptID {
                         document.ensureSaved {
                             generationService.runSingle(document: document, promptID: promptID)
@@ -59,6 +79,10 @@ struct ContentView: View {
             }
             ToolbarItem(id: "run", placement: .automatic) {
                 Button {
+                    guard hasValidConfiguration else {
+                        showingBaseConfigEditor = true
+                        return
+                    }
                     document.ensureSaved {
                         generationService.run(document: document, runAll: false)
                     }
@@ -70,6 +94,10 @@ struct ContentView: View {
             }
             ToolbarItem(id: "runAll", placement: .automatic) {
                 Button {
+                    guard hasValidConfiguration else {
+                        showingBaseConfigEditor = true
+                        return
+                    }
                     document.ensureSaved {
                         generationService.run(document: document, runAll: true)
                     }
@@ -125,6 +153,19 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingExport) {
             ExportView(document: document, isPresented: $showingExport)
+        }
+        .sheet(isPresented: $showingBaseConfigEditor) {
+            ConfigurationEditorSheet(
+                isPresented: $showingBaseConfigEditor,
+                configurationJSON: Binding(
+                    get: { document.project.baseConfigurationJSON },
+                    set: {
+                        document.project.baseConfigurationJSON = $0
+                        document.updateChangeCount(.changeDone)
+                    }
+                ),
+                title: "DrawThings Configuration"
+            )
         }
     }
 

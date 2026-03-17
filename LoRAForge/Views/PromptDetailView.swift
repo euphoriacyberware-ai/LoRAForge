@@ -10,6 +10,7 @@ struct PromptDetailView: View {
     @State private var showingSlotPicker = false
     @State private var editingSlotIndex: Int?
     @State private var lightboxImageID: UUID?
+    @State private var showingOverrideConfigEditor = false
 
     private var promptIndex: Int? {
         document.project.prompts.firstIndex(where: { $0.id == promptID })
@@ -24,8 +25,8 @@ struct PromptDetailView: View {
                     sourceSlots(prompt: prompt, index: index)
                     generateCountSection(index: index)
                     configOverrideSection(prompt: prompt, index: index)
-                    baseConfigSection()
                     generatedImagesSection(prompt: prompt, promptIndex: index)
+
                 }
                 .padding()
             }
@@ -153,7 +154,7 @@ struct PromptDetailView: View {
 
     private func generateCountSection(index: Int) -> some View {
         HStack {
-            Text("Generate Count")
+            Text("Batch Size")
                 .font(.headline)
             Spacer()
             Stepper(
@@ -188,38 +189,32 @@ struct PromptDetailView: View {
             .font(.headline)
 
             if hasOverride {
-                JSONEditorView(
-                    jsonString: Binding(
-                        get: { document.project.prompts[index].configurationOverrideJSON ?? "{}" },
-                        set: {
-                            document.project.prompts[index].configurationOverrideJSON = $0
-                            document.updateChangeCount(.changeDone)
-                        }
-                    ),
-                    label: "Override JSON"
-                )
+                Button {
+                    showingOverrideConfigEditor = true
+                } label: {
+                    HStack {
+                        Label("Edit Override", systemImage: "slider.horizontal.3")
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .buttonStyle(.plain)
+                .sheet(isPresented: $showingOverrideConfigEditor) {
+                    ConfigurationEditorSheet(
+                        isPresented: $showingOverrideConfigEditor,
+                        configurationJSON: Binding(
+                            get: { document.project.prompts[index].configurationOverrideJSON ?? "{}" },
+                            set: {
+                                document.project.prompts[index].configurationOverrideJSON = $0
+                                document.updateChangeCount(.changeDone)
+                            }
+                        ),
+                        title: "Configuration Override"
+                    )
+                }
             }
         }
-    }
-
-    // MARK: - Base Configuration
-
-    @State private var showBaseConfig = false
-
-    private func baseConfigSection() -> some View {
-        DisclosureGroup("Base Configuration", isExpanded: $showBaseConfig) {
-            JSONEditorView(
-                jsonString: Binding(
-                    get: { document.project.baseConfigurationJSON },
-                    set: {
-                        document.project.baseConfigurationJSON = $0
-                        document.updateChangeCount(.changeDone)
-                    }
-                ),
-                label: "Draw Things Configuration"
-            )
-        }
-        .font(.headline)
     }
 
     // MARK: - Generated Images
