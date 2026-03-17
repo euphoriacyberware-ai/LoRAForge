@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var selection: SidebarSelection?
     @State private var showingTrash = false
     @State private var showingExport = false
+    @State private var showingBaseConfigEditor = false
     @State private var showingQueue = false
     @State private var editingLabelID: UUID?
 
@@ -43,6 +44,14 @@ struct ContentView: View {
             }
             ToolbarItem(id: "captionPicker", placement: .automatic) {
                 captionServerPicker
+            }
+            ToolbarItem(id: "config", placement: .automatic) {
+                Button {
+                    showingBaseConfigEditor = true
+                } label: {
+                    Label("Configuration", systemImage: "gearshape")
+                }
+                .help("Edit DrawThings configuration")
             }
             ToolbarItem(id: "runSelected", placement: .automatic) {
                 Button {
@@ -125,6 +134,19 @@ struct ContentView: View {
         }
         .sheet(isPresented: $showingExport) {
             ExportView(document: document, isPresented: $showingExport)
+        }
+        .sheet(isPresented: $showingBaseConfigEditor) {
+            ConfigurationEditorSheet(
+                isPresented: $showingBaseConfigEditor,
+                configurationJSON: Binding(
+                    get: { document.project.baseConfigurationJSON },
+                    set: {
+                        document.project.baseConfigurationJSON = $0
+                        document.updateChangeCount(.changeDone)
+                    }
+                ),
+                title: "DrawThings Configuration"
+            )
         }
     }
 

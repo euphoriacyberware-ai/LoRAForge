@@ -10,7 +10,6 @@ struct PromptDetailView: View {
     @State private var showingSlotPicker = false
     @State private var editingSlotIndex: Int?
     @State private var lightboxImageID: UUID?
-    @State private var showingBaseConfigEditor = false
     @State private var showingOverrideConfigEditor = false
 
     private var promptIndex: Int? {
@@ -25,10 +24,9 @@ struct PromptDetailView: View {
                     promptTextEditor(index: index)
                     sourceSlots(prompt: prompt, index: index)
                     generateCountSection(index: index)
-                    generatedImagesSection(prompt: prompt, promptIndex: index)
                     configOverrideSection(prompt: prompt, index: index)
-                    baseConfigSection()
-                    
+                    generatedImagesSection(prompt: prompt, promptIndex: index)
+
                 }
                 .padding()
             }
@@ -216,36 +214,6 @@ struct PromptDetailView: View {
                     )
                 }
             }
-        }
-    }
-
-    // MARK: - Base Configuration
-
-    private func baseConfigSection() -> some View {
-        Button {
-            showingBaseConfigEditor = true
-        } label: {
-            HStack {
-                Label("DrawThings Configuration", systemImage: "gearshape")
-                    .font(.headline)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(.secondary)
-            }
-        }
-        .buttonStyle(.plain)
-        .sheet(isPresented: $showingBaseConfigEditor) {
-            ConfigurationEditorSheet(
-                isPresented: $showingBaseConfigEditor,
-                configurationJSON: Binding(
-                    get: { document.project.baseConfigurationJSON },
-                    set: {
-                        document.project.baseConfigurationJSON = $0
-                        document.updateChangeCount(.changeDone)
-                    }
-                ),
-                title: "DrawThings Configuration"
-            )
         }
     }
 
