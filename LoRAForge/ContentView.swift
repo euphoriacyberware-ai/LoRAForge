@@ -25,6 +25,11 @@ struct ContentView: View {
         return nil
     }
 
+    private var hasValidConfiguration: Bool {
+        let trimmed = document.project.baseConfigurationJSON.trimmingCharacters(in: .whitespacesAndNewlines)
+        return !trimmed.isEmpty && trimmed != "{}" && trimmed != "{ }"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             NavigationSplitView {
@@ -39,12 +44,6 @@ struct ContentView: View {
         }
         .frame(minWidth: 700, minHeight: 400)
         .toolbar(id: "main") {
-            ToolbarItem(id: "serverPicker", placement: .automatic) {
-                serverPicker
-            }
-            ToolbarItem(id: "captionPicker", placement: .automatic) {
-                captionServerPicker
-            }
             ToolbarItem(id: "config", placement: .automatic) {
                 Button {
                     showingBaseConfigEditor = true
@@ -53,8 +52,20 @@ struct ContentView: View {
                 }
                 .help("Edit DrawThings configuration")
             }
+            
+            ToolbarItem(id: "serverPicker", placement: .automatic) {
+                serverPicker
+            }
+            ToolbarItem(id: "captionPicker", placement: .automatic) {
+                captionServerPicker
+            }
+            
             ToolbarItem(id: "runSelected", placement: .automatic) {
                 Button {
+                    guard hasValidConfiguration else {
+                        showingBaseConfigEditor = true
+                        return
+                    }
                     if let promptID = selectedPromptID {
                         document.ensureSaved {
                             generationService.runSingle(document: document, promptID: promptID)
@@ -68,6 +79,10 @@ struct ContentView: View {
             }
             ToolbarItem(id: "run", placement: .automatic) {
                 Button {
+                    guard hasValidConfiguration else {
+                        showingBaseConfigEditor = true
+                        return
+                    }
                     document.ensureSaved {
                         generationService.run(document: document, runAll: false)
                     }
@@ -79,6 +94,10 @@ struct ContentView: View {
             }
             ToolbarItem(id: "runAll", placement: .automatic) {
                 Button {
+                    guard hasValidConfiguration else {
+                        showingBaseConfigEditor = true
+                        return
+                    }
                     document.ensureSaved {
                         generationService.run(document: document, runAll: true)
                     }
