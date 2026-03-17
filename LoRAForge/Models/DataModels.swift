@@ -73,6 +73,15 @@ enum ConnectionType: String, Codable {
     case ollama
 }
 
+// MARK: - Configuration Preset (stored in App Support)
+
+struct ConfigurationPreset: Codable, Identifiable {
+    var id: UUID
+    var name: String
+    var json: String
+    var createdAt: Date
+}
+
 // MARK: - Template (stored in App Support)
 
 struct Template: Codable, Identifiable {
