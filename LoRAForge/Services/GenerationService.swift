@@ -163,7 +163,7 @@ final class GenerationService: ObservableObject {
         // Create queue
         let dtQueue: DrawThingsQueue
         do {
-            dtQueue = try DrawThingsQueue(address: "\(connection.host):\(connection.port)")
+            dtQueue = try DrawThingsQueue(address: "\(connection.host):\(connection.port)", sharedSecret: connection.sharedSecret)
         } catch {
             statusMessage = "Failed to create queue: \(error.localizedDescription)"
             return

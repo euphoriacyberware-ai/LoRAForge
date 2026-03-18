@@ -62,6 +62,7 @@ struct ServerConnection: Codable, Identifiable {
     var type: ConnectionType
     var host: String
     var port: Int
+    var sharedSecret: String?
     var modelName: String?
     var captionPrompt: String?
 }

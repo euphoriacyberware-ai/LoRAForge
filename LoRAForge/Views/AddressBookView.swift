@@ -26,7 +26,7 @@ struct AddressBookView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(connection.name)
                         .font(.headline)
-                    Text("\(connection.host):\(connection.port)")
+                    Text("\(connection.host):\(connection.port, format: .number.grouping(.never))")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -171,7 +171,14 @@ struct ConnectionEditView: View {
             Form {
                 TextField("Name:", text: $connection.name)
                 TextField("Host:", text: $connection.host)
-                TextField("Port:", value: $connection.port, format: .number)
+                TextField("Port:", value: $connection.port, format: .number.grouping(.never))
+
+                if connection.type == .drawThings {
+                    SecureField("Shared Secret:", text: Binding(
+                        get: { connection.sharedSecret ?? "" },
+                        set: { connection.sharedSecret = $0.isEmpty ? nil : $0 }
+                    ))
+                }
 
                 if connection.type == .ollama {
                     Divider()
@@ -208,7 +215,7 @@ struct ConnectionEditView: View {
             }
             .padding()
         }
-        .frame(width: 400, height: connection.type == .ollama ? 380 : 200)
+        .frame(width: 400, height: connection.type == .ollama ? 380 : 240)
     }
 }
 
@@ -227,7 +234,8 @@ struct ConnectionEditView: View {
             name: "Local Server",
             type: .drawThings,
             host: "127.0.0.1",
-            port: 7860
+            port: 7860,
+            sharedSecret: nil
         ),
         onSave: { _ in },
         onCancel: {}
