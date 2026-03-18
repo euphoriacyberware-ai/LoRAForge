@@ -7,7 +7,7 @@
       "location" : "https://github.com/euphoriacyberware-ai/DrawThingsQueue",
       "state" : {
         "branch" : "main",
-        "revision" : "c6e1fb79d98f093c500ebf6c85fbc03189cfc60f"
+        "revision" : "a82a53306fc9b529a45230a3146bfdcf80454020"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client",
       "state" : {
         "branch" : "main",
-        "revision" : "8cb32922da3ef826b054ada55e0473aaba33174a"
+        "revision" : "4935fd011d7e5303fe1de040c6df4822ead802c5"
       }
     },
     {
@@ -98,6 +98,14 @@
       "state" : {
         "revision" : "fa308c07a6fa04a727212d793e761460e41049c3",
         "version" : "4.3.0"
+      }
+    },
+    {
+      "identity" : "swift-fpzip-support",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/weiyanlin117/swift-fpzip-support.git",
+      "state" : {
+        "revision" : "0ec6d4668c9c83bc3da0f8b2d6dfc46da0b98609"
       }
     },
     {
