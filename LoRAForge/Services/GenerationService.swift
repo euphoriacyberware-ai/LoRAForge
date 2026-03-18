@@ -4,6 +4,7 @@ import AppKit
 import Combine
 import DrawThingsClient
 import DrawThingsQueue
+import class DrawThingsClient.HintBuilder
 
 @MainActor
 final class GenerationService: ObservableObject {
@@ -327,24 +328,16 @@ final class GenerationService: ObservableObject {
     // MARK: - Helpers
 
     private func buildHints(prompt: Prompt, document: LoRAForgeDocument) -> [HintProto] {
-        var tensors: [TensorAndWeight] = []
+        let builder = HintBuilder()
         for sourceID in prompt.sourceImageIDs {
             guard let source = document.project.sourceImages.first(where: { $0.id == sourceID }),
                   let url = document.sourceImageURL(for: source),
-                  let nsImage = NSImage(contentsOf: url),
-                  let tensorData = try? ImageHelpers.imageToDTTensor(nsImage) else {
+                  let imageData = try? Data(contentsOf: url) else {
                 continue
             }
-            var tw = TensorAndWeight()
-            tw.tensor = tensorData
-            tw.weight = 1.0
-            tensors.append(tw)
+            builder.addMoodboardImage(imageData)
         }
-        guard !tensors.isEmpty else { return [] }
-        var hint = HintProto()
-        hint.hintType = "shuffle"
-        hint.tensors = tensors
-        return [hint]
+        return builder.build()
     }
 
     private func saveGeneratedImage(
