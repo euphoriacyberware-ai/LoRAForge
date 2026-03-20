@@ -11,9 +11,16 @@ struct PromptDetailView: View {
     @State private var editingSlotIndex: Int?
     @State private var lightboxImageID: UUID?
     @State private var showingOverrideConfigEditor = false
+    @State private var selectedImageID: UUID?
+    @State private var showInspector = false
 
     private var promptIndex: Int? {
         document.project.prompts.firstIndex(where: { $0.id == promptID })
+    }
+
+    private var selectedImage: GeneratedImage? {
+        guard let id = selectedImageID, let idx = promptIndex else { return nil }
+        return document.project.prompts[idx].generatedImages.first(where: { $0.id == id })
     }
 
     var body: some View {
@@ -30,10 +37,36 @@ struct PromptDetailView: View {
                 }
                 .padding()
             }
+            .inspector(isPresented: $showInspector) {
+                if let image = selectedImage {
+                    imageInspectorContent(image: image)
+                } else {
+                    Text("No image selected")
+                        .foregroundStyle(.secondary)
+                        .frame(maxHeight: .infinity)
+                }
+            }
+            .inspectorColumnWidth(min: 240, ideal: 280, max: 360)
+            .onChange(of: selectedImageID) { _, newValue in
+                showInspector = newValue != nil
+            }
+            .onChange(of: showInspector) { _, isShowing in
+                if !isShowing {
+                    selectedImageID = nil
+                }
+            }
+            .onChange(of: prompt.generatedImages) { _, _ in
+                if let id = selectedImageID {
+                    let images = filteredImages(prompt: document.project.prompts[index])
+                    if !images.contains(where: { $0.id == id }) {
+                        selectedImageID = nil
+                    }
+                }
+            }
             .onChange(of: lightboxImageID) { _, newValue in
                 guard let newValue, let idx = promptIndex else { return }
                 let images = filteredImages(prompt: document.project.prompts[idx])
-                guard let startIndex = images.firstIndex(where: { $0.id == newValue }) else { return }
+                guard images.contains(where: { $0.id == newValue }) else { return }
                 LightboxController.show(
                     document: document,
                     promptID: promptID,
@@ -273,7 +306,8 @@ struct PromptDetailView: View {
     }
 
     private func generatedImageCell(image: GeneratedImage, promptIndex: Int) -> some View {
-        VStack(spacing: 4) {
+        let isSelected = selectedImageID == image.id
+        return VStack(spacing: 4) {
             // Thumbnail with rank badge
             ZStack(alignment: .topTrailing) {
                 if let url = document.generatedImageURL(promptID: promptID, image: image),
@@ -298,6 +332,13 @@ struct PromptDetailView: View {
             }
             .onTapGesture(count: 2) {
                 lightboxImageID = image.id
+            }
+            .onTapGesture(count: 1) {
+                if selectedImageID == image.id {
+                    selectedImageID = nil
+                } else {
+                    selectedImageID = image.id
+                }
             }
 
             // Caption field + auto-caption button
@@ -330,8 +371,183 @@ struct PromptDetailView: View {
                 autoCaptionButton(image: image, promptIndex: promptIndex)
             }
         }
+        .padding(4)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.accentColor.opacity(0.15) : Color.clear)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
+        )
         .contextMenu {
             imageContextMenu(image: image)
+        }
+    }
+
+    // MARK: - Image Inspector
+
+    private func imageInspectorContent(image: GeneratedImage) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                // Preview
+                if let url = document.generatedImageURL(promptID: promptID, image: image),
+                   let nsImage = NSImage(contentsOf: url) {
+                    Image(nsImage: nsImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .onTapGesture(count: 2) {
+                            lightboxImageID = image.id
+                        }
+                }
+
+                // Rank
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Rank")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 8) {
+                        rankBadge(image.rank)
+                        Spacer()
+                        if !showingTrash {
+                            Button {
+                                document.promoteImage(promptID: promptID, imageID: image.id)
+                            } label: {
+                                Image(systemName: "arrow.up.circle")
+                            }
+                            .disabled(image.rank == .final_)
+                            .buttonStyle(.borderless)
+                            .help("Promote")
+
+                            Button {
+                                document.demoteImage(promptID: promptID, imageID: image.id)
+                            } label: {
+                                Image(systemName: "arrow.down.circle")
+                            }
+                            .disabled(image.rank == .candidate)
+                            .buttonStyle(.borderless)
+                            .help("Demote")
+                        }
+                    }
+                }
+
+                Divider()
+
+                // Details
+                VStack(alignment: .leading, spacing: 8) {
+                    if let seed = image.seed {
+                        LabeledContent("Seed") {
+                            Text("\(seed)")
+                                .monospacedDigit()
+                                .textSelection(.enabled)
+                        }
+                        .font(.caption)
+                    }
+
+                    LabeledContent("Generated") {
+                        Text(image.generatedAt, style: .date)
+                        Text(image.generatedAt, style: .time)
+                    }
+                    .font(.caption)
+
+                    LabeledContent("Filename") {
+                        Text(image.filename)
+                            .textSelection(.enabled)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                    }
+                    .font(.caption)
+                }
+
+                Divider()
+
+                // Caption
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text("Caption")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        if let pIdx = promptIndex {
+                            autoCaptionButton(image: image, promptIndex: pIdx)
+                        }
+                    }
+                    TextField(
+                        "Caption…",
+                        text: Binding(
+                            get: {
+                                guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                                      let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
+                                    return ""
+                                }
+                                return document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
+                            },
+                            set: { newValue in
+                                guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                                      let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
+                                    return
+                                }
+                                document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
+                                document.updateChangeCount(.changeDone)
+                            }
+                        ),
+                        axis: .vertical
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(3...8)
+                }
+
+                Divider()
+
+                // Actions
+                VStack(spacing: 8) {
+                    if showingTrash {
+                        Button {
+                            document.restoreImage(promptID: promptID, imageID: image.id)
+                        } label: {
+                            Label("Restore", systemImage: "arrow.uturn.backward")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button(role: .destructive) {
+                            document.deleteImagePermanently(promptID: promptID, imageID: image.id)
+                        } label: {
+                            Label("Delete Permanently", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    } else {
+                        Button {
+                            lightboxImageID = image.id
+                        } label: {
+                            Label("View Full Size", systemImage: "arrow.up.left.and.arrow.down.right")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button {
+                            if let url = document.generatedImageURL(promptID: promptID, image: image) {
+                                NSWorkspace.shared.activateFileViewerSelecting([url])
+                            }
+                        } label: {
+                            Label("Reveal in Finder", systemImage: "folder")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+
+                        Button(role: .destructive) {
+                            document.discardImage(promptID: promptID, imageID: image.id)
+                        } label: {
+                            Label("Discard", systemImage: "trash")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                }
+            }
+            .padding()
         }
     }
 

@@ -36,7 +36,7 @@ struct Prompt: Codable, Identifiable, Sendable {
 
 // MARK: - Generated Image
 
-struct GeneratedImage: Codable, Identifiable, Sendable {
+struct GeneratedImage: Codable, Identifiable, Equatable, Sendable {
     var id: UUID
     var filename: String
     var rank: ImageRank
