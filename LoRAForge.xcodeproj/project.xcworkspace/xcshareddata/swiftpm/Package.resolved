@@ -7,7 +7,7 @@
       "location" : "https://github.com/euphoriacyberware-ai/DrawThingsQueue",
       "state" : {
         "branch" : "main",
-        "revision" : "a82a53306fc9b529a45230a3146bfdcf80454020"
+        "revision" : "fb4a111936ac31f7ff37b05d872a5a67c4109b9c"
       }
     },
     {
@@ -16,7 +16,7 @@
       "location" : "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client",
       "state" : {
         "branch" : "main",
-        "revision" : "9917ce733fe6b370e1cae3f51aab20b89d559ea8"
+        "revision" : "e0dd2d97c73ded613de4382eacd9996277a443bd"
       }
     },
     {
