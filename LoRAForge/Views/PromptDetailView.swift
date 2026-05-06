@@ -12,7 +12,6 @@ struct PromptDetailView: View {
     @State private var lightboxImageID: UUID?
     @State private var showingOverrideConfigEditor = false
     @State private var selectedImageID: UUID?
-    @State private var showInspector = false
 
     private var promptIndex: Int? {
         document.project.prompts.firstIndex(where: { $0.id == promptID })
@@ -26,33 +25,25 @@ struct PromptDetailView: View {
     var body: some View {
         if let index = promptIndex {
             let prompt = document.project.prompts[index]
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    promptTextEditor(index: index)
-                    sourceSlots(prompt: prompt, index: index)
-                    generateCountSection(index: index)
-                    configOverrideSection(prompt: prompt, index: index)
-                    generatedImagesSection(prompt: prompt, promptIndex: index)
+            HStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 16) {
+                        promptTextEditor(index: index)
+                        sourceSlots(prompt: prompt, index: index)
+                        generateCountSection(index: index)
+                        configOverrideSection(prompt: prompt, index: index)
+                        generatedImagesSection(prompt: prompt, promptIndex: index)
 
+                    }
+                    .padding()
                 }
-                .padding()
-            }
-            .inspector(isPresented: $showInspector) {
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 if let image = selectedImage {
+                    Divider()
                     imageInspectorContent(image: image)
-                } else {
-                    Text("No image selected")
-                        .foregroundStyle(.secondary)
-                        .frame(maxHeight: .infinity)
-                }
-            }
-            .inspectorColumnWidth(min: 240, ideal: 280, max: 360)
-            .onChange(of: selectedImageID) { _, newValue in
-                showInspector = newValue != nil
-            }
-            .onChange(of: showInspector) { _, isShowing in
-                if !isShowing {
-                    selectedImageID = nil
+                        .frame(width: 280)
+                        .background(Color(nsColor: .controlBackgroundColor))
                 }
             }
             .onChange(of: prompt.generatedImages) { _, _ in
