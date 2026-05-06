@@ -78,10 +78,16 @@ struct PromptDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Prompt Text")
                 .font(.headline)
-            TextField("Enter prompt…", text: $document.project.prompts[index].text, axis: .vertical)
+            TextEditor(text: $document.project.prompts[index].text)
                 .font(.body)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(4...8)
+                .frame(minHeight: 80, maxHeight: 200)
+                .scrollContentBackground(.hidden)
+                .padding(4)
+                .background(Color(nsColor: .textBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                )
                 .onChange(of: document.project.prompts[index].text) {
                     document.updateChangeCount(.changeDone)
                 }
@@ -334,30 +340,32 @@ struct PromptDetailView: View {
 
             // Caption field + auto-caption button
             HStack(alignment: .top, spacing: 4) {
-                TextField(
-                    "Caption…",
-                    text: Binding(
-                        get: {
-                            guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
-                                  let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
-                                return ""
-                            }
-                            return document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
-                        },
-                        set: { newValue in
-                            guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
-                                  let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
-                                return
-                            }
-                            document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
-                            document.updateChangeCount(.changeDone)
+                TextEditor(text: Binding(
+                    get: {
+                        guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                              let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
+                            return ""
                         }
-                    ),
-                    axis: .vertical
-                )
+                        return document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
+                    },
+                    set: { newValue in
+                        guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                              let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
+                            return
+                        }
+                        document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
+                        document.updateChangeCount(.changeDone)
+                    }
+                ))
                 .font(.caption)
-                .textFieldStyle(.roundedBorder)
-                .lineLimit(2...4)
+                .frame(height: 50)
+                .scrollContentBackground(.hidden)
+                .padding(2)
+                .background(Color(nsColor: .textBackgroundColor))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 4)
+                        .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
+                )
 
                 autoCaptionButton(image: image, promptIndex: promptIndex)
             }
