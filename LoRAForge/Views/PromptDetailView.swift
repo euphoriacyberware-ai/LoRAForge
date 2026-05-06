@@ -396,6 +396,7 @@ struct PromptDetailView: View {
                     Image(nsImage: nsImage)
                         .resizable()
                         .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: .infinity, maxHeight: 240)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .onTapGesture(count: 2) {
                             lightboxImageID = image.id
@@ -473,29 +474,31 @@ struct PromptDetailView: View {
                             autoCaptionButton(image: image, promptIndex: pIdx)
                         }
                     }
-                    TextField(
-                        "Caption…",
-                        text: Binding(
-                            get: {
-                                guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
-                                      let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
-                                    return ""
-                                }
-                                return document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
-                            },
-                            set: { newValue in
-                                guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
-                                      let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
-                                    return
-                                }
-                                document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
-                                document.updateChangeCount(.changeDone)
+                    TextEditor(text: Binding(
+                        get: {
+                            guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                                  let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
+                                return ""
                             }
-                        ),
-                        axis: .vertical
+                            return document.project.prompts[pIdx].generatedImages[iIdx].caption ?? ""
+                        },
+                        set: { newValue in
+                            guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
+                                  let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
+                                return
+                            }
+                            document.project.prompts[pIdx].generatedImages[iIdx].caption = newValue.isEmpty ? nil : newValue
+                            document.updateChangeCount(.changeDone)
+                        }
+                    ))
+                    .frame(minHeight: 80, maxHeight: 200)
+                    .scrollContentBackground(.hidden)
+                    .padding(4)
+                    .background(Color(nsColor: .textBackgroundColor))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 4)
+                            .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                     )
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(3...8)
                 }
 
                 Divider()
