@@ -277,12 +277,20 @@ final class GenerationService: ObservableObject {
             currentPromptID = mapping.promptID
             statusMessage = "Prompt \(mapping.promptDisplayNumber): image \(mapping.imageNumber + 1)/\(mapping.totalForPrompt)"
 
+            // Re-resolve the prompt index by ID; the cached index from enqueue
+            // time is invalid if the user deleted a prompt while requests were
+            // in flight.
+            guard let currentPromptIndex = document.project.prompts.firstIndex(where: { $0.id == mapping.promptID }) else {
+                requestMappings.removeValue(forKey: result.id)
+                continue
+            }
+
             for nsImage in result.images {
                 do {
                     try saveGeneratedImage(
                         nsImage,
                         promptID: mapping.promptID,
-                        promptIndex: mapping.promptIndex,
+                        promptIndex: currentPromptIndex,
                         document: document
                     )
                 } catch {

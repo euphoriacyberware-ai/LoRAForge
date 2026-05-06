@@ -6,6 +6,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
         MainActor.assumeIsolated {
             NSApp.activate(ignoringOtherApps: true)
+            // Pre-warm Network.framework to avoid a recursive os_unfair_lock
+            // crash in networkd_settings on macOS 26.4.x when URLSession and
+            // SwiftNIO/gRPC perform first-time setup concurrently.
+            URLSession.shared.dataTask(with: URL(string: "http://127.0.0.1:0/_warmup")!) { _, _, _ in }.resume()
         }
     }
 
