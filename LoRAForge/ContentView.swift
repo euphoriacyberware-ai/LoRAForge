@@ -9,7 +9,7 @@ struct ContentView: View {
     @StateObject private var generationService = GenerationService()
     @StateObject private var captionService = CaptionService()
     @State private var selection: SidebarSelection?
-    @State private var showingTrash = false
+    @State private var visibleRanks: Set<ImageRank> = [.candidate, .shortlisted, .final_]
     @State private var showingExport = false
     @State private var showingBaseConfigEditor = false
     @State private var showingQueue = false
@@ -115,12 +115,6 @@ struct ContentView: View {
                 }
                 .disabled(!generationService.isRunning)
                 .help("Stop generation")
-            }
-            ToolbarItem(id: "trash", placement: .automatic) {
-                Toggle(isOn: $showingTrash) {
-                    Label("Trash", systemImage: "trash")
-                }
-                .help("Toggle trash view")
             }
             ToolbarItem(id: "autoCaption", placement: .automatic) {
                 if captionService.isBulkCaptioning {
@@ -559,7 +553,7 @@ struct ContentView: View {
                     promptID: promptID,
                     generationService: generationService,
                     captionService: captionService,
-                    showingTrash: showingTrash
+                    visibleRanks: $visibleRanks
                 )
             case .sourceImage(let sourceID):
                 if let source = document.project.sourceImages.first(where: { $0.id == sourceID }) {

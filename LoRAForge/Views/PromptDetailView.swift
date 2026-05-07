@@ -6,7 +6,7 @@ struct PromptDetailView: View {
     let promptID: UUID
     @ObservedObject var generationService: GenerationService
     @ObservedObject var captionService: CaptionService
-    let showingTrash: Bool
+    @Binding var visibleRanks: Set<ImageRank>
     @State private var showingSlotPicker = false
     @State private var editingSlotIndex: Int?
     @State private var lightboxImageID: UUID?
@@ -26,18 +26,33 @@ struct PromptDetailView: View {
         if let index = promptIndex {
             let prompt = document.project.prompts[index]
             HStack(spacing: 0) {
-                ScrollView {
+                VStack(spacing: 0) {
                     VStack(alignment: .leading, spacing: 16) {
                         promptTextEditor(index: index)
                         sourceSlots(prompt: prompt, index: index)
                         generateCountSection(index: index)
                         configOverrideSection(prompt: prompt, index: index)
-                        generatedImagesSection(prompt: prompt, promptIndex: index)
-
                     }
                     .padding()
+
+                    Divider()
+
+                    VStack(spacing: 0) {
+                        generatedImagesToolbar(prompt: prompt)
+                            .padding(.horizontal)
+                            .padding(.vertical, 6)
+                            .background(.bar)
+
+                        Divider()
+
+                        ScrollView {
+                            generatedImagesSectionBody(prompt: prompt, promptIndex: index)
+                                .padding()
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
                 }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity)
 
                 if let image = selectedImage {
                     Divider()
@@ -61,7 +76,7 @@ struct PromptDetailView: View {
                 LightboxController.show(
                     document: document,
                     promptID: promptID,
-                    showingTrash: showingTrash,
+                    visibleRanks: visibleRanks,
                     startingImageID: newValue
                 )
                 lightboxImageID = nil
@@ -254,34 +269,73 @@ struct PromptDetailView: View {
     }
 
     private func filteredImages(prompt: Prompt) -> [GeneratedImage] {
-        if showingTrash {
-            return prompt.generatedImages.filter { $0.rank == .discarded }
-        } else {
-            return prompt.generatedImages.filter { $0.rank != .discarded }
+        prompt.generatedImages.filter { visibleRanks.contains($0.rank) }
+    }
+
+    private func generatedImagesToolbar(prompt: Prompt) -> some View {
+        HStack(spacing: 8) {
+            Text("Generated Images")
+                .font(.headline)
+
+            if isGeneratingThisPrompt {
+                ProgressView()
+                    .controlSize(.small)
+                Text(generationService.statusMessage)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+
+            Spacer()
+
+            ForEach([ImageRank.candidate, .shortlisted, .final_, .discarded], id: \.self) { rank in
+                rankToggleChip(rank: rank)
+            }
+
+            Divider()
+                .frame(height: 16)
+                .padding(.horizontal, 4)
+
+            Button {
+                document.sweepCandidates(promptID: promptID)
+            } label: {
+                Label("Sweep", systemImage: "wind")
+            }
+            .buttonStyle(.borderless)
+            .disabled(!prompt.generatedImages.contains { $0.rank == .candidate })
+            .help("Move all Candidate images for this prompt to Discarded")
         }
     }
 
-    private func generatedImagesSection(prompt: Prompt, promptIndex: Int) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(showingTrash ? "Trash" : "Generated Images")
-                    .font(.headline)
-                Spacer()
-                if isGeneratingThisPrompt {
-                    ProgressView()
-                        .controlSize(.small)
-                    Text(generationService.statusMessage)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+    private func rankToggleChip(rank: ImageRank) -> some View {
+        let isOn = visibleRanks.contains(rank)
+        return Button {
+            if isOn {
+                visibleRanks.remove(rank)
+            } else {
+                visibleRanks.insert(rank)
             }
+        } label: {
+            Text(rankLabel(rank))
+                .font(.caption2.bold())
+                .padding(.horizontal, 6)
+                .padding(.vertical, 2)
+                .background(rankColor(rank).opacity(isOn ? 0.85 : 0.15))
+                .foregroundStyle(isOn ? Color.white : .secondary)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+        }
+        .buttonStyle(.plain)
+        .help("\(isOn ? "Hide" : "Show") \(rankFullLabel(rank))")
+    }
 
-            let images = filteredImages(prompt: prompt)
-
+    private func generatedImagesSectionBody(prompt: Prompt, promptIndex: Int) -> some View {
+        let images = filteredImages(prompt: prompt)
+        return Group {
             if images.isEmpty {
-                let message = showingTrash
-                    ? "No discarded images."
-                    : "No generated images yet. Use Run to generate."
+                let message = prompt.generatedImages.isEmpty
+                    ? "No generated images yet. Use Run to generate."
+                    : "No images match the current filters."
                 Text(message)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, minHeight: 100)
@@ -410,25 +464,23 @@ struct PromptDetailView: View {
                     HStack(spacing: 8) {
                         rankBadge(image.rank)
                         Spacer()
-                        if !showingTrash {
-                            Button {
-                                document.promoteImage(promptID: promptID, imageID: image.id)
-                            } label: {
-                                Image(systemName: "arrow.up.circle")
-                            }
-                            .disabled(image.rank == .final_)
-                            .buttonStyle(.borderless)
-                            .help("Promote")
-
-                            Button {
-                                document.demoteImage(promptID: promptID, imageID: image.id)
-                            } label: {
-                                Image(systemName: "arrow.down.circle")
-                            }
-                            .disabled(image.rank == .candidate)
-                            .buttonStyle(.borderless)
-                            .help("Demote")
+                        Button {
+                            document.promoteImage(promptID: promptID, imageID: image.id)
+                        } label: {
+                            Image(systemName: "arrow.up.circle")
                         }
+                        .disabled(image.rank == .final_ || image.rank == .discarded)
+                        .buttonStyle(.borderless)
+                        .help("Promote")
+
+                        Button {
+                            document.demoteImage(promptID: promptID, imageID: image.id)
+                        } label: {
+                            Image(systemName: "arrow.down.circle")
+                        }
+                        .disabled(image.rank == .candidate || image.rank == .discarded)
+                        .buttonStyle(.borderless)
+                        .help("Demote")
                     }
                 }
 
@@ -504,7 +556,7 @@ struct PromptDetailView: View {
 
                 // Actions
                 VStack(spacing: 8) {
-                    if showingTrash {
+                    if image.rank == .discarded {
                         Button {
                             document.restoreImage(promptID: promptID, imageID: image.id)
                         } label: {
@@ -610,6 +662,15 @@ struct PromptDetailView: View {
         }
     }
 
+    private func rankFullLabel(_ rank: ImageRank) -> String {
+        switch rank {
+        case .candidate: "Candidate"
+        case .shortlisted: "Shortlisted"
+        case .final_: "Final"
+        case .discarded: "Discarded"
+        }
+    }
+
     private func rankColor(_ rank: ImageRank) -> Color {
         switch rank {
         case .candidate: .gray
@@ -623,8 +684,21 @@ struct PromptDetailView: View {
 
     @ViewBuilder
     private func imageContextMenu(image: GeneratedImage) -> some View {
-        if !showingTrash {
-            // Normal view actions
+        if image.rank == .discarded {
+            Button("Restore") {
+                document.restoreImage(promptID: promptID, imageID: image.id)
+            }
+
+            Button("Delete Permanently") {
+                document.deleteImagePermanently(promptID: promptID, imageID: image.id)
+            }
+
+            Divider()
+
+            Button("View Full Size") {
+                lightboxImageID = image.id
+            }
+        } else {
             if image.rank != .final_ {
                 Button("Promote Rank") {
                     document.promoteImage(promptID: promptID, imageID: image.id)
@@ -651,21 +725,6 @@ struct PromptDetailView: View {
                     NSWorkspace.shared.activateFileViewerSelecting([url])
                 }
             }
-        } else {
-            // Trash view actions
-            Button("Restore") {
-                document.restoreImage(promptID: promptID, imageID: image.id)
-            }
-
-            Button("Delete Permanently") {
-                document.deleteImagePermanently(promptID: promptID, imageID: image.id)
-            }
-
-            Divider()
-
-            Button("View Full Size") {
-                lightboxImageID = image.id
-            }
         }
     }
 }
@@ -678,7 +737,7 @@ enum LightboxController {
     static func show(
         document: LoRAForgeDocument,
         promptID: UUID,
-        showingTrash: Bool,
+        visibleRanks: Set<ImageRank>,
         startingImageID: UUID
     ) {
         currentWindow?.close()
@@ -686,7 +745,7 @@ enum LightboxController {
         let view = LightboxContentView(
             document: document,
             promptID: promptID,
-            showingTrash: showingTrash,
+            visibleRanks: visibleRanks,
             currentImageID: startingImageID
         )
         let hostingController = NSHostingController(rootView: view)
@@ -718,7 +777,7 @@ enum LightboxController {
 struct LightboxContentView: View {
     @ObservedObject var document: LoRAForgeDocument
     let promptID: UUID
-    let showingTrash: Bool
+    let visibleRanks: Set<ImageRank>
     @State var currentImageID: UUID
 
     private var promptIndex: Int? {
@@ -727,10 +786,8 @@ struct LightboxContentView: View {
 
     private var visibleImages: [GeneratedImage] {
         guard let idx = promptIndex else { return [] }
-        let all = document.project.prompts[idx].generatedImages
-        return showingTrash
-            ? all.filter { $0.rank == .discarded }
-            : all.filter { $0.rank != .discarded }
+        return document.project.prompts[idx].generatedImages
+            .filter { visibleRanks.contains($0.rank) }
     }
 
     private var currentIndex: Int? {
@@ -837,7 +894,7 @@ struct LightboxContentView: View {
 
     @ViewBuilder
     private func rankControls(image: GeneratedImage) -> some View {
-        if showingTrash {
+        if image.rank == .discarded {
             Button("Restore") {
                 document.restoreImage(promptID: promptID, imageID: image.id)
             }
@@ -1044,7 +1101,7 @@ struct SourceImagePickerSheet: View {
         promptID: PreviewData.promptID1,
         generationService: GenerationService(),
         captionService: CaptionService(),
-        showingTrash: false
+        visibleRanks: .constant([.candidate, .shortlisted, .final_])
     )
     .frame(width: 600, height: 500)
 }
@@ -1056,7 +1113,7 @@ struct SourceImagePickerSheet: View {
         promptID: PreviewData.promptID1,
         generationService: GenerationService(),
         captionService: CaptionService(),
-        showingTrash: true
+        visibleRanks: .constant([.discarded])
     )
     .frame(width: 600, height: 500)
 }
@@ -1068,7 +1125,7 @@ struct SourceImagePickerSheet: View {
         promptID: PreviewData.promptID3,
         generationService: GenerationService(),
         captionService: CaptionService(),
-        showingTrash: false
+        visibleRanks: .constant([.candidate, .shortlisted, .final_])
     )
     .frame(width: 600, height: 500)
 }
@@ -1079,7 +1136,7 @@ struct SourceImagePickerSheet: View {
     LightboxContentView(
         document: doc,
         promptID: PreviewData.promptID1,
-        showingTrash: false,
+        visibleRanks: [.candidate, .shortlisted, .final_],
         currentImageID: imageID
     )
     .frame(width: 800, height: 600)
