@@ -546,6 +546,11 @@ struct PromptDetailView: View {
                     .font(.caption)
                 }
 
+                if let refs = image.sourceImageRefs, !refs.isEmpty {
+                    Divider()
+                    sourceRefsSection(refs: refs)
+                }
+
                 Divider()
 
                 // Caption
@@ -637,6 +642,57 @@ struct PromptDetailView: View {
             }
             .padding()
         }
+    }
+
+    // MARK: - Inspector Source-Image Refs
+
+    private func sourceRefsSection(refs: [GeneratedImageSourceRef]) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Source Images")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(refs, id: \.id) { ref in
+                        sourceRefCell(ref: ref)
+                    }
+                }
+            }
+        }
+    }
+
+    private func sourceRefCell(ref: GeneratedImageSourceRef) -> some View {
+        let current = document.project.sourceImages.first(where: { $0.id == ref.id })
+        let url = current.flatMap { document.sourceImageURL(for: $0) }
+        let nsImage = url.flatMap { NSImage(contentsOf: $0) }
+        let displayName = (current?.label ?? ref.label) ?? ref.filename
+        let helpText = current == nil ? "Missing — \(ref.label ?? ref.filename)" : displayName
+
+        return VStack(spacing: 2) {
+            if let nsImage {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 48, height: 48)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            } else {
+                VStack {
+                    Image(systemName: "questionmark.circle")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(width: 48, height: 48)
+                .background(Color.secondary.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+            Text(displayName)
+                .font(.caption2)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .foregroundStyle(current == nil ? .secondary : .primary)
+                .frame(width: 48)
+        }
+        .help(helpText)
     }
 
     // MARK: - Auto-Caption Button
