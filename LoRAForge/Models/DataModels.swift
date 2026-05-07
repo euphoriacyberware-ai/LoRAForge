@@ -32,6 +32,7 @@ struct Prompt: Codable, Identifiable, Sendable {
     var generateCount: Int
     var configurationOverrideJSON: String?
     var generatedImages: [GeneratedImage]
+    var seedOverride: Int? = nil
 }
 
 // MARK: - Generated Image
@@ -43,6 +44,7 @@ struct GeneratedImage: Codable, Identifiable, Equatable, Sendable {
     var caption: String?
     var generatedAt: Date
     var seed: Int?
+    var prompt: String? = nil
 }
 
 // MARK: - Image Rank
