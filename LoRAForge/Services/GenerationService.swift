@@ -105,7 +105,10 @@ final class GenerationService: ObservableObject {
             }
 
             let configJSON = prompt.configurationOverrideJSON ?? document.project.baseConfigurationJSON
-            let parsed = ConfigurationMapper.parse(fromJSON: configJSON)
+            var parsed = ConfigurationMapper.parse(fromJSON: configJSON)
+            if let override = prompt.seedOverride {
+                parsed.configuration.seed = Int64(override)
+            }
             let hints = buildHints(prompt: prompt, document: document)
             let promptDisplayNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
 
@@ -209,7 +212,10 @@ final class GenerationService: ObservableObject {
             }
 
             let configJSON = prompt.configurationOverrideJSON ?? document.project.baseConfigurationJSON
-            let parsed = ConfigurationMapper.parse(fromJSON: configJSON)
+            var parsed = ConfigurationMapper.parse(fromJSON: configJSON)
+            if let override = prompt.seedOverride {
+                parsed.configuration.seed = Int64(override)
+            }
             let hints = buildHints(prompt: prompt, document: document)
 
             let promptDisplayNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
@@ -285,12 +291,17 @@ final class GenerationService: ObservableObject {
                 continue
             }
 
+            let usedPrompt = result.request.prompt
+            let usedSeed = result.request.configuration.seed.map { Int($0) }
+
             for nsImage in result.images {
                 do {
                     try saveGeneratedImage(
                         nsImage,
                         promptID: mapping.promptID,
                         promptIndex: currentPromptIndex,
+                        prompt: usedPrompt,
+                        seed: usedSeed,
                         document: document
                     )
                 } catch {
@@ -352,6 +363,8 @@ final class GenerationService: ObservableObject {
         _ nsImage: NSImage,
         promptID: UUID,
         promptIndex: Int,
+        prompt: String,
+        seed: Int?,
         document: LoRAForgeDocument
     ) throws {
         guard let packageURL = document.fileURL else { return }
@@ -380,7 +393,8 @@ final class GenerationService: ObservableObject {
             rank: .candidate,
             caption: nil,
             generatedAt: Date(),
-            seed: nil
+            seed: seed,
+            prompt: prompt
         )
 
         document.project.prompts[promptIndex].generatedImages.append(generated)

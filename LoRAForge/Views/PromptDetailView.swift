@@ -31,6 +31,7 @@ struct PromptDetailView: View {
                         promptTextEditor(index: index)
                         sourceSlots(prompt: prompt, index: index)
                         generateCountSection(index: index)
+                        seedOverrideSection(index: index)
                         configOverrideSection(prompt: prompt, index: index)
                     }
                     .padding()
@@ -212,6 +213,31 @@ struct PromptDetailView: View {
             .onChange(of: document.project.prompts[index].generateCount) {
                 document.updateChangeCount(.changeDone)
             }
+        }
+    }
+
+    // MARK: - Seed Override
+
+    private func seedOverrideSection(index: Int) -> some View {
+        HStack {
+            Text("Seed Override")
+                .font(.headline)
+            Spacer()
+            TextField(
+                "Random",
+                value: Binding(
+                    get: { document.project.prompts[index].seedOverride },
+                    set: { newValue in
+                        document.project.prompts[index].seedOverride = newValue
+                        document.updateChangeCount(.changeDone)
+                    }
+                ),
+                format: .number
+            )
+            .textFieldStyle(.roundedBorder)
+            .frame(width: 140)
+            .multilineTextAlignment(.trailing)
+            .help("Leave empty to use the seed from the generation config (or randomize). Set to a value to force this seed for every generation.")
         }
     }
 
@@ -488,14 +514,22 @@ struct PromptDetailView: View {
 
                 // Details
                 VStack(alignment: .leading, spacing: 8) {
-                    if let seed = image.seed {
-                        LabeledContent("Seed") {
-                            Text("\(seed)")
-                                .monospacedDigit()
-                                .textSelection(.enabled)
-                        }
-                        .font(.caption)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Prompt")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(image.prompt?.isEmpty == false ? image.prompt! : "—")
+                            .font(.caption)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
+
+                    LabeledContent("Seed") {
+                        Text(image.seed.map { "\($0)" } ?? "—")
+                            .monospacedDigit()
+                            .textSelection(.enabled)
+                    }
+                    .font(.caption)
 
                     LabeledContent("Generated") {
                         Text(image.generatedAt, style: .date)
