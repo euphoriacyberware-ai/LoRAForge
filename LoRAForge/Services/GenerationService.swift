@@ -29,6 +29,14 @@ final class GenerationService: ObservableObject {
         let promptDisplayNumber: Int // 1-based for status message
         let totalForPrompt: Int     // prompt.generateCount
         let promptText: String
+        let sourceImageRefs: [GeneratedImageSourceRef]
+    }
+
+    private static func captureSourceImageRefs(prompt: Prompt, document: LoRAForgeDocument) -> [GeneratedImageSourceRef] {
+        prompt.sourceImageIDs.compactMap { sid in
+            guard let s = document.project.sourceImages.first(where: { $0.id == sid }) else { return nil }
+            return GeneratedImageSourceRef(id: s.id, filename: s.filename, label: s.label)
+        }
     }
 
     var progressFraction: Double {
@@ -110,6 +118,7 @@ final class GenerationService: ObservableObject {
                 parsed.configuration.seed = Int64(override)
             }
             let hints = buildHints(prompt: prompt, document: document)
+            let sourceRefs = Self.captureSourceImageRefs(prompt: prompt, document: document)
             let promptDisplayNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
 
             for i in 0..<prompt.generateCount {
@@ -128,7 +137,8 @@ final class GenerationService: ObservableObject {
                     imageNumber: i,
                     promptDisplayNumber: promptDisplayNumber,
                     totalForPrompt: prompt.generateCount,
-                    promptText: prompt.text
+                    promptText: prompt.text,
+                    sourceImageRefs: sourceRefs
                 )
             }
 
@@ -217,6 +227,7 @@ final class GenerationService: ObservableObject {
                 parsed.configuration.seed = Int64(override)
             }
             let hints = buildHints(prompt: prompt, document: document)
+            let sourceRefs = Self.captureSourceImageRefs(prompt: prompt, document: document)
 
             let promptDisplayNumber = (document.project.prompts.firstIndex(where: { $0.id == prompt.id }) ?? 0) + 1
 
@@ -236,7 +247,8 @@ final class GenerationService: ObservableObject {
                     imageNumber: i,
                     promptDisplayNumber: promptDisplayNumber,
                     totalForPrompt: prompt.generateCount,
-                    promptText: prompt.text
+                    promptText: prompt.text,
+                    sourceImageRefs: sourceRefs
                 )
             }
 
@@ -293,6 +305,7 @@ final class GenerationService: ObservableObject {
 
             let usedPrompt = result.request.prompt
             let usedSeed = result.request.configuration.seed.map { Int($0) }
+            let usedSourceRefs = mapping.sourceImageRefs
 
             for nsImage in result.images {
                 do {
@@ -302,6 +315,7 @@ final class GenerationService: ObservableObject {
                         promptIndex: currentPromptIndex,
                         prompt: usedPrompt,
                         seed: usedSeed,
+                        sourceImageRefs: usedSourceRefs,
                         document: document
                     )
                 } catch {
@@ -365,6 +379,7 @@ final class GenerationService: ObservableObject {
         promptIndex: Int,
         prompt: String,
         seed: Int?,
+        sourceImageRefs: [GeneratedImageSourceRef],
         document: LoRAForgeDocument
     ) throws {
         guard let packageURL = document.fileURL else { return }
@@ -394,7 +409,8 @@ final class GenerationService: ObservableObject {
             caption: nil,
             generatedAt: Date(),
             seed: seed,
-            prompt: prompt
+            prompt: prompt,
+            sourceImageRefs: sourceImageRefs.isEmpty ? nil : sourceImageRefs
         )
 
         document.project.prompts[promptIndex].generatedImages.append(generated)

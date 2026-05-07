@@ -45,6 +45,15 @@ struct GeneratedImage: Codable, Identifiable, Equatable, Sendable {
     var generatedAt: Date
     var seed: Int?
     var prompt: String? = nil
+    var sourceImageRefs: [GeneratedImageSourceRef]? = nil
+}
+
+// MARK: - Generated Image — Source Image Reference
+
+struct GeneratedImageSourceRef: Codable, Equatable, Sendable {
+    var id: UUID
+    var filename: String
+    var label: String?
 }
 
 // MARK: - Image Rank
