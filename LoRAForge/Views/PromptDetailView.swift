@@ -716,6 +716,12 @@ struct PromptDetailView: View {
 
             Divider()
 
+            Button("Add to Source Images") {
+                document.addGeneratedImageAsSource(promptID: promptID, imageID: image.id)
+            }
+
+            Divider()
+
             Button("View Full Size") {
                 lightboxImageID = image.id
             }

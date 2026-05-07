@@ -264,6 +264,38 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         updateChangeCount(.changeDone)
     }
 
+    // MARK: - Promote Generated Image to Source
+
+    func addGeneratedImageAsSource(promptID: UUID, imageID: UUID) {
+        guard let packageURL = fileURL,
+              let (pIdx, iIdx) = imageIndices(promptID: promptID, imageID: imageID) else { return }
+        let image = project.prompts[pIdx].generatedImages[iIdx]
+
+        let srcSubdir = image.rank == .discarded ? "trash" : "generated"
+        let srcURL = packageURL
+            .appendingPathComponent(srcSubdir)
+            .appendingPathComponent(promptID.uuidString)
+            .appendingPathComponent(image.filename)
+
+        let fm = FileManager.default
+        let sourcesDir = packageURL.appendingPathComponent("sources")
+        try? fm.createDirectory(at: sourcesDir, withIntermediateDirectories: true)
+
+        let newID = UUID()
+        let ext = (image.filename as NSString).pathExtension
+        let newFilename = "\(newID.uuidString).\(ext.isEmpty ? "png" : ext)"
+        let destURL = sourcesDir.appendingPathComponent(newFilename)
+
+        do {
+            try fm.copyItem(at: srcURL, to: destURL)
+            let source = SourceImage(id: newID, filename: newFilename, label: nil)
+            project.sourceImages.append(source)
+            updateChangeCount(.changeDone)
+        } catch {
+            Swift.print("Failed to add generated image as source: \(error)")
+        }
+    }
+
     // MARK: - Sweep (bulk discard candidates with undo)
 
     func sweepCandidates(promptID: UUID) {
