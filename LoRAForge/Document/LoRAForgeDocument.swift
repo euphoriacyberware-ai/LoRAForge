@@ -264,6 +264,65 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         updateChangeCount(.changeDone)
     }
 
+    // MARK: - Sweep (bulk discard candidates with undo)
+
+    func sweepCandidates(promptID: UUID) {
+        guard let packageURL = fileURL,
+              let pIdx = project.prompts.firstIndex(where: { $0.id == promptID }) else { return }
+
+        let candidateIDs = project.prompts[pIdx].generatedImages
+            .filter { $0.rank == .candidate }
+            .map(\.id)
+        guard !candidateIDs.isEmpty else { return }
+
+        let srcDir = packageURL.appendingPathComponent("generated").appendingPathComponent(promptID.uuidString)
+        let dstDir = packageURL.appendingPathComponent("trash").appendingPathComponent(promptID.uuidString)
+        let fm = FileManager.default
+        try? fm.createDirectory(at: dstDir, withIntermediateDirectories: true)
+
+        for id in candidateIDs {
+            guard let iIdx = project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == id }) else { continue }
+            let filename = project.prompts[pIdx].generatedImages[iIdx].filename
+            try? fm.moveItem(
+                at: srcDir.appendingPathComponent(filename),
+                to: dstDir.appendingPathComponent(filename)
+            )
+            project.prompts[pIdx].generatedImages[iIdx].rank = .discarded
+        }
+
+        undoManager?.registerUndo(withTarget: self) { doc in
+            doc.unsweepCandidates(promptID: promptID, imageIDs: candidateIDs)
+        }
+        undoManager?.setActionName("Sweep Candidates")
+        updateChangeCount(.changeDone)
+    }
+
+    private func unsweepCandidates(promptID: UUID, imageIDs: [UUID]) {
+        guard let packageURL = fileURL,
+              let pIdx = project.prompts.firstIndex(where: { $0.id == promptID }) else { return }
+
+        let srcDir = packageURL.appendingPathComponent("trash").appendingPathComponent(promptID.uuidString)
+        let dstDir = packageURL.appendingPathComponent("generated").appendingPathComponent(promptID.uuidString)
+        let fm = FileManager.default
+        try? fm.createDirectory(at: dstDir, withIntermediateDirectories: true)
+
+        for id in imageIDs {
+            guard let iIdx = project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == id }) else { continue }
+            let filename = project.prompts[pIdx].generatedImages[iIdx].filename
+            try? fm.moveItem(
+                at: srcDir.appendingPathComponent(filename),
+                to: dstDir.appendingPathComponent(filename)
+            )
+            project.prompts[pIdx].generatedImages[iIdx].rank = .candidate
+        }
+
+        undoManager?.registerUndo(withTarget: self) { doc in
+            doc.sweepCandidates(promptID: promptID)
+        }
+        undoManager?.setActionName("Sweep Candidates")
+        updateChangeCount(.changeDone)
+    }
+
     // MARK: - Prompt Deletion (with Undo)
 
     func trashPrompt(id: UUID) {
