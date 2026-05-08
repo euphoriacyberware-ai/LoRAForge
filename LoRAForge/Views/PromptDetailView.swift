@@ -33,17 +33,20 @@ struct PromptDetailView: View {
                     Divider()
 
                     VStack(alignment: .leading, spacing: 16) {
-                        sourceSlots(prompt: prompt, index: index)
+                        
 
                         HStack(alignment: .top, spacing: 16) {
+                            sourceSlots(prompt: prompt, index: index)
+                            
                             VStack(alignment: .leading, spacing: 16) {
                                 generateCountSection(index: index)
                                 seedOverrideSection(index: index)
+                                configOverrideSection(prompt: prompt, index: index)
+                                    .frame(maxWidth: .infinity, alignment: .topLeading)
                             }
                             .frame(maxWidth: .infinity, alignment: .topLeading)
 
-                            configOverrideSection(prompt: prompt, index: index)
-                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                            
                         }
                     }
                     .padding()
@@ -112,7 +115,7 @@ struct PromptDetailView: View {
             Divider()
 
             SpellCheckedTextEditor(text: $document.project.prompts[index].text)
-                .frame(minHeight: 80, maxHeight: 200)
+                .frame(minHeight: 20, maxHeight: 60)
                 .background(Color(nsColor: .textBackgroundColor))
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
@@ -239,7 +242,7 @@ struct PromptDetailView: View {
             Spacer()
             Stepper(
                 value: $document.project.prompts[index].generateCount,
-                in: 1...100
+                in: 1...10
             ) {
                 Text("\(document.project.prompts[index].generateCount)")
                     .monospacedDigit()
