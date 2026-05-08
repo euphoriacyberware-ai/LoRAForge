@@ -190,6 +190,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                          action: #selector(NSText.selectAll(_:)),
                          keyEquivalent: "a")
 
+        editMenu.addItem(.separator())
+        let spellingItem = NSMenuItem(title: "Spelling and Grammar", action: nil, keyEquivalent: "")
+        let spellingMenu = NSMenu(title: "Spelling and Grammar")
+        spellingMenu.addItem(withTitle: "Show Spelling and Grammar",
+                             action: #selector(NSText.showGuessPanel(_:)),
+                             keyEquivalent: ":")
+        spellingMenu.addItem(withTitle: "Check Document Now",
+                             action: #selector(NSText.checkSpelling(_:)),
+                             keyEquivalent: ";")
+        spellingMenu.addItem(.separator())
+        spellingMenu.addItem(withTitle: "Check Spelling While Typing",
+                             action: #selector(NSTextView.toggleContinuousSpellChecking(_:)),
+                             keyEquivalent: "")
+        spellingMenu.addItem(withTitle: "Check Grammar With Spelling",
+                             action: #selector(NSTextView.toggleGrammarChecking(_:)),
+                             keyEquivalent: "")
+        spellingMenu.addItem(withTitle: "Correct Spelling Automatically",
+                             action: #selector(NSTextView.toggleAutomaticSpellingCorrection(_:)),
+                             keyEquivalent: "")
+        spellingItem.submenu = spellingMenu
+        editMenu.addItem(spellingItem)
+
         // Project menu
         let projectMenuItem = NSMenuItem()
         mainMenu.addItem(projectMenuItem)
