@@ -43,6 +43,14 @@ struct SpellCheckedTextEditor: NSViewRepresentable {
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        // Always refresh the coordinator's parent reference so its
+        // textDidChange callback writes through the current binding.
+        // Without this, switching the bound state (e.g. selecting a
+        // different prompt) leaves the coordinator pointing at the
+        // previous binding and every keystroke overwrites the wrong
+        // value.
+        context.coordinator.parent = self
+
         guard let textView = scrollView.documentView as? NSTextView else { return }
         if textView.string != text {
             let selectedRanges = textView.selectedRanges
