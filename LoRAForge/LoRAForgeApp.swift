@@ -145,12 +145,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         fileMenu.addItem(withTitle: "Open…",
                          action: #selector(NSDocumentController.openDocument(_:)),
                          keyEquivalent: "o")
-        fileMenu.addItem(withTitle: "Open Recent", action: nil, keyEquivalent: "")
-        let recentMenu = NSMenu(title: "Open Recent")
-        recentMenu.addItem(withTitle: "Clear Menu",
-                           action: #selector(NSDocumentController.clearRecentDocuments(_:)),
-                           keyEquivalent: "")
-        fileMenu.items.last?.submenu = recentMenu
         fileMenu.addItem(.separator())
         fileMenu.addItem(withTitle: "Close",
                          action: #selector(NSWindow.performClose(_:)),
