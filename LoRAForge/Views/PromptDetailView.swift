@@ -377,7 +377,7 @@ struct PromptDetailView: View {
                 visibleRanks.insert(rank)
             }
         } label: {
-            Text(rankLabel(rank))
+            Text(rankFullLabel(rank))
                 .font(.caption2.bold())
                 .padding(.horizontal, 6)
                 .padding(.vertical, 2)
