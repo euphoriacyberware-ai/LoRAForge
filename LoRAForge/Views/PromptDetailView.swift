@@ -871,10 +871,19 @@ enum LightboxController {
             defer: false
         )
         window.contentViewController = hostingController
-        window.setContentSize(NSSize(width: winW, height: winH))
         window.title = "Lightbox"
         window.isReleasedWhenClosed = false
-        window.center()
+
+        // Restore the user's last size + position if any was saved; otherwise
+        // fall back to default 80% screen size, centered. setFrameAutosaveName
+        // then keeps the saved frame current as the user moves or resizes.
+        let autosaveName = "LightboxWindow"
+        if !window.setFrameUsingName(autosaveName) {
+            window.setContentSize(NSSize(width: winW, height: winH))
+            window.center()
+        }
+        window.setFrameAutosaveName(autosaveName)
+
         window.makeKeyAndOrderFront(nil)
         currentWindow = window
     }
