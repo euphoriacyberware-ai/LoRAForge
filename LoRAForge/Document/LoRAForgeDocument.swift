@@ -355,6 +355,56 @@ final class LoRAForgeDocument: NSDocument, ObservableObject {
         updateChangeCount(.changeDone)
     }
 
+    // MARK: - Prompt Duplication (with Undo)
+
+    @discardableResult
+    func duplicatePrompt(id: UUID) -> UUID? {
+        guard let index = project.prompts.firstIndex(where: { $0.id == id }) else { return nil }
+        let original = project.prompts[index]
+        let newID = UUID()
+        let copy = Prompt(
+            id: newID,
+            order: index + 1,
+            text: original.text,
+            sourceImageIDs: original.sourceImageIDs,
+            generateCount: original.generateCount,
+            configurationOverrideJSON: original.configurationOverrideJSON,
+            generatedImages: [],
+            seedOverride: original.seedOverride
+        )
+        insertDuplicatedPrompt(copy, at: index + 1)
+        return newID
+    }
+
+    private func insertDuplicatedPrompt(_ prompt: Prompt, at index: Int) {
+        project.prompts.insert(prompt, at: index)
+        renumberPromptOrders()
+
+        undoManager?.registerUndo(withTarget: self) { doc in
+            doc.removeDuplicatedPrompt(id: prompt.id, originalPrompt: prompt, originalIndex: index)
+        }
+        undoManager?.setActionName("Duplicate Prompt")
+        updateChangeCount(.changeDone)
+    }
+
+    private func removeDuplicatedPrompt(id: UUID, originalPrompt: Prompt, originalIndex: Int) {
+        guard let currentIndex = project.prompts.firstIndex(where: { $0.id == id }) else { return }
+        project.prompts.remove(at: currentIndex)
+        renumberPromptOrders()
+
+        undoManager?.registerUndo(withTarget: self) { doc in
+            doc.insertDuplicatedPrompt(originalPrompt, at: originalIndex)
+        }
+        undoManager?.setActionName("Duplicate Prompt")
+        updateChangeCount(.changeDone)
+    }
+
+    private func renumberPromptOrders() {
+        for i in project.prompts.indices {
+            project.prompts[i].order = i
+        }
+    }
+
     // MARK: - Prompt Deletion (with Undo)
 
     func trashPrompt(id: UUID) {

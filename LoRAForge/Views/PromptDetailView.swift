@@ -7,6 +7,7 @@ struct PromptDetailView: View {
     @ObservedObject var generationService: GenerationService
     @ObservedObject var captionService: CaptionService
     @Binding var visibleRanks: Set<ImageRank>
+    var onDuplicatePrompt: ((UUID) -> Void)? = nil
     @State private var showingSlotPicker = false
     @State private var editingSlotIndex: Int?
     @State private var lightboxImageID: UUID?
@@ -27,8 +28,11 @@ struct PromptDetailView: View {
             let prompt = document.project.prompts[index]
             HStack(spacing: 0) {
                 VStack(spacing: 0) {
+                    promptTextEditor(index: index)
+
+                    Divider()
+
                     VStack(alignment: .leading, spacing: 16) {
-                        promptTextEditor(index: index)
                         sourceSlots(prompt: prompt, index: index)
                         generateCountSection(index: index)
                         seedOverrideSection(index: index)
@@ -91,9 +95,14 @@ struct PromptDetailView: View {
     // MARK: - Prompt Text
 
     private func promptTextEditor(index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("Prompt Text")
-                .font(.headline)
+        VStack(spacing: 0) {
+            promptTextToolbar
+                .padding(.horizontal)
+                .padding(.vertical, 6)
+                .background(.bar)
+
+            Divider()
+
             SpellCheckedTextEditor(text: $document.project.prompts[index].text)
                 .frame(minHeight: 80, maxHeight: 200)
                 .background(Color(nsColor: .textBackgroundColor))
@@ -101,9 +110,29 @@ struct PromptDetailView: View {
                     RoundedRectangle(cornerRadius: 4)
                         .stroke(Color.secondary.opacity(0.3), lineWidth: 1)
                 )
+                .padding()
                 .onChange(of: document.project.prompts[index].text) {
                     document.updateChangeCount(.changeDone)
                 }
+        }
+    }
+
+    private var promptTextToolbar: some View {
+        HStack(spacing: 8) {
+            Text("Prompt Text")
+                .font(.headline)
+
+            Spacer()
+
+            Button {
+                if let newID = document.duplicatePrompt(id: promptID) {
+                    onDuplicatePrompt?(newID)
+                }
+            } label: {
+                Label("Duplicate", systemImage: "doc.on.doc")
+            }
+            .buttonStyle(.borderless)
+            .help("Duplicate this prompt")
         }
     }
 

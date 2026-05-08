@@ -384,6 +384,11 @@ struct ContentView: View {
                     }
                     .tag(SidebarSelection.prompt(prompt.id))
                     .contextMenu {
+                        Button("Duplicate") {
+                            if let newID = document.duplicatePrompt(id: prompt.id) {
+                                selection = .prompt(newID)
+                            }
+                        }
                         Button("Delete Prompt") {
                             deletePrompt(id: prompt.id)
                         }
@@ -553,7 +558,10 @@ struct ContentView: View {
                     promptID: promptID,
                     generationService: generationService,
                     captionService: captionService,
-                    visibleRanks: $visibleRanks
+                    visibleRanks: $visibleRanks,
+                    onDuplicatePrompt: { newID in
+                        selection = .prompt(newID)
+                    }
                 )
             case .sourceImage(let sourceID):
                 if let source = document.project.sourceImages.first(where: { $0.id == sourceID }) {
