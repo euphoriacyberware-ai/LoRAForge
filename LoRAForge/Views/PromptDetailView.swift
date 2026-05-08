@@ -34,9 +34,17 @@ struct PromptDetailView: View {
 
                     VStack(alignment: .leading, spacing: 16) {
                         sourceSlots(prompt: prompt, index: index)
-                        generateCountSection(index: index)
-                        seedOverrideSection(index: index)
-                        configOverrideSection(prompt: prompt, index: index)
+
+                        HStack(alignment: .top, spacing: 16) {
+                            VStack(alignment: .leading, spacing: 16) {
+                                generateCountSection(index: index)
+                                seedOverrideSection(index: index)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .topLeading)
+
+                            configOverrideSection(prompt: prompt, index: index)
+                                .frame(maxWidth: .infinity, alignment: .topLeading)
+                        }
                     }
                     .padding()
 
