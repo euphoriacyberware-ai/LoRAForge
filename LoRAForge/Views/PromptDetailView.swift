@@ -94,11 +94,8 @@ struct PromptDetailView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Prompt Text")
                 .font(.headline)
-            TextEditor(text: $document.project.prompts[index].text)
-                .font(.body)
+            SpellCheckedTextEditor(text: $document.project.prompts[index].text)
                 .frame(minHeight: 80, maxHeight: 200)
-                .scrollContentBackground(.hidden)
-                .padding(4)
                 .background(Color(nsColor: .textBackgroundColor))
                 .overlay(
                     RoundedRectangle(cornerRadius: 4)
@@ -544,7 +541,7 @@ struct PromptDetailView: View {
                             autoCaptionButton(image: image, promptIndex: pIdx)
                         }
                     }
-                    TextEditor(text: Binding(
+                    SpellCheckedTextEditor(text: Binding(
                         get: {
                             guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
                                   let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == image.id }) else {
@@ -562,8 +559,6 @@ struct PromptDetailView: View {
                         }
                     ))
                     .frame(minHeight: 80, maxHeight: 200)
-                    .scrollContentBackground(.hidden)
-                    .padding(4)
                     .background(Color(nsColor: .textBackgroundColor))
                     .overlay(
                         RoundedRectangle(cornerRadius: 4)
@@ -1047,7 +1042,7 @@ struct LightboxContentView: View {
     // MARK: - Caption Editor
 
     private var captionEditor: some View {
-        TextEditor(text: Binding(
+        SpellCheckedTextEditor(text: Binding(
             get: {
                 guard let pIdx = document.project.prompts.firstIndex(where: { $0.id == promptID }),
                       let iIdx = document.project.prompts[pIdx].generatedImages.firstIndex(where: { $0.id == currentImageID }) else {
@@ -1065,8 +1060,6 @@ struct LightboxContentView: View {
             }
         ))
         .frame(minHeight: 60, maxHeight: 120)
-        .scrollContentBackground(.hidden)
-        .padding(4)
         .background(Color(nsColor: .textBackgroundColor))
         .overlay(
             RoundedRectangle(cornerRadius: 4)
