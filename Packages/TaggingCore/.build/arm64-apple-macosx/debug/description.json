@@ -1,0 +1,602 @@
+{
+  "builtTestProducts" : [
+    {
+      "binaryPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.xctest/Contents/MacOS/TaggingCorePackageTests",
+      "packagePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore",
+      "productName" : "TaggingCorePackageTests"
+    }
+  ],
+  "copyCommands" : {
+
+  },
+  "explicitTargetDependencyImportCheckingMode" : {
+    "none" : {
+
+    }
+  },
+  "generatedSourceTargetSet" : [
+
+  ],
+  "pluginDescriptions" : [
+
+  ],
+  "swiftCommands" : {
+    "C.TaggingCore-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/sources",
+      "importPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "TaggingCore",
+      "moduleOutputPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCore.swiftmodule",
+      "objects" : [
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx15.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-j16",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/include/TaggingCore-Swift.h",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "taggingcore"
+      ],
+      "outputFileMapPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCore.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift"
+      ],
+      "tempsPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.TaggingCorePackageTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/sources",
+      "importPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.derived/runner.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCoreTests.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "TaggingCorePackageTests",
+      "moduleOutputPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCorePackageTests.swiftmodule",
+      "objects" : [
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/runner.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx15.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j16",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-emit-objc-header",
+        "-emit-objc-header-path",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/include/TaggingCorePackageTests-Swift.h",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "taggingcore"
+      ],
+      "outputFileMapPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCorePackageTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.derived/runner.swift"
+      ],
+      "tempsPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build",
+      "wholeModuleOptimization" : false
+    },
+    "C.TaggingCoreTests-arm64-apple-macosx-debug.module" : {
+      "executable" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "fileList" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/sources",
+      "importPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules",
+      "inputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/TaggingCoreTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCore.swiftmodule"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/sources"
+        }
+      ],
+      "isLibrary" : true,
+      "moduleName" : "TaggingCoreTests",
+      "moduleOutputPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCoreTests.swiftmodule",
+      "objects" : [
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/TaggingCoreTests.swift.o"
+      ],
+      "otherArguments" : [
+        "-target",
+        "arm64-apple-macosx15.0",
+        "-incremental",
+        "-enable-batch-mode",
+        "-serialize-diagnostics",
+        "-index-store-path",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/index/store",
+        "-Onone",
+        "-enable-testing",
+        "-Xfrontend",
+        "-enable-cross-import-overlays",
+        "-j16",
+        "-DSWIFT_PACKAGE",
+        "-DDEBUG",
+        "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+        "-module-cache-path",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/ModuleCache",
+        "-parseable-output",
+        "-parse-as-library",
+        "-swift-version",
+        "6",
+        "-plugin-path",
+        "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+        "-sdk",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-F",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-I",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-L",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+        "-g",
+        "-Xcc",
+        "-isysroot",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+        "-Xcc",
+        "-F",
+        "-Xcc",
+        "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+        "-Xcc",
+        "-fPIC",
+        "-Xcc",
+        "-g",
+        "-package-name",
+        "taggingcore"
+      ],
+      "outputFileMapPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/output-file-map.json",
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/TaggingCoreTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCoreTests.swiftmodule"
+        }
+      ],
+      "prepareForIndexing" : false,
+      "sources" : [
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/TaggingCoreTests.swift"
+      ],
+      "tempsPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build",
+      "wholeModuleOptimization" : false
+    }
+  },
+  "swiftFrontendCommands" : {
+
+  },
+  "swiftTargetScanArgs" : {
+    "TaggingCore" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "TaggingCore",
+      "-package-name",
+      "taggingcore",
+      "-c",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift",
+      "-I",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx15.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-j16",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/include/TaggingCore-Swift.h",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "taggingcore",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "TaggingCorePackageTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "TaggingCorePackageTests",
+      "-package-name",
+      "taggingcore",
+      "-c",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.derived/runner.swift",
+      "-I",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx15.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j16",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-emit-objc-header",
+      "-emit-objc-header-path",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/include/TaggingCorePackageTests-Swift.h",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "taggingcore",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ],
+    "TaggingCoreTests" : [
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc",
+      "-module-name",
+      "TaggingCoreTests",
+      "-package-name",
+      "taggingcore",
+      "-c",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/TaggingCoreTests.swift",
+      "-I",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules",
+      "-target",
+      "arm64-apple-macosx15.0",
+      "-incremental",
+      "-enable-batch-mode",
+      "-serialize-diagnostics",
+      "-index-store-path",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/index/store",
+      "-Onone",
+      "-enable-testing",
+      "-Xfrontend",
+      "-enable-cross-import-overlays",
+      "-j16",
+      "-DSWIFT_PACKAGE",
+      "-DDEBUG",
+      "-DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE",
+      "-module-cache-path",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/ModuleCache",
+      "-parseable-output",
+      "-parse-as-library",
+      "-swift-version",
+      "6",
+      "-plugin-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins/testing",
+      "-sdk",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-F",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-I",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-L",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/usr/lib",
+      "-g",
+      "-Xcc",
+      "-isysroot",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX26.5.sdk",
+      "-Xcc",
+      "-F",
+      "-Xcc",
+      "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/Library/Frameworks",
+      "-Xcc",
+      "-fPIC",
+      "-Xcc",
+      "-g",
+      "-package-name",
+      "taggingcore",
+      "-driver-use-frontend-path",
+      "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+    ]
+  },
+  "targetDependencyMap" : {
+    "TaggingCore" : [
+
+    ],
+    "TaggingCorePackageTests" : [
+      "TaggingCoreTests",
+      "TaggingCore"
+    ],
+    "TaggingCoreTests" : [
+      "TaggingCore"
+    ]
+  },
+  "testDiscoveryCommands" : {
+
+  },
+  "testEntryPointCommands" : {
+    "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.derived/runner.swift" : {
+      "inputs" : [
+
+      ],
+      "outputs" : [
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.derived/runner.swift"
+        }
+      ]
+    }
+  },
+  "traitConfiguration" : {
+    "default" : {
+
+    }
+  },
+  "writeCommands" : {
+    "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/sources"
+    },
+    "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.derived/runner.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/sources"
+    },
+    "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.product/Objects.LinkFileList" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<link-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.build/runner.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/TaggingCoreTests.swift.o"
+        }
+      ],
+      "outputFilePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.product/Objects.LinkFileList"
+    },
+    "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/sources" : {
+      "alwaysOutOfDate" : false,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<sources-file-list>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/TaggingCoreTests.swift"
+        }
+      ],
+      "outputFilePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/sources"
+    },
+    "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt" : {
+      "alwaysOutOfDate" : true,
+      "inputs" : [
+        {
+          "kind" : "virtual",
+          "name" : "<swift-get-version>"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc"
+        }
+      ],
+      "outputFilePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt"
+    }
+  }
+}

@@ -1,80 +1,68 @@
-//
-//  ContentView.swift
-//  LoRAForge
-//
-//  Created by Brian Cantin on 2026-08-08.
-//
-
 import SwiftUI
-import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
+    @State private var selectedTab = AppTab.datasetBuilder
+    @State private var showingSettings = false
 
     var body: some View {
-        NavigationViewWrapper {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+        TabView(selection: $selectedTab) {
+            Tab("Dataset builder", systemImage: "square.grid.2x2", value: .datasetBuilder) {
+                NavigationStack {
+                    DatasetBuilderView()
+                        .navigationTitle("Dataset builder")
+                        .settingsToolbarButton($showingSettings)
+                }
+            }
+            Tab("Reference library", systemImage: "photo.on.rectangle", value: .referenceLibrary) {
+                NavigationStack {
+                    ReferenceLibraryView()
+                        .navigationTitle("Reference library")
+                        .settingsToolbarButton($showingSettings)
+                }
+            }
+            Tab("Tag library", systemImage: "tag", value: .tagLibrary) {
+                NavigationStack {
+                    TagLibraryView()
+                        .navigationTitle("Tag library")
+                        .settingsToolbarButton($showingSettings)
+                }
+            }
+        }
+        #if os(iOS)
+        .sheet(isPresented: $showingSettings) {
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Settings")
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showingSettings = false }
+                        }
                     }
-                }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
             }
         }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
+        #endif
     }
 }
 
-fileprivate struct NavigationViewWrapper<Content: View>: View {
-    let content: () -> Content
-
-    var body: some View {
-#if os(macOS)
-        NavigationSplitView {
-            content()
-        } detail: {
-            Text("Select an item")
-        }
-#else
-        content()
-#endif
-    }
+enum AppTab: Hashable {
+    case datasetBuilder
+    case referenceLibrary
+    case tagLibrary
 }
 
-#Preview {
-    ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
+extension View {
+    @ViewBuilder
+    func settingsToolbarButton(_ isPresented: Binding<Bool>) -> some View {
+        #if os(iOS)
+        self.toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { isPresented.wrappedValue = true } label: {
+                    Label("Settings", systemImage: "gear")
+                }
+            }
+        }
+        #else
+        self
+        #endif
+    }
 }
