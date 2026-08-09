@@ -28,7 +28,27 @@
       "inputs" : [
         {
           "kind" : "file",
-          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift"
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/CaptionRenderer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/DuplicateDetector.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/SelectMode.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/Tag.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagAssignment.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagCategory.swift"
         },
         {
           "kind" : "file",
@@ -43,7 +63,12 @@
       "moduleName" : "TaggingCore",
       "moduleOutputPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCore.swiftmodule",
       "objects" : [
-        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.swift.o"
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/CaptionRenderer.swift.o",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/DuplicateDetector.swift.o",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/SelectMode.swift.o",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/Tag.swift.o",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagAssignment.swift.o",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagCategory.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -98,7 +123,27 @@
       "outputs" : [
         {
           "kind" : "file",
-          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.swift.o"
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/CaptionRenderer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/DuplicateDetector.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/SelectMode.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/Tag.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagAssignment.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagCategory.swift.o"
         },
         {
           "kind" : "file",
@@ -107,7 +152,12 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift"
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/CaptionRenderer.swift",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/DuplicateDetector.swift",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/SelectMode.swift",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/Tag.swift",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagAssignment.swift",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagCategory.swift"
       ],
       "tempsPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build",
       "wholeModuleOptimization" : false
@@ -214,7 +264,11 @@
       "inputs" : [
         {
           "kind" : "file",
-          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/TaggingCoreTests.swift"
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/CaptionRendererTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/DuplicateDetectorTests.swift"
         },
         {
           "kind" : "file",
@@ -233,7 +287,8 @@
       "moduleName" : "TaggingCoreTests",
       "moduleOutputPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules/TaggingCoreTests.swiftmodule",
       "objects" : [
-        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/TaggingCoreTests.swift.o"
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/CaptionRendererTests.swift.o",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/DuplicateDetectorTests.swift.o"
       ],
       "otherArguments" : [
         "-target",
@@ -287,7 +342,11 @@
       "outputs" : [
         {
           "kind" : "file",
-          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/TaggingCoreTests.swift.o"
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/CaptionRendererTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/DuplicateDetectorTests.swift.o"
         },
         {
           "kind" : "file",
@@ -296,7 +355,8 @@
       ],
       "prepareForIndexing" : false,
       "sources" : [
-        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/TaggingCoreTests.swift"
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/CaptionRendererTests.swift",
+        "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/DuplicateDetectorTests.swift"
       ],
       "tempsPath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build",
       "wholeModuleOptimization" : false
@@ -313,7 +373,12 @@
       "-package-name",
       "taggingcore",
       "-c",
-      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/CaptionRenderer.swift",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/DuplicateDetector.swift",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/SelectMode.swift",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/Tag.swift",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagAssignment.swift",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagCategory.swift",
       "-I",
       "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules",
       "-target",
@@ -433,7 +498,8 @@
       "-package-name",
       "taggingcore",
       "-c",
-      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/TaggingCoreTests.swift",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/CaptionRendererTests.swift",
+      "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/DuplicateDetectorTests.swift",
       "-I",
       "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/Modules",
       "-target",
@@ -529,7 +595,27 @@
         },
         {
           "kind" : "file",
-          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift"
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/CaptionRenderer.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/DuplicateDetector.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/SelectMode.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/Tag.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagAssignment.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagCategory.swift"
         }
       ],
       "outputFilePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/sources"
@@ -557,7 +643,27 @@
         },
         {
           "kind" : "file",
-          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.swift.o"
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/CaptionRenderer.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/DuplicateDetector.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/SelectMode.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/Tag.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagAssignment.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagCategory.swift.o"
         },
         {
           "kind" : "file",
@@ -565,7 +671,11 @@
         },
         {
           "kind" : "file",
-          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/TaggingCoreTests.swift.o"
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/CaptionRendererTests.swift.o"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/DuplicateDetectorTests.swift.o"
         }
       ],
       "outputFilePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCorePackageTests.product/Objects.LinkFileList"
@@ -579,7 +689,11 @@
         },
         {
           "kind" : "file",
-          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/TaggingCoreTests.swift"
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/CaptionRendererTests.swift"
+        },
+        {
+          "kind" : "file",
+          "name" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Tests/TaggingCoreTests/DuplicateDetectorTests.swift"
         }
       ],
       "outputFilePath" : "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCoreTests.build/sources"

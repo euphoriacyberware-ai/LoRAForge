@@ -2,11 +2,46 @@
   "": {
     "swift-dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/primary.swiftdeps"
   },
-  "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TaggingCore.swift": {
-    "dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.d",
-    "object": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.swift.o",
-    "swiftmodule": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore~partial.swiftmodule",
-    "swift-dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.swiftdeps",
-    "diagnostics": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TaggingCore.dia"
+  "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/CaptionRenderer.swift": {
+    "dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/CaptionRenderer.d",
+    "object": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/CaptionRenderer.swift.o",
+    "swiftmodule": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/CaptionRenderer~partial.swiftmodule",
+    "swift-dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/CaptionRenderer.swiftdeps",
+    "diagnostics": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/CaptionRenderer.dia"
+  },
+  "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/DuplicateDetector.swift": {
+    "dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/DuplicateDetector.d",
+    "object": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/DuplicateDetector.swift.o",
+    "swiftmodule": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/DuplicateDetector~partial.swiftmodule",
+    "swift-dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/DuplicateDetector.swiftdeps",
+    "diagnostics": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/DuplicateDetector.dia"
+  },
+  "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/SelectMode.swift": {
+    "dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/SelectMode.d",
+    "object": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/SelectMode.swift.o",
+    "swiftmodule": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/SelectMode~partial.swiftmodule",
+    "swift-dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/SelectMode.swiftdeps",
+    "diagnostics": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/SelectMode.dia"
+  },
+  "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/Tag.swift": {
+    "dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/Tag.d",
+    "object": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/Tag.swift.o",
+    "swiftmodule": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/Tag~partial.swiftmodule",
+    "swift-dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/Tag.swiftdeps",
+    "diagnostics": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/Tag.dia"
+  },
+  "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagAssignment.swift": {
+    "dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagAssignment.d",
+    "object": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagAssignment.swift.o",
+    "swiftmodule": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagAssignment~partial.swiftmodule",
+    "swift-dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagAssignment.swiftdeps",
+    "diagnostics": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagAssignment.dia"
+  },
+  "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/Sources/TaggingCore/TagCategory.swift": {
+    "dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagCategory.d",
+    "object": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagCategory.swift.o",
+    "swiftmodule": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagCategory~partial.swiftmodule",
+    "swift-dependencies": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagCategory.swiftdeps",
+    "diagnostics": "/Users/brian.cantin/Documents/GitHub/LoRAForge/Packages/TaggingCore/.build/arm64-apple-macosx/debug/TaggingCore.build/TagCategory.dia"
   }
 }
