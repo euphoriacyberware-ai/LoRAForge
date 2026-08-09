@@ -30,18 +30,26 @@ that cannot be tested and that constrain the real implementation when it arrives
 ### Targets and modules
 
 ```
-LoRADatasetBuilder/            app target (SwiftUI, macOS + iPadOS)
+LoRAForge/                     app target (SwiftUI, macOS + iPadOS)
 Packages/
   TaggingCore/                 domain types, caption renderer — pure Swift, no UI, no I/O
-  DatasetModel/                project, entry, image, caption types; document format
-  AppStore/                    SwiftData models, repositories
-  Generation/                  DrawThingsQueue wrapper, request routing, staging
-  Captioning/                  Ollama client
 ```
 
-Local SPM packages rather than one target. The boundary that matters most is `TaggingCore`:
-it is pure, fully specified, and the most heavily tested part of the system. Keeping it free
-of SwiftUI and SwiftData is what makes that possible.
+**Create packages when a phase gives them content, not upfront.** `TaggingCore` is created
+in phase 0 because the purity constraint is the reason it exists as a package at all — the
+compiler enforcing it is the point.
+
+Everything else starts as a group in the app target and is promoted only if it earns it.
+Empty package shells add build overhead and fix module boundaries before there is code to
+draw them around.
+
+`Generation` is the most likely to earn promotion: request routing and result staging are
+both in the risk register as silent-failure paths, and a package boundary is what makes them
+testable against a stubbed queue without running the app. Assess at phase 9.
+
+Candidate groupings as content arrives — project and entry types with the document format,
+SwiftData models with their repositories, the Ollama client — but these are organisation,
+not architecture, until something makes them worth isolating.
 
 ### External dependencies
 
@@ -428,8 +436,9 @@ tests that assert on exact output rather than on absence of error.
 
 Answer during the phase that touches them, not before:
 
-- Whether opting out of iPad multitasking is available and worth using — phase 0
 - Whether `#Unique` is available at the deployment target — phase 2
 - Whether seed is exposed on `DrawThingsConfiguration` — phase 8
-- Whether 70/10 thresholds hold up in use — after phase 12, with real datasets
+- Whether the 0.85 tag-matching threshold holds up in use — after phase 3, with a real
+  vocabulary
+- Whether 70/10 audit thresholds hold up in use — after phase 12, with real datasets
 - Whether four reference slots is the right ceiling — after phase 10, with real datasets

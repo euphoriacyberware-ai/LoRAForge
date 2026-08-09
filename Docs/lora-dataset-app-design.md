@@ -48,12 +48,9 @@ coherent — a single pane, or the entry list without its strip — rather than 
 is more robust than opting out of multitasking, and it does not depend on an API whose
 status is moving.
 
-**Open:** whether opting out of multitasking is still available and worth using.
-`UIRequiresFullScreen` historically provided a genuine guarantee, but iPadOS 26 moved toward
-resizable windows for all apps and the flag may no longer have that effect. Worth verifying
-against current documentation before relying on it. For a single-user tool that will never
-be used in Split View the guarantee would be convenient, but not at the cost of building
-against a deprecated path.
+**Decided.** No attempt is made to opt out of multitasking. `UIRequiresFullScreen` is
+deprecated, so the guarantee it once provided is not available and is not worth pursuing.
+Adaptive layout against a minimum usable width is the whole of the approach.
 
 Out of scope: training itself, trainer-specific configuration, and anything downstream
 of export.
@@ -271,6 +268,64 @@ The view is responsible for the warning surfaces that document requires: duplica
 detection at tag creation, and affected-count warnings on category reorder, prefix
 edit, disable, and delete. Section 6.3 below extends those warnings to cover locked
 entries.
+
+#### Tag matching
+
+Two distinct functions, easily conflated:
+
+**Type-ahead search** finds existing tags for selection. Permissive, substring or prefix
+matching, runs on every keystroke in a token field (§6.5).
+
+**Duplicate detection** fires once, when committing a string that matched nothing. This is
+the mechanism tagging doc §6 relies on, and the only guard against the split-coverage
+failure §7 exists to surface.
+
+**Decided.** Duplicate detection runs in two stages.
+
+**Stage one — normalize and block.** Lowercase, trim, collapse internal whitespace, strip
+punctuation, NFC-normalize. An exact match against an existing tag in the same category
+*is* that tag: select it rather than offering a choice. `Looking At Viewer` and `looking at
+viewer` are not a near-match to adjudicate.
+
+**Case folding must be locale-independent.** Swift's `lowercased()` is; `lowercased(with:
+Locale.current)` is not, and would give the Turkish dotless-i behaviour where `I` folds to
+`ı`. Since the same library is used across devices (§1), a locale-sensitive fold means two
+devices disagree about a tag's canonical form — producing duplicates that duplicate detection
+cannot catch, because neither device considers them duplicates. Pass `nil` for locale
+anywhere it is a parameter.
+
+**NFC is for storage, not comparison.** Swift `String` equality and hashing already use
+Unicode canonical equivalence, so precomposed and decomposed forms compare equal without
+normalization. Normalize anyway, so the library holds one consistent form and exported
+sidecar text is byte-stable — but do not build defensive comparison logic around a problem
+the language has already solved.
+
+**Stage two — rank near-matches.** Token-sort the normalized string, then compare by
+normalized Levenshtein similarity. One pass covers both failure modes that matter: word
+order, where `warm overhead lighting` and `overhead warm lighting` become identical after
+sorting, and typos, which edit distance catches directly. Surface the highest-scoring few
+above a threshold.
+
+**Recommended:** ~0.85 similarity as the starting threshold, user-adjustable, on the same
+footing as the 70/10 audit defaults — a starting guess rather than a measured figure.
+
+**Substring containment must not be used.** Tags carry modifiers atomically — `yellow
+sundress` is one tag, colour included (tagging doc §4.2) — so every garment tag contains its
+base noun. Containment would flag `yellow sundress` against `blue sundress`, which are
+correctly distinct, producing constant false positives in the category with the most tags.
+
+**Scope.** Matching runs within the target category, since split coverage is a per-category
+problem. **Recommended:** an exact normalized match in a *different* category surfaces as a
+separate, weaker notice — `smiling` in both Expression and Pose is likely a mistake, but a
+different one.
+
+**Accepted limitation.** Synonyms are not detectable. `gaze at viewer` and `looking at
+viewer` share nothing measurable by string comparison. The alias layer that would have
+addressed this was considered and rejected (tagging doc §6), so this is a known gap rather
+than something to reach for embeddings or a thesaurus to close.
+
+**Implementation note.** A few thousand tags at the outside, running once per creation — a
+linear scan is correct. No index, no trigram table, no precomputation.
 
 ---
 
@@ -709,8 +764,10 @@ to get it.
   a category that was later disabled, the panel says so in one line rather than leaving a
   silent discrepancy between stored data and what is shown.
 - **Tag creation happens in the field.** Typing a string with no match offers to create it,
-  which is where the fuzzy duplicate check fires (tagging doc §6). This puts the guard at the
-  exact moment a new string would enter the library.
+  which is where the fuzzy duplicate check fires (tagging doc §6, and §3.3 above for the
+  matching specification). This puts the guard at the exact moment a new string would enter
+  the library. Note that the type-ahead used to *find* tags and the duplicate check used to
+  *create* them are different functions with different tolerances.
 - **Removal** is an affordance on the token itself.
 
 #### Platform and scrolling
@@ -1019,6 +1076,27 @@ being rewritten. **Recommended:** `Codable` JSON for metadata plus image files i
 package. A document format coupled to a framework's schema versioning is a liability;
 one you control entirely is not.
 
+#### Assignment shape
+
+**Decided.** A tag assignment is a free-standing value: tag ID plus selection order. An
+entry owns a collection of assignments; an assignment holds no reference back to an entry.
+Ownership is one-directional, which is what allows the tagging domain and the caption
+renderer to be tested with no dataset concept present.
+
+**Decided.** Category is not stored on the assignment. A tag belongs to exactly one category
+(tagging doc §3), so it is derivable, and a second copy could diverge. The single
+denormalized copy lives in the bundle's schema snapshot (§9.1), which carries tag ID,
+canonical string, and owning category ID together for the specific purpose of diagnosing a
+project against an unfamiliar library.
+
+**Decided.** Selection order is an **explicit field**, not implicit array position.
+
+Multi-select renders in selection order, preserved as-is and never sorted (tagging doc §5),
+so ordering is load-bearing output rather than incidental. Array position survives in a pure
+value type but is not guaranteed across a SwiftData relationship unless modelled — and the
+failure mode is silently reordered captions rather than an error. Carrying the index
+uniformly on single- and multi-select assignments is simpler than making it conditional.
+
 **The app-level store** needs queryability. It holds the category set, the global tag
 library, preferences, Ollama profiles, the known-projects index, and the queue's
 request-to-entry map and staging records.
@@ -1142,21 +1220,14 @@ thing standing between that and a bug report is a line of text in the dialogue.
 
 ## 11. Open Questions Summary
 
-| # | Question | Section |
-|---|---|---|
-| 1 | Whether opting out of iPad multitasking is still available and worth using | 1.1 |
-
-Item 1 is a compatibility check rather than a design decision — the minimum-width approach
-works either way, and opting out would only be a convenience on top of it.
-
-The object model, view structure, entry lifecycle, integration boundaries, captioning
-behaviour, auditing scope, export format, and persistence architecture are otherwise
-settled.
+None outstanding. The object model, view structure, entry lifecycle, integration
+boundaries, captioning behaviour, tag matching, auditing scope, export format, and
+persistence architecture are settled.
 
 Two things most likely to change once the app is in use, neither blocking: the 70/10
-audit thresholds inherited from the tagging document, which are a starting guess rather
-than a measured figure, and whether four reference slots (§5.1) is the right practical
-ceiling — a few datasets will answer both better than further discussion.
+audit thresholds and the 0.85 tag-matching threshold, both starting guesses rather than
+measured figures, and whether four reference slots (§5.1) is the right practical ceiling —
+a few datasets will answer all three better than further discussion.
 
 Items marked **Recommended** throughout remain proposals rather than decisions, and are
-the natural place to push back during the build plan.
+the natural place to push back during the build.

@@ -99,7 +99,11 @@ particular was superseded — see design §6.5, which replaces it with per-categ
 `TaggingCore` is a local Swift package, not a group in the app target. This is deliberate:
 the compiler enforces its purity.
 
-**`TaggingCore` must not import SwiftUI, SwiftData, or Foundation types tied to either.**
+**`TaggingCore` must not import SwiftUI, SwiftData, or any I/O.** Plain Foundation is
+expected and fine — `UUID`, `String`, and Unicode operations are exactly what the domain
+model and renderer need. The rule excludes UI and persistence frameworks, not the standard
+library.
+
 It holds the domain model and the caption renderer, and it is the most heavily tested code in
 the project. Anything that makes it un-unit-testable in isolation is a mistake regardless of
 how convenient it is.
