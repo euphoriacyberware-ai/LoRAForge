@@ -12,6 +12,7 @@ struct LoRAForgeApp: App {
                 SDTagCategory.self,
                 SDTag.self,
                 SDKnownProject.self,
+                SDOllamaProfile.self,
             ])
             let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
             modelContainer = try ModelContainer(for: schema, configurations: [config])

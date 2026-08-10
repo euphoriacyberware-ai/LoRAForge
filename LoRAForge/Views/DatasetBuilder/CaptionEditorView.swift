@@ -13,6 +13,13 @@ struct CaptionEditorView: View {
     @State private var pendingMode: CaptionMode?
     @State private var showUnlockDiff = false
 
+    // Ollama
+    @State private var ollamaProfiles: [OllamaProfile] = []
+    @State private var selectedProfileName: String?
+    @State private var isOllamaRunning = false
+    @State private var ollamaError: String?
+    @State private var showOllamaError = false
+
     private var entry: DatasetEntry { document.entries[entryIndex] }
 
     var body: some View {
@@ -24,8 +31,16 @@ struct CaptionEditorView: View {
             previewBar
         }
         .navigationTitle(entry.name)
-        .onAppear { editingText = entry.captionText }
+        .onAppear {
+            editingText = entry.captionText
+            loadOllamaProfiles()
+        }
         .onChange(of: entryIndex) { _, _ in editingText = document.entries[entryIndex].captionText }
+        .alert("Ollama error", isPresented: $showOllamaError) {
+            Button("OK") {}
+        } message: {
+            Text(ollamaError ?? "")
+        }
         .alert("Switch to tagged mode?", isPresented: $showModeChangeWarning) {
             Button("Switch") { applyModeChange() }
             Button("Cancel", role: .cancel) { pendingMode = nil }
@@ -92,12 +107,17 @@ struct CaptionEditorView: View {
             Picker("Mode", selection: modeBinding) {
                 Text("Tagged").tag(CaptionMode.tagged)
                 Text("Manual").tag(CaptionMode.manual)
-                Text("Ollama").tag(CaptionMode.ollama).disabled(true)
+                Text("Ollama").tag(CaptionMode.ollama)
             }
             .pickerStyle(.segmented)
             .frame(maxWidth: 250)
 
             Spacer()
+
+            // Ollama wand
+            if entry.captionMode == .manual || entry.captionMode == .ollama {
+                ollamaWand
+            }
 
             if entry.isLocked {
                 Button { showUnlockDiff = true } label: {
@@ -115,6 +135,43 @@ struct CaptionEditorView: View {
                 .disabled(entry.captionText.isEmpty)
             }
         }
+    }
+
+    @ViewBuilder
+    private var ollamaWand: some View {
+        HStack(spacing: 4) {
+            if !ollamaProfiles.isEmpty {
+                Picker("Profile", selection: $selectedProfileName) {
+                    Text("Select profile").tag(Optional<String>.none)
+                    ForEach(ollamaProfiles) { p in
+                        Text(p.name).tag(Optional(p.name))
+                    }
+                }
+                .frame(maxWidth: 150)
+            }
+
+            if isOllamaRunning {
+                ProgressView()
+                    .controlSize(.small)
+            } else {
+                Button { runOllama() } label: {
+                    Label("Caption", systemImage: "wand.and.stars")
+                }
+                .disabled(!canRunOllama)
+                .help(ollamaDisabledReason)
+            }
+        }
+    }
+
+    private var canRunOllama: Bool {
+        !entry.isLocked && entry.finalImage != nil && selectedProfileName != nil
+    }
+
+    private var ollamaDisabledReason: String {
+        if entry.isLocked { return "Unlock the caption first." }
+        if entry.finalImage == nil { return "Promote a final image first." }
+        if selectedProfileName == nil { return "Select an Ollama profile." }
+        return ""
     }
 
     private var modeBinding: Binding<CaptionMode> {
@@ -299,6 +356,50 @@ struct CaptionEditorView: View {
             editingText = rendered
         }
         document.entries[entryIndex].lockedText = nil
+    }
+
+    // MARK: - Ollama
+
+    private func loadOllamaProfiles() {
+        let repo = SwiftDataOllamaProfileRepository(modelContext: modelContext)
+        ollamaProfiles = (try? repo.allProfiles()) ?? []
+        if selectedProfileName == nil {
+            selectedProfileName = ollamaProfiles.first?.name
+        }
+    }
+
+    private func runOllama() {
+        guard let profileName = selectedProfileName,
+              let profile = ollamaProfiles.first(where: { $0.name == profileName }),
+              let finalImg = entry.finalImage,
+              let imageData = document.imageData(for: finalImg.filename) else { return }
+
+        let oldText = entry.captionText
+        let oldMode = entry.captionMode
+
+        isOllamaRunning = true
+
+        Task {
+            do {
+                let client = OllamaClient()
+                let caption = try await client.caption(imageData: imageData, profile: profile)
+
+                document.entries[entryIndex].captionMode = .ollama
+                document.entries[entryIndex].captionText = caption
+                editingText = caption
+
+                undoManager?.registerUndo(withTarget: document) { doc in
+                    guard entryIndex < doc.entries.count else { return }
+                    doc.entries[entryIndex].captionMode = oldMode
+                    doc.entries[entryIndex].captionText = oldText
+                }
+                undoManager?.setActionName("Ollama caption")
+            } catch {
+                ollamaError = error.localizedDescription
+                showOllamaError = true
+            }
+            isOllamaRunning = false
+        }
     }
 }
 
