@@ -25,11 +25,32 @@ sharing, team workflows, and community distribution of projects or vocabularies 
 of scope for this build. General usability is worth pursuing, but not at the cost of
 designing for collaboration that will not happen.
 
-### 1.1 Layout target
+### 1.1 Application shape
+
+**Decided.** A **single window** on both platforms, with the same structure on each. Not a
+document-based app in the `DocumentGroup` sense.
+
+Projects are `.loraforge` bundles held in a **library folder** the app manages (§9). A
+sidebar lists them; selecting one changes what the window shows. Projects are never opened
+into separate windows.
+
+This is a library UI rather than a document UI, and the distinction is load-bearing:
+
+- The app can reach every project at any time, not only the one on screen. Generation
+  results route to the correct project whether or not it is displayed (§5.1).
+- Two projects can be read at once, which is what makes copying prompts or generation
+  settings between them possible.
+- macOS and iPadOS behave identically. `DocumentGroup` would have produced one window per
+  document on macOS and a document browser on iPad — two different applications.
+
+The cost is that `NSDocument`'s free behaviour — autosave, undo integration, file
+coordination — has to be provided deliberately instead. See §9.5.
+
+### 1.2 Layout target
 
 **Decided.** Landscape is the design target on iPad. Every view is two- or three-pane —
-the Dataset Builder pairs an entry header with a horizontally scrolling image strip, the
-caption editor pairs an image with the tag panel, the generation editor is three columns.
+a sidebar beside a project's content, the Dataset Builder pairing an entry header with a
+horizontally scrolling image strip, the caption editor pairing an image with the tag panel.
 The Dataset Builder is the binding case: in portrait its strip shows two or three
 thumbnails, which defeats the view.
 
@@ -44,9 +65,7 @@ The real constraint is therefore a **minimum usable width, expressed in size cla
 rather than an orientation.
 
 **Recommended:** design to that minimum and let narrower widths degrade to something
-coherent — a single pane, or the entry list without its strip — rather than breaking. This
-is more robust than opting out of multitasking, and it does not depend on an API whose
-status is moving.
+coherent — the sidebar collapsing first, then a single pane — rather than breaking.
 
 **Decided.** No attempt is made to opt out of multitasking. `UIRequiresFullScreen` is
 deprecated, so the guarantee it once provided is not available and is not worth pursuing.
@@ -158,7 +177,48 @@ separately by the audit. They are not errors; a project mid-build is mostly thes
 
 ---
 
-## 3. The Three Views
+## 3. Window Structure and Views
+
+One window, three regions.
+
+```
+┌───────────────┬──────────────────────────────────────────────┐
+│               │  toolbar                                     │
+│  Projects     ├──────────────────────────────────────────────┤
+│   Maya        │  [ Dataset Builder | Reference Library ]     │
+│   Elena       │                                              │
+│   Rin         │  project content                             │
+│               │                                              │
+│  ─────────    │                                              │
+│  Tag Library  │                                              │
+└───────────────┴──────────────────────────────────────────────┘
+```
+
+**Sidebar.** Lists the projects in the library folder (§9). Selecting one changes the
+content region. Below the project list, separated, sits the Tag Library.
+
+**Tabs.** Positioned at the top of the content region, in the toolbar's principal position —
+the placement used by the macOS Calendar app — rather than as a strip beneath the toolbar.
+A toolbar sits alongside them.
+
+**Decided.** The tabs cover **project-scoped views only**: Dataset Builder and Reference
+Library. Both change when the sidebar selection changes.
+
+**Decided.** The **Tag Library is a full-screen mode outside the project tabs**, entered
+from the sidebar's global section.
+
+This is the structural point. The Tag Library is global — one category set and one
+vocabulary shared by every project (tagging doc §3, §6) — while the other two views are
+project-scoped. Placing all three in one tab bar implies the third changes with the sidebar
+selection, and it does not. Separating them by position is what makes the scope difference
+legible without a label explaining it.
+
+**Decided.** Entering and leaving the Tag Library preserves the project selection and
+returns to the view the user came from.
+
+Building vocabulary while captioning is a real loop: hit a missing tag, leave to create it
+properly, come back to the entry in progress. Resetting selection would break that loop
+every time.
 
 ### 3.1 Dataset Builder
 
@@ -219,7 +279,7 @@ route to discovery once a project is large.
 once. Default: final, shortlist, and candidate on; discarded off.
 
 The toggles are a view state, not a project property — they change what is shown, never
-what is stored, and should not persist as part of the document. The same applies to the
+what is stored, and should not persist as part of the project. The same applies to the
 entry filter.
 
 **Recommended:** image counts on entry headers report inventory and do not respond to
@@ -371,55 +431,48 @@ The app's job is attribution and ingestion. Everything else is already handled.
 
 #### Queue scope and routing
 
-**The queue is app-level; entries are document-level.** One `DrawThingsQueue` instance
-holds one connection to one server, and processes a single FIFO queue. Dataset entries
-live inside bundle documents (§9), of which several may be open at once.
+**The queue is app-level; entries belong to projects.** One `DrawThingsQueue` instance
+holds one connection to one server, and processes a single FIFO queue. Entries live inside
+project bundles in the library folder (§9).
 
-**Decided.** A single app-level queue. The app maintains a persistent request-to-entry
-map keyed by document identity plus entry ID, recorded at enqueue time and stored
-alongside the queue's own `QueueStorage` data.
+**Decided.** A single app-level queue. The app maintains a persistent request-to-entry map
+keyed by **project UUID plus entry ID**, recorded at enqueue time and stored alongside the
+queue's own `QueueStorage` data.
 
-**Decided.** Queueing work for one project and switching to another while it runs is a
-supported workflow. Results route by the map, never by what is frontmost.
+Keying on project UUID rather than file path matters: a bundle renamed or moved within the
+library must still receive its results.
 
-Three routing cases, in decreasing order of how often they occur:
+**Decided.** Queueing work for one project, switching to another, and queueing more from
+there is a supported workflow — the primary one, in fact. Results route by the map, never by
+what is displayed.
 
-**Document open.** The common case, and the one that workflow describes. Switching
-windows does not close a document, so the target stays open in memory and results are
-written into its model directly. Frontmost-ness is irrelevant, and no special handling is
-required.
+**The library model makes this straightforward.** The app owns the library folder, so it can
+write to any project at any time regardless of what the sidebar has selected. There is no
+"closed document" that results cannot reach. A result arriving for a project the user is not
+looking at is written to that project directly.
 
-**Document closed with work in flight.** Results are staged into the app container and
-ingested when the document is next opened. Writing into a bundle that is not open would
-bypass document coordination and, under sandboxing, require retained access to a path the
-app no longer holds — staging avoids both.
+**Decided.** Writes to a project that is not currently selected are the same operation as
+writes to one that is. The selected project is a display concern, not an access concern.
 
-**Recommended:** the map keys on a **stable project UUID stored in the bundle**, not a
-file path. Staged results are then matched when a document opens, whatever it has been
-renamed or moved to in the meantime, and the app never needs to locate or reach into a
-document it does not currently have open.
+**Recommended:** the sidebar indicates projects with work in flight and shows results
+arriving, so a background project is not silently changing.
 
-**Restored on relaunch.** `QueueStorage` restores pending requests, which may target a
-document that is not open and may never be opened again. These follow the staging path.
-Staged results whose document cannot be located are surfaced as orphans and are
-discardable, rather than silently dropped or silently accumulating.
+**Staging is an edge case, not a path.** The only results that cannot be written directly are
+those for a project that has been deleted or moved out of the library while its work was in
+flight — including across a relaunch, since `QueueStorage` restores pending requests. These
+are held and surfaced as orphans, discardable rather than silently dropped or silently
+accumulating.
 
-**Recommended:** closing a document with work in flight prompts — cancel the requests, or
-continue and ingest later. Continuing silently is defensible, but it leaves generation
-running for something the user may believe they have finished with.
+**Recommended:** ingestion is not registered with the undo manager. An arriving image is an
+external event, not a user edit, and making it undoable would let the user undo an arrival —
+which has no coherent meaning. It does trigger autosave for the receiving project (§9.5).
 
-**Recommended:** ingestion marks the document dirty for autosave but is **not** registered
-with the undo manager. An arriving image is an external event, not a user edit, and making
-it undoable would let the user undo an arrival — which has no coherent meaning and would
-desynchronise the entry from the staged data.
+**Note on iPadOS.** The workflow behaves identically to macOS, since the app is one window
+with a sidebar on both. The one platform difference is unrelated to routing: backgrounding
+drops the gRPC connection and pauses the queue, so queue-and-switch works within a session
+but not while the app is in the background.
 
-**Note on iPadOS.** Several documents open at once is native on macOS and possible but
-unusual on iPadOS, where switching documents often means closing one, making the staging
-path the common path rather than the exception. This matters less than it might, since
-backgrounding already drops the connection and pauses the queue regardless — queue-and-
-switch is a macOS strength that iPadOS does not really offer.
-
-The alternative architecture, a queue per open document, avoids the map but multiplies
+The alternative architecture, a queue per project, avoids the map but multiplies
 connections to the same server and gives up global ordering and a single pause control.
 Rejected.
 
@@ -801,7 +854,7 @@ behaviour, but easy to get wrong with a long row list and worth specifying.
 categories is the next lever — at the cost of the coverage-at-a-glance property above, which
 is why it is a preference rather than the default.
 
-Landscape being the design target (§1.1) removes the portrait stacking problem for this
+Landscape being the design target (§1.2) removes the portrait stacking problem for this
 view, but not the scrolling one: eleven rows beside an image well is tight even in landscape
 on a smaller iPad.
 
@@ -977,16 +1030,42 @@ three problems and matches what every other app does.
 
 ## 9. Persistence
 
-**Decided.** A project is a **bundle document** — a file package containing project
-metadata, entries, captions, tag assignments, generation settings, and all image files.
-Images live in the bundle, not in a separate store.
+**Decided.** A project is a **bundle** — a file package containing project metadata,
+entries, captions, tag assignments, generation settings, and all image files. Images live in
+the bundle, not in a separate store. Extension `.loraforge`.
 
-**Decided.** The global category set and tag library live in an **app-level store**,
-outside any document.
+**Decided.** Projects live in a **library folder** that the app manages. The sidebar lists
+its contents; the location is configurable in settings (§10).
 
-**Decided.** Nothing syncs automatically. A user may place a bundle somewhere both
-machines can reach, but coordinating that is outside the app's scope and the app makes
-no guarantees about concurrent access.
+**Decided.** The app is not `DocumentGroup`-based (§1.1). It reads and writes bundles in the
+library folder directly.
+
+Two consequences worth stating:
+
+- **The app can reach every project at any time**, which is what allows generation results to
+  route to a project that is not currently selected (§5.1) and allows settings to be copied
+  between projects.
+- **Opening a project from an arbitrary location is an import**, not an open — the bundle is
+  copied or moved into the library. This keeps the sidebar authoritative and removes any need
+  for security-scoped bookmarks and their stale-path handling.
+
+**Decided.** The global category set and tag library live in an **app-level store**, outside
+any project bundle.
+
+**Decided.** Nothing syncs automatically. A user may point the library folder somewhere both
+machines can reach, but coordinating that is outside the app's scope and the app makes no
+guarantees about concurrent access.
+
+**Decided.** Changing the library location **moves** the existing projects to it. The user is
+warned first, with the option to proceed or cancel.
+
+This follows the convention already established in PromptGrid. The alternative — pointing at
+a new location and leaving projects behind — would silently empty the sidebar and make the
+old folder an orphan the app no longer knows about.
+
+**Recommended:** the warning states the count and both paths, since a move of a large library
+is slow and not obviously reversible. Relocation should be atomic in effect: on failure, the
+library setting stays where it was rather than pointing at a partially populated folder.
 
 ### 9.1 Schema snapshot
 
@@ -1004,9 +1083,11 @@ the app-level library, so a lost or corrupted global store can be rebuilt by ope
 projects. It also makes receiving a project from elsewhere a defined operation rather
 than an undefined one.
 
-### 9.2 Reconciliation on open
+### 9.2 Reconciliation
 
-Opening a bundle compares its snapshot against the current app library. Four outcomes:
+Loading a project compares its snapshot against the current app library. This happens when a
+project is selected in the sidebar, and when a bundle is imported into the library from
+elsewhere. Four outcomes:
 
 | Case | Meaning | Behaviour |
 |---|---|---|
@@ -1029,7 +1110,7 @@ differently with nothing missing and nothing to import.
 vocabulary and the same indicator as §6.3. It is the same failure at a different scale:
 stored caption text no longer matches what the current schema would produce. A user who
 has learned what drift means on one entry does not need to learn a second concept for
-the document-level case.
+the project-level case.
 
 ### 9.3 Import
 
@@ -1041,8 +1122,8 @@ iPad to the Mac is the user's own project, and a category it depends on is a cat
 they built — so importing it restores their own schema rather than acquiring someone
 else's. There is no pollution risk to guard against.
 
-It stays a prompt rather than an automatic merge only because opening a document should
-not silently modify app-level state the user may not be thinking about.
+It stays a prompt rather than an automatic merge only because loading a project should not
+silently modify app-level state the user may not be thinking about.
 
 **Decided.** Import runs through the same fuzzy duplicate detection as tag creation.
 
@@ -1071,9 +1152,9 @@ failure at schema level, and harder to notice.
 
 Two stores, with different requirements — worth separating before choosing anything.
 
-**The bundle document** needs longevity, portability, and a format that survives the app
+**The project bundle** needs longevity, portability, and a format that survives the app
 being rewritten. **Recommended:** `Codable` JSON for metadata plus image files in the
-package. A document format coupled to a framework's schema versioning is a liability;
+package. A bundle format coupled to a framework's schema versioning is a liability;
 one you control entirely is not.
 
 #### Assignment shape
@@ -1098,8 +1179,10 @@ failure mode is silently reordered captions rather than an error. Carrying the i
 uniformly on single- and multi-select assignments is simpler than making it conditional.
 
 **The app-level store** needs queryability. It holds the category set, the global tag
-library, preferences, Ollama profiles, the known-projects index, and the queue's
-request-to-entry map and staging records.
+library, preferences, Ollama profiles, and the queue's request-to-entry map.
+
+**Note.** No known-projects index is needed. The library folder *is* the index — every
+project is enumerable at any time, so cross-project counts are complete rather than partial.
 
 #### What the app-level store is actually asked to do
 
@@ -1164,11 +1247,51 @@ when it would be harder to accept elsewhere.
 `@Model` types leak into views. It preserves the option to move to Core Data or GRDB if
 SwiftData's limits bite, and given the store is small the abstraction is cheap.
 
-**Note for the build plan.** The cross-project count in tagging doc §3 is now only
-answerable for projects the app has seen. A count of affected images across all projects
-must be scoped to a known-projects index, and must say so — *affects 34 images across 3
-known projects* — since a bundle the app has never opened cannot be counted and silently
-omitting it would misstate the consequence of a deletion.
+**Note.** The cross-project count in tagging doc §3 is fully answerable. Every project sits
+in the library folder and can be enumerated, so a tag deletion warning can state a complete
+figure — *affects 34 images across 3 projects* — with no hedging about projects the app has
+not seen.
+
+The cost is that the count requires reading every bundle's metadata. At the scale involved
+this is fine, but it is I/O rather than a store query, and it should be computed when the
+warning is raised rather than maintained continuously.
+
+### 9.5 Autosave
+
+**Decided.** Projects autosave. The user is never asked to save, and there is no explicit
+save command.
+
+**Decided.** Metadata is written atomically — to a temporary file, then swapped into place —
+so that a crash or termination mid-write cannot leave a project holding truncated JSON.
+Without `NSDocument` providing this, and with no manual save point to fall back on, a
+partial write would be unrecoverable.
+
+**Recommended:** debounce writes rather than saving on every keystroke. A short delay after
+the last change, plus a forced write when the project is deselected, the app backgrounds, or
+the app terminates.
+
+**Note.** Image files are written once and never modified, so they do not participate in the
+debounce. An arriving generation result writes its image immediately and only the metadata
+write is deferred.
+
+**Decided.** Generation results arriving for a project trigger that project's autosave, whether
+or not it is the selected one (§5.1). A background project receiving images is a project
+changing on disk, which is correct — but it means writes occur for projects the user is not
+looking at, and that should be a deliberate behaviour rather than a surprise.
+
+**Decided.** Undo is **per project** and survives switching selection. Returning to a project
+restores its undo stack rather than starting fresh.
+
+Each loaded project holds its own undo stack. Undo applies to the selected project only —
+there is no global stack that could undo an edit in a project the user is not looking at.
+
+**Recommended:** stacks are retained for the session and discarded on relaunch. Persisting
+undo history into the bundle would mean versioning it alongside the project format for
+little benefit.
+
+**Note.** This interacts with autosave: undoing produces a change like any other and triggers
+a write. A project's on-disk state therefore follows its undo stack rather than diverging
+from it, which is the behaviour the absence of a save command implies.
 
 ---
 
@@ -1185,7 +1308,7 @@ An initial set, expected to grow:
 
 | Tab | Holds |
 |---|---|
-| General | Application-wide behaviour that fits nowhere more specific |
+| General | Library folder location; application-wide behaviour that fits nowhere more specific |
 | Draw Things | Server connection; queue behaviour such as retry ceiling |
 | Ollama | Captioning profiles (§6.4) |
 | Tagging | App-level defaults for category order, enabled state, and coverage thresholds |
@@ -1220,7 +1343,7 @@ thing standing between that and a bug report is a line of text in the dialogue.
 
 ## 11. Open Questions Summary
 
-None outstanding. The object model, view structure, entry lifecycle, integration
+None outstanding. The object model, window structure, entry lifecycle, integration
 boundaries, captioning behaviour, tag matching, auditing scope, export format, and
 persistence architecture are settled.
 

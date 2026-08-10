@@ -94,6 +94,23 @@ particular was superseded — see design §6.5, which replaces it with per-categ
 
 ## Architecture
 
+### Application shape
+
+**Single window on both platforms. Not `DocumentGroup`-based.**
+
+A sidebar lists projects from a managed library folder; selecting one changes the content
+region. Project-scoped tabs — Dataset Builder, Reference Library — sit in the toolbar's
+principal position, Calendar-style. The Tag Library is a **global** full-screen mode outside
+those tabs, because it is not project-scoped and must not appear to change with the sidebar
+selection.
+
+Projects are `.loraforge` bundles in the library folder. The app can reach every project at
+any time, which is what allows generation results to route to a project that is not currently
+selected.
+
+**Projects autosave.** There is no save command. Metadata writes are atomic — temp file then
+swap — because there is no manual save point to fall back on.
+
 ### Module boundary
 
 `TaggingCore` is a local Swift package, not a group in the app target. This is deliberate:
@@ -152,6 +169,10 @@ Show drift instead — see design §6.3.
 
 **Batch size is fixed at 1**, and the app owns the seed. Any seed or batch value in a Draw
 Things configuration is ignored and is annotated as overridden in the editor.
+
+**Autosave must write atomically.** Temp file then swap. Without `NSDocument` and without a
+manual save point, a crash mid-write leaves a truncated project with nothing to fall back on.
+Image files are write-once and do not participate in the debounce.
 
 **Audit scope is narrow**: tagged-mode entries that have a final image. Not all entries, not
 all tagged entries. The panel states its denominator.

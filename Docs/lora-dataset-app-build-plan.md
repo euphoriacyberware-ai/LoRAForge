@@ -43,11 +43,11 @@ Everything else starts as a group in the app target and is promoted only if it e
 Empty package shells add build overhead and fix module boundaries before there is code to
 draw them around.
 
-`Generation` is the most likely to earn promotion: request routing and result staging are
+`Generation` is the most likely to earn promotion: request routing and result ingestion are
 both in the risk register as silent-failure paths, and a package boundary is what makes them
 testable against a stubbed queue without running the app. Assess at phase 9.
 
-Candidate groupings as content arrives — project and entry types with the document format,
+Candidate groupings as content arrives — project and entry types with the bundle format,
 SwiftData models with their repositories, the Ollama client — but these are organisation,
 not architecture, until something makes them worth isolating.
 
@@ -79,7 +79,7 @@ than an orientation lock (design §1.1). No portrait-specific layout.
 | 1 | Tagging core and caption renderer | 0 | Renderer passes its tests |
 | 2 | App-level store | 1 | Categories and tags persist |
 | 3 | Tag Library view | 2 | Vocabulary is manageable |
-| 4 | Document format and persistence | 1, 2 | Projects save and reopen |
+| 4 | Library folder and project persistence | 1, 2 | Projects autosave in the library |
 | 5 | Dataset Builder | 4 | Entries, ranks, manual images |
 | 6 | Caption editor | 3, 5 | **App is usable end to end** |
 | 7 | Export | 6 | Training sets come out |
@@ -102,19 +102,25 @@ connection early, before phase 9 depends on it. Run it any time after phase 0.
 
 ### Phase 0 — Scaffold and settings shell
 
-**Goal.** A running app with navigation and an empty settings dialogue.
+**Goal.** A running app with the window structure and an empty settings dialogue.
 
 **Build**
-- Xcode project, local SPM packages per §1, deployment targets set
+- Xcode project, `TaggingCore` package, deployment targets set
 - DrawThingsQueue and DTConfigEditorKit added and building
-- Three-view navigation shell: Dataset Builder, Reference Library, Tag Library
+- **Single-window shell** — not `DocumentGroup` (design §1.1)
+- Sidebar with a Projects section and a global section below it
+- Project tabs — Dataset Builder, Reference Library — in the toolbar's principal position,
+  Calendar-style, not a strip below the toolbar (design §3)
+- Tag Library as a full-screen mode outside the project tabs, preserving project selection
+  on entry and exit
 - Tabbed settings dialogue (design §10.1) with the five tabs present and empty
-- Size-class-aware layout scaffolding
+- Size-class-aware layout scaffolding; sidebar collapses first at narrow widths
 
-**Done when.** The app launches on both platforms, all views and settings tabs are
-reachable, and everything is empty.
+**Done when.** The app launches on both platforms with identical structure, the sidebar and
+tabs are reachable, entering and leaving the Tag Library preserves selection, and everything
+is empty.
 
-**Do not build yet.** Any view content. Any persistence.
+**Do not build yet.** Any view content. Any persistence. The library folder — phase 4.
 
 ---
 
@@ -168,7 +174,7 @@ phase 12.
 duplicate canonical string within a category is rejected by both the constraint and the
 application path.
 
-**Do not build yet.** Project documents. Tag Library UI.
+**Do not build yet.** The library folder or project bundles. Tag Library UI.
 
 ---
 
@@ -186,9 +192,10 @@ application path.
 - Tags cannot be renamed — no affordance for it
 - Warnings with affected counts on reorder, prefix edit, disable, delete
 
-**Note.** Affected counts span projects and are only answerable for known projects
-(design §9.4). The warning must say so — *affects 34 images across 3 known projects* —
-rather than implying completeness.
+**Note.** Affected counts span every project in the library folder and are complete
+(design §9.4) — *affects 34 images across 3 projects*. Computing them means reading each
+bundle's metadata, so compute on demand when the warning is raised rather than maintaining a
+running total.
 
 **Done when.** The full category and tag lifecycle works, and every destructive or
 caption-rewriting edit warns with a count.
@@ -197,27 +204,37 @@ caption-rewriting edit warns with a count.
 
 ---
 
-### Phase 4 — Document format and persistence
+### Phase 4 — Library folder and project persistence
 
-**Goal.** Projects exist as bundle documents that save, reopen, and reconcile.
+**Goal.** Projects exist as bundles in a managed library folder, autosaving.
 
 **Build**
-- Bundle document: `Codable` JSON metadata plus image files in the package
+- Library folder: default location, configurable in the General settings tab
+- Changing the location moves existing projects, warning with a count first; on failure the
+  setting stays put rather than pointing at a partial folder (design §9)
+- Sidebar lists the folder's contents; create, rename, delete projects
+- `.loraforge` bundle: `Codable` JSON metadata plus image files in the package
   (design §9.4)
 - Stable project UUID in the bundle (design §5.1)
+- **Atomic metadata writes** — temp file then swap, so a crash cannot truncate a project
+- **Debounced autosave**, with forced writes on deselection, backgrounding, and termination
+  (design §9.5)
+- **Per-project undo stacks** that survive switching selection, retained for the session
+  (design §9.5)
 - Project-level properties: category order and enabled state, snapshotted at creation and
   independent thereafter (design §7)
-- Schema snapshot written on save: tags with IDs, canonical strings, owning category; and
-  categories with IDs, names, select modes, prefixes, thresholds (design §9.1)
-- Reconciliation on open: the four-case table in design §9.2
-- Import flow, running through the same fuzzy duplicate detection as creation
-  (design §9.3)
+- Schema snapshot written on save (design §9.1)
+- Reconciliation on load: the four-case table in design §9.2
+- Import of a bundle from outside the library, running through the same fuzzy duplicate
+  detection as creation (design §9.3)
 
-**Done when.** A project round-trips, and a project opened against a library missing some of
-its tags offers import rather than failing or silently rendering wrong.
+**Done when.** Projects round-trip, the sidebar reflects the folder, switching projects
+persists changes without a save command, and a project loaded against a library missing some
+of its tags offers import rather than failing or silently rendering wrong.
 
-**Test explicitly.** Create a project, delete one of its tags from the library, reopen.
-Import should be offered. This is the case the whole schema snapshot exists for.
+**Test explicitly.** Create a project, delete one of its tags from the library, reselect it.
+Import should be offered. Separately, kill the app mid-edit and confirm the bundle is intact
+rather than truncated.
 
 **Do not build yet.** Entry content beyond what the format needs.
 
@@ -333,9 +350,12 @@ unchanged project produces identical filenames.
 - Persistent request-to-entry map, keyed on project UUID plus entry ID (design §5.1)
 - **Result ingestion driven by the results stream or events publisher, not by polling
   `completedResults`** — the queue caps retained results and drops older ones
-- Staging to the app container for closed documents; ingestion on next open
-- Orphan surfacing for staged results whose project cannot be found
-- Ingestion marks the document dirty but is not registered with the undo manager
+- Results written directly to their target project whether or not it is the selected one;
+  the library folder makes every project reachable
+- Sidebar indication of projects with work in flight
+- Orphan handling for results whose project has been deleted or moved out of the library
+- Ingestion triggers the receiving project's autosave but is not registered with the undo
+  manager
 - Queue pauses on background, resumes on foreground
 - Per-image provenance: generation config, seed, and reference links stored with each image
   (design §5.3)
@@ -343,11 +363,12 @@ unchanged project produces identical filenames.
 - Per-project view of pending work
 - Failures surfaced on the originating entry; connectivity pause as a project-level banner
 
-**Done when.** Generation works, results route correctly with two projects open, and closing
-a project with work in flight does not lose images.
+**Done when.** Generation works, results route correctly while a different project is
+selected, and no images are lost.
 
-**Test explicitly.** Queue work in project A, switch to project B, confirm results land in A.
-Then close A with work pending and confirm ingestion on reopen.
+**Test explicitly.** Queue work in project A, switch the sidebar to project B, confirm results
+land in A and that A's bundle is updated on disk. Then queue from B as well and confirm both
+proceed.
 
 **Highest-risk phase.** The ingestion contract and the routing map are the two things most
 likely to be got subtly wrong, and both fail silently.
@@ -411,7 +432,7 @@ switchable.
 | `TaggingCore` | Exhaustive unit tests. Every renderer rule, every duplicate-detection case. |
 | Document format | Round-trip tests, plus reconciliation against a divergent library. |
 | Store | Uniqueness enforcement, built-in seeding, cross-project counting. |
-| Generation routing | Integration tests with a stubbed queue — two projects, closed-document staging, orphans. |
+| Generation routing | Integration tests with a stubbed queue — routing to an unselected project, orphans. |
 | UI | Manual, both platforms, both window widths. |
 
 The two subsystems that fail silently are the renderer and generation routing. Both deserve
@@ -425,8 +446,9 @@ tests that assert on exact output rather than on absence of error.
 |---|---|---|
 | Result ingestion polls instead of streaming; images lost under load | 9 | Written into the phase; test with a queued burst |
 | Routing map keyed on file path rather than project UUID | 9 | Explicit in the design; test with a renamed bundle |
+| Non-atomic autosave truncates a project on crash | 4 | Temp-and-swap; test by killing the app mid-edit |
 | Recalled seed does not reproduce the image | 9 | Batch fixed at 1; verify in the phase 8 spike |
-| SwiftData migration difficulty | 2+ | Schema snapshots make the library rebuildable from documents |
+| SwiftData migration difficulty | 2+ | Schema snapshots make the tag library rebuildable from project bundles |
 | Tag panel too tall in landscape on smaller iPads | 6 | Scrolling; hide-empty-categories preference in reserve |
 | `#Unique` unavailable at target | 2 | Application-level check, needed regardless |
 
