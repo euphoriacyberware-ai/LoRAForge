@@ -27,14 +27,16 @@ struct LoRAForgeApp: App {
     }
 
     var body: some Scene {
-        WindowGroup {
-            ContentView()
+        DocumentGroup(newDocument: { LoRAForgeDocument() }) { config in
+            ContentView(document: config.document)
         }
         .modelContainer(modelContainer)
+
         #if os(macOS)
         Settings {
             SettingsView()
         }
+        .modelContainer(modelContainer)
         #endif
     }
 }
