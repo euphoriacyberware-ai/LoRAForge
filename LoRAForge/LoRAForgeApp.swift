@@ -5,6 +5,7 @@ import SwiftData
 struct LoRAForgeApp: App {
     let modelContainer: ModelContainer
     let tagRepository: TagRepository
+    let libraryManager: LibraryManager
 
     init() {
         let schema = Schema([SDCategory.self, SDTag.self])
@@ -19,7 +20,6 @@ struct LoRAForgeApp: App {
             do {
                 container = try makeContainer()
             } catch {
-                // Schema mismatch from a prior build — delete the old store and retry
                 let storeURL = ModelConfiguration(schema: schema).url
                 try? FileManager.default.removeItem(at: storeURL)
                 try? FileManager.default.removeItem(
@@ -31,6 +31,7 @@ struct LoRAForgeApp: App {
             self.modelContainer = container
             self.tagRepository = TagRepository(modelContext: container.mainContext)
             try tagRepository.seedBuiltInCategoriesIfNeeded()
+            self.libraryManager = LibraryManager()
         } catch {
             fatalError("Could not initialize data store: \(error)")
         }
@@ -40,6 +41,7 @@ struct LoRAForgeApp: App {
         WindowGroup {
             ContentView()
                 .environment(tagRepository)
+                .environment(libraryManager)
         }
         .modelContainer(modelContainer)
 
@@ -47,6 +49,7 @@ struct LoRAForgeApp: App {
         Settings {
             SettingsView()
                 .environment(tagRepository)
+                .environment(libraryManager)
         }
         .modelContainer(modelContainer)
         #endif

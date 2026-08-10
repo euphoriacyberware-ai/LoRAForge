@@ -1,0 +1,169 @@
+import Foundation
+import TaggingCore
+
+@Observable
+final class LibraryManager {
+    struct ProjectInfo: Identifiable, Hashable {
+        let id: UUID
+        var name: String
+        let url: URL
+
+        static func == (lhs: ProjectInfo, rhs: ProjectInfo) -> Bool { lhs.id == rhs.id }
+        func hash(into hasher: inout Hasher) { hasher.combine(id) }
+    }
+
+    private(set) var projects: [ProjectInfo] = []
+    private(set) var libraryURL: URL
+
+    private var loadedDocuments: [UUID: ProjectDocument] = [:]
+    private var saveTask: [UUID: Task<Void, Never>] = [:]
+
+    init() {
+        let appSupport = FileManager.default
+            .urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        self.libraryURL = appSupport.appending(path: "LoRAForge Library")
+        ensureLibraryExists()
+        refresh()
+    }
+
+    init(libraryURL: URL) {
+        self.libraryURL = libraryURL
+        ensureLibraryExists()
+        refresh()
+    }
+
+    private func ensureLibraryExists() {
+        try? FileManager.default.createDirectory(at: libraryURL, withIntermediateDirectories: true)
+    }
+
+    // MARK: - Scanning
+
+    func refresh() {
+        let fm = FileManager.default
+        guard let contents = try? fm.contentsOfDirectory(
+            at: libraryURL, includingPropertiesForKeys: nil
+        ) else {
+            projects = []
+            return
+        }
+
+        var infos: [ProjectInfo] = []
+        for url in contents where url.pathExtension == "loraforge" {
+            let bundle = ProjectBundle(url: url)
+            if let doc = try? bundle.readProject() {
+                infos.append(ProjectInfo(id: doc.id, name: doc.name, url: url))
+            }
+        }
+        infos.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        projects = infos
+    }
+
+    // MARK: - Create / Delete / Rename
+
+    func createProject(name: String, repo: TagRepository) throws -> ProjectInfo {
+        let categories = try repo.allCategories()
+        let tags = try repo.allTags()
+        let doc = ProjectDocument(name: name, categories: categories)
+        let schema = SchemaSnapshot(categories: categories, tags: tags)
+
+        let sanitized = sanitizeFilename(name)
+        var bundleURL = libraryURL.appending(path: "\(sanitized).loraforge")
+        var counter = 2
+        while FileManager.default.fileExists(atPath: bundleURL.path) {
+            bundleURL = libraryURL.appending(path: "\(sanitized) \(counter).loraforge")
+            counter += 1
+        }
+
+        try ProjectBundle.create(at: bundleURL, project: doc, schema: schema)
+        loadedDocuments[doc.id] = doc
+
+        let info = ProjectInfo(id: doc.id, name: doc.name, url: bundleURL)
+        refresh()
+        return info
+    }
+
+    func deleteProject(id: UUID) throws {
+        guard let info = projects.first(where: { $0.id == id }) else { return }
+        saveTask[id]?.cancel()
+        saveTask.removeValue(forKey: id)
+        loadedDocuments.removeValue(forKey: id)
+        try FileManager.default.removeItem(at: info.url)
+        refresh()
+    }
+
+    func renameProject(id: UUID, to newName: String) throws {
+        guard var doc = try loadDocument(id: id) else { return }
+        doc.name = newName
+        loadedDocuments[id] = doc
+        try saveImmediately(id: id)
+        refresh()
+    }
+
+    // MARK: - Load / Save
+
+    func loadDocument(id: UUID) throws -> ProjectDocument? {
+        if let cached = loadedDocuments[id] { return cached }
+        guard let info = projects.first(where: { $0.id == id }) else { return nil }
+        let bundle = ProjectBundle(url: info.url)
+        let doc = try bundle.readProject()
+        loadedDocuments[id] = doc
+        return doc
+    }
+
+    func updateDocument(_ doc: ProjectDocument) {
+        loadedDocuments[doc.id] = doc
+        scheduleSave(id: doc.id)
+    }
+
+    func scheduleSave(id: UUID) {
+        saveTask[id]?.cancel()
+        saveTask[id] = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            try? self?.saveImmediately(id: id)
+        }
+    }
+
+    func saveImmediately(id: UUID) throws {
+        saveTask[id]?.cancel()
+        saveTask.removeValue(forKey: id)
+        guard let doc = loadedDocuments[id],
+              let info = projects.first(where: { $0.id == id }) else { return }
+        let bundle = ProjectBundle(url: info.url)
+        try bundle.writeProjectAtomic(doc)
+    }
+
+    func saveAllDirty() {
+        for id in loadedDocuments.keys {
+            try? saveImmediately(id: id)
+        }
+    }
+
+    func saveAndUnload(id: UUID) {
+        try? saveImmediately(id: id)
+        loadedDocuments.removeValue(forKey: id)
+    }
+
+    func saveSchema(id: UUID, repo: TagRepository) throws {
+        guard let info = projects.first(where: { $0.id == id }) else { return }
+        let categories = try repo.allCategories()
+        let tags = try repo.allTags()
+        let snapshot = SchemaSnapshot(categories: categories, tags: tags)
+        let bundle = ProjectBundle(url: info.url)
+        try bundle.writeSchemaAtomic(snapshot)
+    }
+
+    func bundleURL(for id: UUID) -> URL? {
+        projects.first { $0.id == id }?.url
+    }
+
+    // MARK: - Helpers
+
+    private func sanitizeFilename(_ name: String) -> String {
+        let illegal = CharacterSet(charactersIn: "/:\\")
+        let cleaned = name.unicodeScalars.filter { !illegal.contains($0) }
+        let result = String(String.UnicodeScalarView(cleaned))
+            .trimmingCharacters(in: .whitespaces)
+        return result.isEmpty ? "Untitled" : result
+    }
+}

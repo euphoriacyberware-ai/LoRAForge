@@ -250,4 +250,124 @@ struct StoreTests {
         _ = try repo.addTag(canonicalString: "sitting", toCategoryID: poseID)
         #expect(try repo.tagCount(in: poseID) == 2)
     }
+
+    // MARK: - Phase 4: Bundle and Library
+
+    @Test("Project bundle round-trips metadata")
+    func bundleRoundTrip() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let categories = try repo.allCategories()
+        let doc = ProjectDocument(name: "Test Project", categories: categories)
+        let schema = SchemaSnapshot(categories: categories, tags: [])
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        let bundleURL = tempDir.appending(path: "Test.loraforge")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try ProjectBundle.create(at: bundleURL, project: doc, schema: schema)
+
+        let bundle = ProjectBundle(url: bundleURL)
+        let loaded = try bundle.readProject()
+        #expect(loaded.id == doc.id)
+        #expect(loaded.name == "Test Project")
+        #expect(loaded.categoryOrder.count == 11)
+
+        let loadedSchema = try bundle.readSchema()
+        #expect(loadedSchema.categories.count == 11)
+    }
+
+    @Test("Atomic write survives overwrite")
+    func atomicOverwrite() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let categories = try repo.allCategories()
+        var doc = ProjectDocument(name: "Original", categories: categories)
+        let schema = SchemaSnapshot(categories: categories, tags: [])
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        let bundleURL = tempDir.appending(path: "Test.loraforge")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try ProjectBundle.create(at: bundleURL, project: doc, schema: schema)
+
+        doc.name = "Updated"
+        let bundle = ProjectBundle(url: bundleURL)
+        try bundle.writeProjectAtomic(doc)
+
+        let loaded = try bundle.readProject()
+        #expect(loaded.name == "Updated")
+    }
+
+    @Test("Library manager creates and lists projects")
+    func libraryCreateAndList() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let library = LibraryManager(libraryURL: tempDir)
+        #expect(library.projects.isEmpty)
+
+        let info = try library.createProject(name: "Maya", repo: repo)
+        #expect(library.projects.count == 1)
+        #expect(library.projects[0].name == "Maya")
+        #expect(info.id == library.projects[0].id)
+    }
+
+    @Test("Library manager deletes projects")
+    func libraryDelete() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let library = LibraryManager(libraryURL: tempDir)
+        let info = try library.createProject(name: "ToDelete", repo: repo)
+        try library.deleteProject(id: info.id)
+        #expect(library.projects.isEmpty)
+    }
+
+    @Test("Library manager renames projects")
+    func libraryRename() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let library = LibraryManager(libraryURL: tempDir)
+        let info = try library.createProject(name: "Old Name", repo: repo)
+        try library.renameProject(id: info.id, to: "New Name")
+
+        let doc = try library.loadDocument(id: info.id)
+        #expect(doc?.name == "New Name")
+    }
+
+    @Test("Project snapshots category order at creation")
+    func categoryOrderSnapshot() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let library = LibraryManager(libraryURL: tempDir)
+        let info = try library.createProject(name: "Test", repo: repo)
+        let doc = try library.loadDocument(id: info.id)!
+
+        #expect(doc.categoryOrder.count == 11)
+        #expect(doc.categoryOrder[0] == BuiltInCategory.subject.id)
+        #expect(doc.categoryEnabled.count == 11)
+    }
 }
