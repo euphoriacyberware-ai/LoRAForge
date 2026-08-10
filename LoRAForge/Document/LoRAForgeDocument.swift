@@ -8,19 +8,25 @@ final class LoRAForgeDocument: ReferenceFileDocument {
 
     @Published var metadata: ProjectMetadata
     @Published var schema: SchemaSnapshot
+    @Published var entries: [DatasetEntry]
+    var imagesWrapper: FileWrapper
 
     struct Snapshot {
         let metadata: ProjectMetadata
         let schema: SchemaSnapshot
+        let entries: [DatasetEntry]
+        let imagesWrapper: FileWrapper
     }
 
-    // New document
+    // MARK: - Init
+
     init() {
         self.metadata = ProjectMetadata()
         self.schema = SchemaSnapshot()
+        self.entries = []
+        self.imagesWrapper = FileWrapper(directoryWithFileWrappers: [:])
     }
 
-    // Open from file
     required init(configuration: ReadConfiguration) throws {
         guard configuration.file.isDirectory,
               let wrappers = configuration.file.fileWrappers else {
@@ -38,10 +44,30 @@ final class LoRAForgeDocument: ReferenceFileDocument {
             throw CocoaError(.fileReadCorruptFile)
         }
         self.schema = try decoder.decode(SchemaSnapshot.self, from: schemaData)
+
+        if let entriesData = wrappers["entries.json"]?.regularFileContents {
+            self.entries = try decoder.decode([DatasetEntry].self, from: entriesData)
+        } else {
+            self.entries = []
+        }
+
+        self.imagesWrapper = wrappers["images"] ?? FileWrapper(directoryWithFileWrappers: [:])
     }
 
+    // MARK: - Save
+
     func snapshot(contentType: UTType) throws -> Snapshot {
-        Snapshot(metadata: metadata, schema: schema)
+        // Deep-copy the images wrapper so the snapshot is independent
+        let imgCopy = FileWrapper(directoryWithFileWrappers: [:])
+        if let wrappers = imagesWrapper.fileWrappers {
+            for (key, wrapper) in wrappers {
+                if let data = wrapper.regularFileContents {
+                    imgCopy.addRegularFile(withContents: data, preferredFilename: key)
+                }
+            }
+        }
+        return Snapshot(metadata: metadata, schema: schema,
+                        entries: entries, imagesWrapper: imgCopy)
     }
 
     func fileWrapper(snapshot: Snapshot, configuration: WriteConfiguration) throws -> FileWrapper {
@@ -56,13 +82,33 @@ final class LoRAForgeDocument: ReferenceFileDocument {
         let schemaData = try encoder.encode(snapshot.schema)
         directory.addRegularFile(withContents: schemaData, preferredFilename: "schema.json")
 
-        // Preserve existing wrappers for entries/images (Phase 5+)
-        if let existing = configuration.existingFile?.fileWrappers {
-            for (key, wrapper) in existing where key != "project.json" && key != "schema.json" {
-                directory.addFileWrapper(wrapper)
-            }
-        }
+        let entriesData = try encoder.encode(snapshot.entries)
+        directory.addRegularFile(withContents: entriesData, preferredFilename: "entries.json")
+
+        let imgDir = snapshot.imagesWrapper
+        imgDir.preferredFilename = "images"
+        directory.addFileWrapper(imgDir)
 
         return directory
+    }
+
+    // MARK: - Image helpers
+
+    func imageData(for filename: String) -> Data? {
+        imagesWrapper.fileWrappers?[filename]?.regularFileContents
+    }
+
+    func addImage(data: Data, extension ext: String, to entryID: UUID) {
+        let filename = "\(UUID().uuidString).\(ext.isEmpty ? "png" : ext)"
+        imagesWrapper.addRegularFile(withContents: data, preferredFilename: filename)
+        if let idx = entries.firstIndex(where: { $0.id == entryID }) {
+            entries[idx].images.append(EntryImage(filename: filename))
+        }
+    }
+
+    func removeImageFile(_ filename: String) {
+        if let wrapper = imagesWrapper.fileWrappers?[filename] {
+            imagesWrapper.removeFileWrapper(wrapper)
+        }
     }
 }
