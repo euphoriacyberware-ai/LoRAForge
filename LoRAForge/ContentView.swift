@@ -20,6 +20,7 @@ struct ContentView: View {
     @State private var showingNewProject = false
     @State private var newProjectName = ""
     @State private var projectToDelete: LibraryManager.ProjectInfo?
+    @State private var currentDocument: ProjectDocument?
     @State private var renamingProjectID: UUID?
     @State private var renameText = ""
 
@@ -30,10 +31,19 @@ struct ContentView: View {
             detail
         }
         .onChange(of: sidebarSelection) { oldValue, newValue in
+            // Save and unload previous project
             if case .project(let id) = oldValue {
                 lastProjectID = id
+                if let doc = currentDocument {
+                    library.updateDocument(doc)
+                }
                 library.saveAndUnload(id: id)
                 try? library.saveSchema(id: id, repo: repo)
+                currentDocument = nil
+            }
+            // Load new project
+            if case .project(let id) = newValue {
+                currentDocument = try? library.loadDocument(id: id)
             }
         }
         #if os(macOS)
@@ -154,6 +164,11 @@ struct ContentView: View {
         projectToDelete = nil
     }
 
+    private func saveCurrentProject() {
+        guard let doc = currentDocument else { return }
+        library.updateDocument(doc)
+    }
+
     // MARK: - Detail
 
     @ViewBuilder
@@ -168,27 +183,26 @@ struct ContentView: View {
     @ViewBuilder
     private var projectContent: some View {
         Group {
-            switch selectedTab {
-            case .datasetBuilder:
-                if case .project = sidebarSelection {
-                    DatasetBuilderView()
-                } else {
-                    ContentUnavailableView(
-                        "No project selected",
-                        systemImage: "photo.on.rectangle.angled",
-                        description: Text("Select a project from the sidebar or create a new one.")
+            if case .project(let id) = sidebarSelection, currentDocument != nil {
+                switch selectedTab {
+                case .datasetBuilder:
+                    DatasetBuilderView(
+                        document: Binding(
+                            get: { currentDocument! },
+                            set: { currentDocument = $0 }
+                        ),
+                        bundleURL: library.bundleURL(for: id) ?? URL(filePath: "/"),
+                        onChanged: { saveCurrentProject() }
                     )
-                }
-            case .referenceLibrary:
-                if case .project = sidebarSelection {
+                case .referenceLibrary:
                     ReferenceLibraryView()
-                } else {
-                    ContentUnavailableView(
-                        "No project selected",
-                        systemImage: "photo.on.rectangle.angled",
-                        description: Text("Select a project from the sidebar or create a new one.")
-                    )
                 }
+            } else {
+                ContentUnavailableView(
+                    "No project selected",
+                    systemImage: "photo.on.rectangle.angled",
+                    description: Text("Select a project from the sidebar or create a new one.")
+                )
             }
         }
         .toolbar {

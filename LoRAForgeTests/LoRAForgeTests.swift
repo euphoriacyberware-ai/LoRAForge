@@ -370,4 +370,92 @@ struct StoreTests {
         #expect(doc.categoryOrder[0] == BuiltInCategory.subject.id)
         #expect(doc.categoryEnabled.count == 11)
     }
+
+    // MARK: - Phase 5: Entry and image model
+
+    @Test("Entries with images round-trip through bundle")
+    func entryImageRoundTrip() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let categories = try repo.allCategories()
+        var doc = ProjectDocument(name: "ImageTest", categories: categories)
+        var entry = EntryDocument(name: "Entry 1", position: 1)
+        entry.images = [
+            ImageDocument(filename: "test1.png", rank: .candidate),
+            ImageDocument(filename: "test2.png", rank: .final),
+        ]
+        doc.entries.append(entry)
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        let bundleURL = tempDir.appending(path: "Test.loraforge")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let schema = SchemaSnapshot(categories: categories, tags: [])
+        try ProjectBundle.create(at: bundleURL, project: doc, schema: schema)
+
+        let loaded = try ProjectBundle(url: bundleURL).readProject()
+        #expect(loaded.entries.count == 1)
+        #expect(loaded.entries[0].images.count == 2)
+        #expect(loaded.entries[0].finalImage?.filename == "test2.png")
+    }
+
+    @Test("Promoting to final demotes previous final to shortlist")
+    func finalPromotion() throws {
+        var entry = EntryDocument(name: "Test", position: 1)
+        entry.images = [
+            ImageDocument(filename: "a.png", rank: .final),
+            ImageDocument(filename: "b.png", rank: .candidate),
+        ]
+        let oldFinalID = entry.images[0].id
+        let newFinalID = entry.images[1].id
+
+        // Simulate promotion: demote old final, promote new
+        for i in entry.images.indices {
+            if entry.images[i].rank == .final {
+                entry.images[i].rank = .shortlist
+            }
+        }
+        if let idx = entry.images.firstIndex(where: { $0.id == newFinalID }) {
+            entry.images[idx].rank = .final
+        }
+
+        #expect(entry.images.first { $0.id == oldFinalID }?.rank == .shortlist)
+        #expect(entry.images.first { $0.id == newFinalID }?.rank == .final)
+    }
+
+    @Test("Sweep moves candidates to discarded, leaves others")
+    func sweepEntry() throws {
+        var entry = EntryDocument(name: "Test", position: 1)
+        entry.images = [
+            ImageDocument(filename: "a.png", rank: .final),
+            ImageDocument(filename: "b.png", rank: .shortlist),
+            ImageDocument(filename: "c.png", rank: .candidate),
+            ImageDocument(filename: "d.png", rank: .candidate),
+        ]
+
+        // Sweep: candidates → discarded
+        for i in entry.images.indices {
+            if entry.images[i].rank == .candidate {
+                entry.images[i].rank = .discarded
+            }
+        }
+
+        #expect(entry.images[0].rank == .final)
+        #expect(entry.images[1].rank == .shortlist)
+        #expect(entry.images[2].rank == .discarded)
+        #expect(entry.images[3].rank == .discarded)
+    }
+
+    @Test("Active image count excludes discarded")
+    func activeImageCount() throws {
+        var entry = EntryDocument(name: "Test", position: 1)
+        entry.images = [
+            ImageDocument(filename: "a.png", rank: .final),
+            ImageDocument(filename: "b.png", rank: .candidate),
+            ImageDocument(filename: "c.png", rank: .discarded),
+        ]
+        #expect(entry.activeImageCount == 2)
+    }
 }

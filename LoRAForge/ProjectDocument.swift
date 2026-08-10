@@ -18,19 +18,80 @@ struct ProjectDocument: Codable {
         self.categoryEnabled = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.isEnabled) })
         self.entries = []
     }
+
+    var totalImageCount: Int {
+        entries.reduce(0) { $0 + $1.activeImageCount }
+    }
+
+    var discardedImageCount: Int {
+        entries.reduce(0) { $0 + $1.images.filter { $0.rank == .discarded }.count }
+    }
 }
 
 struct EntryDocument: Codable, Identifiable {
     let id: UUID
     var name: String
     var position: Int
+    var images: [ImageDocument]
     var assignments: [AssignmentDocument]
 
     init(name: String, position: Int) {
         self.id = UUID()
         self.name = name
         self.position = position
+        self.images = []
         self.assignments = []
+    }
+
+    var finalImage: ImageDocument? {
+        images.first { $0.rank == .final }
+    }
+
+    var activeImageCount: Int {
+        images.filter { $0.rank != .discarded }.count
+    }
+}
+
+struct ImageDocument: Codable, Identifiable {
+    let id: UUID
+    let filename: String
+    var rank: ImageRank
+    let addedAt: Date
+
+    init(filename: String, rank: ImageRank = .candidate) {
+        self.id = UUID()
+        self.filename = filename
+        self.rank = rank
+        self.addedAt = Date()
+    }
+}
+
+enum ImageRank: String, Codable, CaseIterable, Sendable {
+    case `final`
+    case shortlist
+    case candidate
+    case discarded
+
+    var label: String {
+        switch self {
+        case .final: return "Final"
+        case .shortlist: return "Shortlist"
+        case .candidate: return "Candidate"
+        case .discarded: return "Discarded"
+        }
+    }
+
+    var badgeIcon: String? {
+        switch self {
+        case .final: return "star.fill"
+        case .shortlist: return "star"
+        case .candidate: return nil
+        case .discarded: return "trash"
+        }
+    }
+
+    var visibleByDefault: Bool {
+        self != .discarded
     }
 }
 
