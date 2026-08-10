@@ -12,6 +12,8 @@ struct DatasetBuilderView: View {
     @State private var discardFinalAlert: DiscardFinalAlert?
     @State private var importingForEntryID: UUID?
     @State private var captioningEntryID: UUID?
+    @State private var showingExport = false
+    @State private var importError: String?
 
     private var filteredEntries: [EntryDocument] {
         if entryFilter.isEmpty { return document.entries }
@@ -48,7 +50,7 @@ struct DatasetBuilderView: View {
         .fileImporter(
             isPresented: .init(
                 get: { importingForEntryID != nil },
-                set: { if !$0 { importingForEntryID = nil } }
+                set: { _ in } // cleared in result handler to avoid race
             ),
             allowedContentTypes: [.image],
             allowsMultipleSelection: true
@@ -57,6 +59,17 @@ struct DatasetBuilderView: View {
                 importImages(urls, to: entryID)
             }
             importingForEntryID = nil
+        }
+        .alert("Import error", isPresented: .init(
+            get: { importError != nil },
+            set: { if !$0 { importError = nil } }
+        )) {
+            Button("OK") { importError = nil }
+        } message: {
+            Text(importError ?? "")
+        }
+        .sheet(isPresented: $showingExport) {
+            ExportDialogView(document: $document, bundleURL: bundleURL, onChanged: onChanged)
         }
         .sheet(item: $captioningEntryID) { entryID in
             if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
@@ -89,6 +102,10 @@ struct DatasetBuilderView: View {
                 Button { showingEmptyTrash = true } label: {
                     Label("Empty trash (\(document.discardedImageCount))", systemImage: "trash")
                 }
+            }
+
+            Button { showingExport = true } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
             }
 
             Button { addEntry() } label: {
@@ -262,9 +279,12 @@ struct DatasetBuilderView: View {
             let filename = "\(UUID().uuidString).\(ext)"
             let dest = imagesDir.appending(path: filename)
 
-            if let _ = try? FileManager.default.copyItem(at: url, to: dest) {
+            do {
+                try FileManager.default.copyItem(at: url, to: dest)
                 let imageDoc = ImageDocument(filename: filename)
                 document.entries[entryIdx].images.append(imageDoc)
+            } catch {
+                importError = "Failed to import \(url.lastPathComponent): \(error.localizedDescription)"
             }
         }
         onChanged()
