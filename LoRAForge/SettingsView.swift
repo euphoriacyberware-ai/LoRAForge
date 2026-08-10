@@ -7,7 +7,8 @@ struct SettingsView: View {
                 GeneralSettingsTab()
             }
             Tab("Draw Things", systemImage: "paintbrush") {
-                GenerationSpikeView()
+                Text("Draw Things settings")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             Tab("Ollama", systemImage: "brain") {
                 Text("Ollama settings")
