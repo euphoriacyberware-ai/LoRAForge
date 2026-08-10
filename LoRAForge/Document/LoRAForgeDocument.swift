@@ -9,12 +9,14 @@ final class LoRAForgeDocument: ReferenceFileDocument {
     @Published var metadata: ProjectMetadata
     @Published var schema: SchemaSnapshot
     @Published var entries: [DatasetEntry]
+    @Published var referenceImages: [ReferenceImage]
     var imagesWrapper: FileWrapper
 
     struct Snapshot {
         let metadata: ProjectMetadata
         let schema: SchemaSnapshot
         let entries: [DatasetEntry]
+        let referenceImages: [ReferenceImage]
         let imagesWrapper: FileWrapper
     }
 
@@ -24,6 +26,7 @@ final class LoRAForgeDocument: ReferenceFileDocument {
         self.metadata = ProjectMetadata()
         self.schema = SchemaSnapshot()
         self.entries = []
+        self.referenceImages = []
         self.imagesWrapper = FileWrapper(directoryWithFileWrappers: [:])
     }
 
@@ -51,13 +54,18 @@ final class LoRAForgeDocument: ReferenceFileDocument {
             self.entries = []
         }
 
+        if let refData = wrappers["references.json"]?.regularFileContents {
+            self.referenceImages = try decoder.decode([ReferenceImage].self, from: refData)
+        } else {
+            self.referenceImages = []
+        }
+
         self.imagesWrapper = wrappers["images"] ?? FileWrapper(directoryWithFileWrappers: [:])
     }
 
     // MARK: - Save
 
     func snapshot(contentType: UTType) throws -> Snapshot {
-        // Deep-copy the images wrapper so the snapshot is independent
         let imgCopy = FileWrapper(directoryWithFileWrappers: [:])
         if let wrappers = imagesWrapper.fileWrappers {
             for (key, wrapper) in wrappers {
@@ -67,7 +75,8 @@ final class LoRAForgeDocument: ReferenceFileDocument {
             }
         }
         return Snapshot(metadata: metadata, schema: schema,
-                        entries: entries, imagesWrapper: imgCopy)
+                        entries: entries, referenceImages: referenceImages,
+                        imagesWrapper: imgCopy)
     }
 
     func fileWrapper(snapshot: Snapshot, configuration: WriteConfiguration) throws -> FileWrapper {
@@ -84,6 +93,9 @@ final class LoRAForgeDocument: ReferenceFileDocument {
 
         let entriesData = try encoder.encode(snapshot.entries)
         directory.addRegularFile(withContents: entriesData, preferredFilename: "entries.json")
+
+        let refData = try encoder.encode(snapshot.referenceImages)
+        directory.addRegularFile(withContents: refData, preferredFilename: "references.json")
 
         let imgDir = snapshot.imagesWrapper
         imgDir.preferredFilename = "images"
@@ -110,5 +122,45 @@ final class LoRAForgeDocument: ReferenceFileDocument {
         if let wrapper = imagesWrapper.fileWrappers?[filename] {
             imagesWrapper.removeFileWrapper(wrapper)
         }
+    }
+
+    // MARK: - Reference Library helpers
+
+    /// Add a reference image, deduplicating on content hash. Returns the image (existing or new).
+    @discardableResult
+    func addReferenceImage(data: Data, extension ext: String) -> ReferenceImage {
+        let hash = ContentHasher.sha256(data)
+        if let existing = referenceImages.first(where: { $0.contentHash == hash }) {
+            return existing
+        }
+        let filename = "ref-\(UUID().uuidString).\(ext.isEmpty ? "png" : ext)"
+        imagesWrapper.addRegularFile(withContents: data, preferredFilename: filename)
+        let ref = ReferenceImage(filename: filename, contentHash: hash)
+        referenceImages.append(ref)
+        return ref
+    }
+
+    func removeReferenceImage(id: UUID) {
+        guard let idx = referenceImages.firstIndex(where: { $0.id == id }) else { return }
+        let ref = referenceImages[idx]
+        removeImageFile(ref.filename)
+        referenceImages.remove(at: idx)
+        // Clear references from entries
+        for ei in entries.indices {
+            entries[ei].referenceImageIDs.removeAll { $0 == id }
+        }
+    }
+
+    /// Entries that reference a given reference image.
+    func entriesUsing(referenceID: UUID) -> [DatasetEntry] {
+        entries.filter { $0.referenceImageIDs.contains(referenceID) }
+    }
+
+    /// Count of stored images whose provenance references a given reference image.
+    func provenanceCount(for referenceID: UUID) -> Int {
+        entries.flatMap(\.images)
+            .compactMap(\.provenance)
+            .filter { $0.referenceImageIDs.contains(referenceID) }
+            .count
     }
 }

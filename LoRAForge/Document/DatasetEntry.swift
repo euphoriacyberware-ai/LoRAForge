@@ -15,6 +15,9 @@ struct DatasetEntry: Identifiable, Codable, Sendable {
     // Generation
     var generationSettings: GenerationSettings
 
+    // Reference images (up to 4 slots, referencing project's Reference Library)
+    var referenceImageIDs: [UUID]
+
     init(id: UUID = UUID(), name: String, images: [EntryImage] = []) {
         self.id = id
         self.name = name
@@ -25,6 +28,7 @@ struct DatasetEntry: Identifiable, Codable, Sendable {
         self.lockedText = nil
         self.tagAssignments = []
         self.generationSettings = GenerationSettings()
+        self.referenceImageIDs = []
     }
 
     init(from decoder: Decoder) throws {
@@ -38,6 +42,7 @@ struct DatasetEntry: Identifiable, Codable, Sendable {
         lockedText = try c.decodeIfPresent(String.self, forKey: .lockedText)
         tagAssignments = try c.decodeIfPresent([CodableTagAssignment].self, forKey: .tagAssignments) ?? []
         generationSettings = try c.decodeIfPresent(GenerationSettings.self, forKey: .generationSettings) ?? GenerationSettings()
+        referenceImageIDs = try c.decodeIfPresent([UUID].self, forKey: .referenceImageIDs) ?? []
     }
 
     var finalImage: EntryImage? { images.first { $0.rank == .final } }

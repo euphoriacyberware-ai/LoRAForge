@@ -19,7 +19,7 @@ struct ContentView: View {
                 DatasetBuilderView(document: document)
             }
             Tab("Reference library", systemImage: "photo.on.rectangle", value: .referenceLibrary) {
-                ReferenceLibraryView()
+                ReferenceLibraryView(document: document)
             }
             Tab("Tag library", systemImage: "tag", value: .tagLibrary) {
                 TagLibraryView()

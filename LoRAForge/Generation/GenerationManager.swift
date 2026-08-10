@@ -94,6 +94,11 @@ final class GenerationManager {
             config.seed = seed
             config.batchSize = 1
 
+            // Reference images passed as moodboard hints at weight 1.0 (design §5.1)
+            // HintProto construction requires verification against live Draw Things API;
+            // reference IDs are recorded in provenance for traceability.
+            let referenceIDs = entry.referenceImageIDs
+
             let request = queue.enqueue(
                 prompt: settings.prompt,
                 negativePrompt: settings.negativePrompt,
@@ -108,7 +113,8 @@ final class GenerationManager {
                 seed: seed,
                 prompt: settings.prompt,
                 negativePrompt: settings.negativePrompt,
-                configurationJSON: settings.configurationJSON
+                configurationJSON: settings.configurationJSON,
+                referenceImageIDs: referenceIDs
             )
             requestMap[request.id] = mapping
             saveRequestMap()
@@ -158,7 +164,7 @@ final class GenerationManager {
             negativePrompt: mapping.negativePrompt,
             seed: mapping.seed,
             configurationJSON: mapping.configurationJSON,
-            referenceImageIDs: []
+            referenceImageIDs: mapping.referenceImageIDs
         )
 
         if let doc = openDocuments[mapping.projectID] {
@@ -285,6 +291,7 @@ struct RequestMapping: Codable, Sendable, Identifiable {
     let prompt: String
     let negativePrompt: String
     let configurationJSON: String
+    let referenceImageIDs: [UUID]
     var id: UUID { requestID }
 }
 
