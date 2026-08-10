@@ -11,6 +11,7 @@
 		A4B5152330280BCE0049F8D7 /* DTConfigBridge in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152230280BCE0049F8D7 /* DTConfigBridge */; };
 		A4B5152530280BCE0049F8D7 /* DTConfigEditorKit in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */; };
 		A4B5152730280BCE0049F8D7 /* configlint in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152630280BCE0049F8D7 /* configlint */; };
+		A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152930280BD00049F8D7 /* TaggingCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +64,7 @@
 				A4B5152530280BCE0049F8D7 /* DTConfigEditorKit in Frameworks */,
 				A4B5152330280BCE0049F8D7 /* DTConfigBridge in Frameworks */,
 				A4B5152730280BCE0049F8D7 /* configlint in Frameworks */,
+				A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -127,6 +129,7 @@
 				A4B5152230280BCE0049F8D7 /* DTConfigBridge */,
 				A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */,
 				A4B5152630280BCE0049F8D7 /* configlint */,
+				A4B5152930280BD00049F8D7 /* TaggingCore */,
 			);
 			productName = LoRAForge;
 			productReference = A4B514E4302809A90049F8D7 /* LoRAForge.app */;
@@ -213,6 +216,7 @@
 			packageReferences = (
 				A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */,
 				A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */,
+				A4B5152830280BD00049F8D7 /* XCLocalSwiftPackageReference "Packages/TaggingCore" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = A4B514E5302809A90049F8D7 /* Products */;
@@ -641,6 +645,13 @@
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		A4B5152830280BD00049F8D7 /* XCLocalSwiftPackageReference "Packages/TaggingCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/TaggingCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
 		A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */ = {
 			isa = XCRemoteSwiftPackageReference;
@@ -680,6 +691,10 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */;
 			productName = configlint;
+		};
+		A4B5152930280BD00049F8D7 /* TaggingCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaggingCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

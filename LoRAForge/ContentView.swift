@@ -1,80 +1,124 @@
-//
-//  ContentView.swift
-//  LoRAForge
-//
-//  Created by Brian Cantin on 2026-08-08.
-//
-
 import SwiftUI
-import SwiftData
 
-struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var items: [Item]
-
-    var body: some View {
-        NavigationViewWrapper {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
-            }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
-            }
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            let newItem = Item(timestamp: Date())
-            modelContext.insert(newItem)
-        }
-    }
-
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                modelContext.delete(items[index])
-            }
-        }
-    }
+enum SidebarItem: Hashable {
+    case project(id: UUID)
+    case tagLibrary
 }
 
-fileprivate struct NavigationViewWrapper<Content: View>: View {
-    let content: () -> Content
+enum ProjectTab: String, CaseIterable {
+    case datasetBuilder = "Dataset Builder"
+    case referenceLibrary = "Reference Library"
+}
+
+struct ContentView: View {
+    @State private var sidebarSelection: SidebarItem?
+    @State private var lastProjectID: UUID?
+    @State private var selectedTab: ProjectTab = .datasetBuilder
+    @State private var showingSettings = false
 
     var body: some View {
-#if os(macOS)
         NavigationSplitView {
-            content()
+            sidebar
         } detail: {
-            Text("Select an item")
+            detail
         }
-#else
-        content()
-#endif
+    }
+
+    // MARK: - Sidebar
+
+    private var sidebar: some View {
+        List(selection: $sidebarSelection) {
+            Section("Projects") {
+                // Phase 4 populates this from the library folder.
+            }
+
+            Section {
+                Label("Tag Library", systemImage: "tag")
+                    .tag(SidebarItem.tagLibrary)
+            }
+        }
+        .navigationTitle("LoRAForge")
+        #if os(macOS)
+        .navigationSplitViewColumnWidth(min: 180, ideal: 220)
+        #endif
+        #if os(iOS)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button { showingSettings = true } label: {
+                    Label("Settings", systemImage: "gear")
+                }
+            }
+        }
+        .sheet(isPresented: $showingSettings) {
+            NavigationStack {
+                SettingsView()
+                    .navigationTitle("Settings")
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { showingSettings = false }
+                        }
+                    }
+            }
+        }
+        #endif
+        .onChange(of: sidebarSelection) { oldValue, _ in
+            if case .project(let id) = oldValue {
+                lastProjectID = id
+            }
+        }
+    }
+
+    // MARK: - Detail
+
+    @ViewBuilder
+    private var detail: some View {
+        if sidebarSelection == .tagLibrary {
+            TagLibraryView()
+        } else {
+            projectContent
+        }
+    }
+
+    @ViewBuilder
+    private var projectContent: some View {
+        Group {
+            switch selectedTab {
+            case .datasetBuilder:
+                if case .project = sidebarSelection {
+                    DatasetBuilderView()
+                } else {
+                    ContentUnavailableView(
+                        "No project selected",
+                        systemImage: "photo.on.rectangle.angled",
+                        description: Text("Select a project from the sidebar or create a new one.")
+                    )
+                }
+            case .referenceLibrary:
+                if case .project = sidebarSelection {
+                    ReferenceLibraryView()
+                } else {
+                    ContentUnavailableView(
+                        "No project selected",
+                        systemImage: "photo.on.rectangle.angled",
+                        description: Text("Select a project from the sidebar or create a new one.")
+                    )
+                }
+            }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("View", selection: $selectedTab) {
+                    ForEach(ProjectTab.allCases, id: \.self) { tab in
+                        Text(tab.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+            }
+        }
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: Item.self, inMemory: true)
 }
