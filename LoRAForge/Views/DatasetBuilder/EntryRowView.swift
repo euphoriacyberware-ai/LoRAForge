@@ -5,6 +5,8 @@ struct EntryRowView: View {
     let entryIndex: Int
     let visibleRanks: Set<ImageRank>
     var onSweep: () -> Void
+    var onAddImages: () -> Void
+    var onDelete: () -> Void
 
     private var entry: DatasetEntry { document.entries[entryIndex] }
     private var position: String {
@@ -16,6 +18,7 @@ struct EntryRowView: View {
             entryHeader
                 .frame(width: 180, alignment: .leading)
                 .padding(.trailing, 8)
+                .contextMenu { headerContextMenu }
             Divider()
             imageStrip
                 .padding(.leading, 8)
@@ -65,7 +68,40 @@ struct EntryRowView: View {
                     .lineLimit(1)
             }
 
-            Spacer(minLength: 0)
+            Spacer(minLength: 4)
+
+            HStack(spacing: 2) {
+                NavigationLink(value: document.entries[entryIndex].id) {
+                    Image(systemName: "text.bubble")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.borderless)
+                .help("Caption")
+
+                NavigationLink(value: EntryDestination.generate(document.entries[entryIndex].id)) {
+                    Image(systemName: "wand.and.stars")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.borderless)
+                .help("Generate")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var headerContextMenu: some View {
+        NavigationLink(value: EntryDestination.generate(entry.id)) {
+            Label("Generate", systemImage: "wand.and.stars")
+        }
+        Button { onSweep() } label: {
+            Label("Sweep candidates", systemImage: "wind")
+        }
+        Button { onAddImages() } label: {
+            Label("Add images", systemImage: "photo.badge.plus")
+        }
+        Divider()
+        Button(role: .destructive) { onDelete() } label: {
+            Label("Delete entry", systemImage: "trash")
         }
     }
 

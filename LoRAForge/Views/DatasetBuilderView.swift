@@ -12,9 +12,7 @@ struct DatasetBuilderView: View {
     @State private var filterNoFinal = false
     @State private var visibleRanks: Set<ImageRank> = [.final, .shortlist, .candidate]
 
-    // Entry creation
-    @State private var showNewEntry = false
-    @State private var newEntryName = ""
+    // Entry creation (no prompt — auto-named)
 
     // Empty trash
     @State private var showEmptyTrashWarning = false
@@ -40,7 +38,6 @@ struct DatasetBuilderView: View {
             .navigationTitle(document.metadata.name)
             .withSettingsAccess()
             .toolbar { toolbarContent }
-            .sheet(isPresented: $showNewEntry) { newEntrySheet }
             .fileImporter(
                 isPresented: $showImagePicker,
                 allowedContentTypes: [.image],
@@ -76,7 +73,7 @@ struct DatasetBuilderView: View {
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
-            Button { showNewEntry = true } label: {
+            Button { addEntry() } label: {
                 Label("New entry", systemImage: "plus")
             }
         }
@@ -165,14 +162,19 @@ struct DatasetBuilderView: View {
     private var entryList: some View {
         List {
             ForEach(Array(filteredEntryIndices.enumerated()), id: \.element) { _, entryIndex in
-                NavigationLink(value: document.entries[entryIndex].id) {
-                    EntryRowView(
-                        document: document,
-                        entryIndex: entryIndex,
-                        visibleRanks: visibleRanks,
-                        onSweep: { sweep(entryIndex: entryIndex) }
-                    )
-                }
+                EntryRowView(
+                    document: document,
+                    entryIndex: entryIndex,
+                    visibleRanks: visibleRanks,
+                    onSweep: { sweep(entryIndex: entryIndex) },
+                    onAddImages: {
+                        importTargetEntryID = document.entries[entryIndex].id
+                        showImagePicker = true
+                    },
+                    onDelete: {
+                        document.entries.remove(at: entryIndex)
+                    }
+                )
                 .swipeActions(edge: .leading) {
                     Button { sweep(entryIndex: entryIndex) } label: {
                         Label("Sweep", systemImage: "wind")
@@ -187,26 +189,6 @@ struct DatasetBuilderView: View {
                         Label("Add images", systemImage: "photo.badge.plus")
                     }
                     .tint(.blue)
-                }
-                .contextMenu {
-                    NavigationLink(value: EntryDestination.generate(document.entries[entryIndex].id)) {
-                        Label("Generate", systemImage: "wand.and.stars")
-                    }
-                    Button { sweep(entryIndex: entryIndex) } label: {
-                        Label("Sweep candidates", systemImage: "wind")
-                    }
-                    Button {
-                        importTargetEntryID = document.entries[entryIndex].id
-                        showImagePicker = true
-                    } label: {
-                        Label("Add images", systemImage: "photo.badge.plus")
-                    }
-                    Divider()
-                    Button(role: .destructive) {
-                        document.entries.remove(at: entryIndex)
-                    } label: {
-                        Label("Delete entry", systemImage: "trash")
-                    }
                 }
                 .dropDestination(for: Data.self) { items, _ in
                     let entryID = document.entries[entryIndex].id
@@ -257,36 +239,12 @@ struct DatasetBuilderView: View {
         document.entries.reduce(0) { $0 + $1.imageCount }
     }
 
-    // MARK: - New Entry
-
-    private var newEntrySheet: some View {
-        NavigationStack {
-            Form {
-                TextField("Entry name", text: $newEntryName)
-            }
-            .navigationTitle("New entry")
-            #if os(iOS)
-            .navigationBarTitleDisplayMode(.inline)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { showNewEntry = false; newEntryName = "" }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") { addEntry() }
-                        .disabled(newEntryName.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
-            }
-        }
-    }
-
     // MARK: - Actions
 
     private func addEntry() {
-        let name = newEntryName.trimmingCharacters(in: .whitespaces)
+        let number = document.entries.count + 1
+        let name = "Entry \(number)"
         document.entries.append(DatasetEntry(name: name))
-        showNewEntry = false
-        newEntryName = ""
     }
 
     private func sweep(entryIndex: Int) {
