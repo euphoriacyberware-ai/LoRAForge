@@ -12,6 +12,7 @@
 		A4B5152530280BCE0049F8D7 /* DTConfigEditorKit in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */; };
 		A4B5152730280BCE0049F8D7 /* configlint in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152630280BCE0049F8D7 /* configlint */; };
 		A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152930280BD00049F8D7 /* TaggingCore */; };
+		A4B5152B30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152C30280BD00049F8D7 /* TaggingCore */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -72,6 +73,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4B5152B30280BD00049F8D7 /* TaggingCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -153,6 +155,7 @@
 			);
 			name = LoRAForgeTests;
 			packageProductDependencies = (
+				A4B5152C30280BD00049F8D7 /* TaggingCore */,
 			);
 			productName = LoRAForgeTests;
 			productReference = A4B514F3302809AB0049F8D7 /* LoRAForgeTests.xctest */;
@@ -693,6 +696,10 @@
 			productName = configlint;
 		};
 		A4B5152930280BD00049F8D7 /* TaggingCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaggingCore;
+		};
+		A4B5152C30280BD00049F8D7 /* TaggingCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TaggingCore;
 		};
