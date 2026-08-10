@@ -54,6 +54,53 @@ final class TagRepository {
         try modelContext.save()
     }
 
+    func addCategory(name: String, selectMode: TagCategory.SelectMode, prefix: String?) throws -> TagCategory {
+        let maxPosition = (try allCategories().map(\.position).max() ?? -1) + 1
+        let category = TagCategory(
+            name: name, selectMode: selectMode, prefix: prefix,
+            position: maxPosition, isBuiltIn: false
+        )
+        modelContext.insert(SDCategory(from: category))
+        try modelContext.save()
+        return category
+    }
+
+    func deleteCategory(id: UUID) throws {
+        let catID = id
+        var descriptor = FetchDescriptor<SDCategory>(
+            predicate: #Predicate<SDCategory> { $0.id == catID }
+        )
+        descriptor.fetchLimit = 1
+        guard let model = try modelContext.fetch(descriptor).first else { return }
+        if model.isBuiltIn {
+            throw TagRepositoryError.cannotDeleteBuiltIn(model.name)
+        }
+        modelContext.delete(model) // cascade deletes tags
+        try modelContext.save()
+    }
+
+    func reorderCategories(_ orderedIDs: [UUID]) throws {
+        for (index, catID) in orderedIDs.enumerated() {
+            let id = catID
+            var descriptor = FetchDescriptor<SDCategory>(
+                predicate: #Predicate<SDCategory> { $0.id == id }
+            )
+            descriptor.fetchLimit = 1
+            if let model = try modelContext.fetch(descriptor).first {
+                model.position = index
+            }
+        }
+        try modelContext.save()
+    }
+
+    func tagCount(in categoryID: UUID) throws -> Int {
+        let catID = categoryID
+        let descriptor = FetchDescriptor<SDTag>(
+            predicate: #Predicate<SDTag> { $0.categoryID == catID }
+        )
+        return try modelContext.fetchCount(descriptor)
+    }
+
     // MARK: - Tags
 
     func tags(in categoryID: UUID) throws -> [Tag] {
@@ -110,6 +157,7 @@ final class TagRepository {
 enum TagRepositoryError: Error, LocalizedError {
     case duplicateTag(String, existingTag: Tag)
     case categoryNotFound(UUID)
+    case cannotDeleteBuiltIn(String)
 
     var errorDescription: String? {
         switch self {
@@ -117,6 +165,8 @@ enum TagRepositoryError: Error, LocalizedError {
             return "A tag matching '\(string)' already exists in this category."
         case .categoryNotFound(let id):
             return "Category \(id) not found."
+        case .cannotDeleteBuiltIn(let name):
+            return "'\(name)' is a built-in category and cannot be deleted. Disable it instead."
         }
     }
 }

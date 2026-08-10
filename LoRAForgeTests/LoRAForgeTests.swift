@@ -172,4 +172,82 @@ struct StoreTests {
             _ = try repo.addTag(canonicalString: "test", toCategoryID: UUID())
         }
     }
+
+    // MARK: - Phase 3: Category management
+
+    @Test("User category can be created and appears at the end")
+    func addUserCategory() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let custom = try repo.addCategory(name: "Custom", selectMode: .single, prefix: nil)
+        let all = try repo.allCategories()
+        #expect(all.count == 12)
+        #expect(all.last?.id == custom.id)
+        #expect(!custom.isBuiltIn)
+    }
+
+    @Test("User category can be deleted")
+    func deleteUserCategory() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let custom = try repo.addCategory(name: "Custom", selectMode: .single, prefix: nil)
+        try repo.deleteCategory(id: custom.id)
+        let all = try repo.allCategories()
+        #expect(all.count == 11)
+    }
+
+    @Test("Built-in category cannot be deleted")
+    func cannotDeleteBuiltIn() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        #expect(throws: TagRepositoryError.self) {
+            try repo.deleteCategory(id: BuiltInCategory.subject.id)
+        }
+    }
+
+    @Test("Deleting a category cascade-deletes its tags")
+    func deleteCategoryCascadesTags() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let custom = try repo.addCategory(name: "Custom", selectMode: .single, prefix: nil)
+        _ = try repo.addTag(canonicalString: "test tag", toCategoryID: custom.id)
+        #expect(try repo.tags(in: custom.id).count == 1)
+
+        try repo.deleteCategory(id: custom.id)
+        #expect(try repo.allTags().isEmpty)
+    }
+
+    @Test("Categories can be reordered")
+    func reorderCategories() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        var cats = try repo.allCategories()
+        let first = cats[1] // Framing
+        let second = cats[2] // Camera Angle
+        cats.swapAt(1, 2)
+
+        try repo.reorderCategories(cats.map(\.id))
+
+        let reordered = try repo.allCategories()
+        #expect(reordered[1].id == second.id)
+        #expect(reordered[2].id == first.id)
+    }
+
+    @Test("Tag count returns correct number")
+    func tagCount() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let poseID = BuiltInCategory.pose.id
+        #expect(try repo.tagCount(in: poseID) == 0)
+
+        _ = try repo.addTag(canonicalString: "standing", toCategoryID: poseID)
+        _ = try repo.addTag(canonicalString: "sitting", toCategoryID: poseID)
+        #expect(try repo.tagCount(in: poseID) == 2)
+    }
 }
