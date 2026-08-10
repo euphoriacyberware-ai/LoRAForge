@@ -21,6 +21,9 @@ struct DatasetBuilderView: View {
     @State private var importTargetEntryID: UUID?
     @State private var showImagePicker = false
 
+    // Export
+    @State private var showExport = false
+
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
@@ -40,6 +43,9 @@ struct DatasetBuilderView: View {
                 if case .success(let urls) = result, let entryID = importTargetEntryID {
                     importImages(urls: urls, to: entryID)
                 }
+            }
+            .sheet(isPresented: $showExport) {
+                ExportView(document: document)
             }
             .alert(
                 "Empty trash?",
@@ -62,6 +68,12 @@ struct DatasetBuilderView: View {
             Button { showNewEntry = true } label: {
                 Label("New entry", systemImage: "plus")
             }
+        }
+        ToolbarItem {
+            Button { showExport = true } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
+            }
+            .disabled(document.entries.isEmpty)
         }
         ToolbarItem {
             Button {
