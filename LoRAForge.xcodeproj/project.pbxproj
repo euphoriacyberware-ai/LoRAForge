@@ -13,6 +13,7 @@
 		A4B5152730280BCE0049F8D7 /* configlint in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152630280BCE0049F8D7 /* configlint */; };
 		A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152930280BD00049F8D7 /* TaggingCore */; };
 		A4B5152B30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152C30280BD00049F8D7 /* TaggingCore */; };
+		A4B5152D30280BD00049F8D7 /* DrawThingsClient in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152E30280BD00049F8D7 /* DrawThingsClient */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +67,7 @@
 				A4B5152330280BCE0049F8D7 /* DTConfigBridge in Frameworks */,
 				A4B5152730280BCE0049F8D7 /* configlint in Frameworks */,
 				A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */,
+				A4B5152D30280BD00049F8D7 /* DrawThingsClient in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -132,6 +134,7 @@
 				A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */,
 				A4B5152630280BCE0049F8D7 /* configlint */,
 				A4B5152930280BD00049F8D7 /* TaggingCore */,
+				A4B5152E30280BD00049F8D7 /* DrawThingsClient */,
 			);
 			productName = LoRAForge;
 			productReference = A4B514E4302809A90049F8D7 /* LoRAForge.app */;
@@ -702,6 +705,11 @@
 		A4B5152C30280BD00049F8D7 /* TaggingCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TaggingCore;
+		};
+		A4B5152E30280BD00049F8D7 /* DrawThingsClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */;
+			productName = DrawThingsClient;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
