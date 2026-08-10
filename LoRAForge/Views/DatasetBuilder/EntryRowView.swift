@@ -50,11 +50,19 @@ struct EntryRowView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.name)
-                    .lineLimit(1)
-                Text("\(entry.imageCount) images")
+                HStack(spacing: 4) {
+                    Text(entry.name)
+                        .lineLimit(1)
+                    if entry.isLocked {
+                        Image(systemName: "lock.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Text(entry.captionText.isEmpty ? "\(entry.imageCount) images" : entry.captionText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
             Spacer(minLength: 0)

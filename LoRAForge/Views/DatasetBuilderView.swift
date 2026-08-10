@@ -132,12 +132,14 @@ struct DatasetBuilderView: View {
     private var entryList: some View {
         List {
             ForEach(Array(filteredEntryIndices.enumerated()), id: \.element) { _, entryIndex in
-                EntryRowView(
-                    document: document,
-                    entryIndex: entryIndex,
-                    visibleRanks: visibleRanks,
-                    onSweep: { sweep(entryIndex: entryIndex) }
-                )
+                NavigationLink(value: document.entries[entryIndex].id) {
+                    EntryRowView(
+                        document: document,
+                        entryIndex: entryIndex,
+                        visibleRanks: visibleRanks,
+                        onSweep: { sweep(entryIndex: entryIndex) }
+                    )
+                }
                 .swipeActions(edge: .leading) {
                     Button { sweep(entryIndex: entryIndex) } label: {
                         Label("Sweep", systemImage: "wind")
@@ -180,6 +182,11 @@ struct DatasetBuilderView: View {
             }
         }
         .listStyle(.plain)
+        .navigationDestination(for: UUID.self) { entryID in
+            if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
+                CaptionEditorView(document: document, entryIndex: idx)
+            }
+        }
         .overlay {
             if document.entries.isEmpty {
                 ContentUnavailableView(
