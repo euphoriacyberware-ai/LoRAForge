@@ -1,8 +1,10 @@
 import SwiftUI
+import SwiftData
 import UniformTypeIdentifiers
 
 struct DatasetBuilderView: View {
     @ObservedObject var document: LoRAForgeDocument
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.undoManager) private var undoManager
 
     // Filters
@@ -23,6 +25,10 @@ struct DatasetBuilderView: View {
 
     // Export
     @State private var showExport = false
+
+    // Audit
+    @State private var showAudit = false
+    @State private var auditResult: AuditResult?
 
     var body: some View {
         NavigationStack {
@@ -47,6 +53,11 @@ struct DatasetBuilderView: View {
             .sheet(isPresented: $showExport) {
                 ExportView(document: document)
             }
+            .sheet(isPresented: $showAudit) {
+                if let result = auditResult {
+                    AuditView(result: result)
+                }
+            }
             .alert(
                 "Empty trash?",
                 isPresented: $showEmptyTrashWarning
@@ -68,6 +79,16 @@ struct DatasetBuilderView: View {
             Button { showNewEntry = true } label: {
                 Label("New entry", systemImage: "plus")
             }
+        }
+        ToolbarItem {
+            Button {
+                let service = AuditService(document: document, modelContext: modelContext)
+                auditResult = service.audit()
+                showAudit = true
+            } label: {
+                Label("Audit", systemImage: "chart.bar")
+            }
+            .disabled(document.entries.isEmpty)
         }
         ToolbarItem {
             Button { showExport = true } label: {
