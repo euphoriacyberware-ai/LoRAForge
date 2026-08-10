@@ -167,6 +167,13 @@ struct ImageThumbnailView: View {
             Label("Discard", systemImage: "trash")
         }
         .disabled(image.rank == .discarded)
+
+        if image.provenance != nil {
+            Divider()
+            Button { recallSettings() } label: {
+                Label("Recall settings", systemImage: "arrow.uturn.backward")
+            }
+        }
     }
 
     private func setRank(_ newRank: ImageRank) {
@@ -180,5 +187,16 @@ struct ImageThumbnailView: View {
         }
 
         document.entries[entryIndex].images[imgIdx].rank = newRank
+    }
+
+    private func recallSettings() {
+        guard let prov = image.provenance else { return }
+        document.entries[entryIndex].generationSettings = GenerationSettings(
+            prompt: prov.prompt,
+            negativePrompt: prov.negativePrompt,
+            useCustomSeed: true,
+            customSeed: prov.seed,
+            configurationJSON: prov.configurationJSON
+        )
     }
 }

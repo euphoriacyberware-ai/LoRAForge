@@ -168,6 +168,9 @@ struct DatasetBuilderView: View {
                     .tint(.blue)
                 }
                 .contextMenu {
+                    NavigationLink(value: EntryDestination.generate(document.entries[entryIndex].id)) {
+                        Label("Generate", systemImage: "wand.and.stars")
+                    }
                     Button { sweep(entryIndex: entryIndex) } label: {
                         Label("Sweep candidates", systemImage: "wind")
                     }
@@ -197,6 +200,14 @@ struct DatasetBuilderView: View {
         .navigationDestination(for: UUID.self) { entryID in
             if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
                 CaptionEditorView(document: document, entryIndex: idx)
+            }
+        }
+        .navigationDestination(for: EntryDestination.self) { dest in
+            switch dest {
+            case .generate(let entryID):
+                if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
+                    GenerationEditorView(document: document, entryIndex: idx)
+                }
             }
         }
         .overlay {
@@ -313,4 +324,8 @@ struct DatasetBuilderView: View {
         }
         return (images, entries)
     }
+}
+
+enum EntryDestination: Hashable {
+    case generate(UUID)
 }

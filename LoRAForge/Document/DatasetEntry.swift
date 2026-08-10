@@ -12,6 +12,9 @@ struct DatasetEntry: Identifiable, Codable, Sendable {
     var lockedText: String?
     var tagAssignments: [CodableTagAssignment]
 
+    // Generation
+    var generationSettings: GenerationSettings
+
     init(id: UUID = UUID(), name: String, images: [EntryImage] = []) {
         self.id = id
         self.name = name
@@ -21,9 +24,9 @@ struct DatasetEntry: Identifiable, Codable, Sendable {
         self.isLocked = false
         self.lockedText = nil
         self.tagAssignments = []
+        self.generationSettings = GenerationSettings()
     }
 
-    // Backward-compatible decoding for documents saved before Phase 6
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = try c.decode(UUID.self, forKey: .id)
@@ -34,30 +37,49 @@ struct DatasetEntry: Identifiable, Codable, Sendable {
         isLocked = try c.decodeIfPresent(Bool.self, forKey: .isLocked) ?? false
         lockedText = try c.decodeIfPresent(String.self, forKey: .lockedText)
         tagAssignments = try c.decodeIfPresent([CodableTagAssignment].self, forKey: .tagAssignments) ?? []
+        generationSettings = try c.decodeIfPresent(GenerationSettings.self, forKey: .generationSettings) ?? GenerationSettings()
     }
 
-    var finalImage: EntryImage? {
-        images.first { $0.rank == .final }
-    }
+    var finalImage: EntryImage? { images.first { $0.rank == .final } }
+    var imageCount: Int { images.filter { $0.rank != .discarded }.count }
+    var totalImageCount: Int { images.count }
+    var hasCaptionContent: Bool { !captionText.isEmpty || !tagAssignments.isEmpty }
+}
 
-    var imageCount: Int {
-        images.filter { $0.rank != .discarded }.count
-    }
+// MARK: - Generation Settings
 
-    var totalImageCount: Int {
-        images.count
-    }
+struct GenerationSettings: Codable, Sendable {
+    var prompt: String
+    var negativePrompt: String
+    var useCustomSeed: Bool
+    var customSeed: Int64
+    var configurationJSON: String
 
-    var hasCaptionContent: Bool {
-        !captionText.isEmpty || !tagAssignments.isEmpty
+    init(prompt: String = "", negativePrompt: String = "",
+         useCustomSeed: Bool = false, customSeed: Int64 = 0,
+         configurationJSON: String = "{\n}") {
+        self.prompt = prompt
+        self.negativePrompt = negativePrompt
+        self.useCustomSeed = useCustomSeed
+        self.customSeed = customSeed
+        self.configurationJSON = configurationJSON
     }
 }
 
-enum CaptionMode: String, Codable, Sendable, CaseIterable {
-    case tagged
-    case manual
-    case ollama
+// MARK: - Image Provenance
 
+struct ImageProvenance: Codable, Sendable {
+    var prompt: String
+    var negativePrompt: String
+    var seed: Int64
+    var configurationJSON: String
+    var referenceImageIDs: [UUID]
+}
+
+// MARK: - Caption
+
+enum CaptionMode: String, Codable, Sendable, CaseIterable {
+    case tagged, manual, ollama
     var label: String {
         switch self {
         case .tagged: "Tagged"
@@ -72,24 +94,33 @@ struct CodableTagAssignment: Codable, Sendable, Hashable {
     var selectionOrder: Int
 }
 
+// MARK: - Entry Image
+
 struct EntryImage: Identifiable, Codable, Sendable {
     let id: UUID
     var rank: ImageRank
     let filename: String
+    var provenance: ImageProvenance?
 
-    init(id: UUID = UUID(), rank: ImageRank = .candidate, filename: String) {
+    init(id: UUID = UUID(), rank: ImageRank = .candidate, filename: String, provenance: ImageProvenance? = nil) {
         self.id = id
         self.rank = rank
         self.filename = filename
+        self.provenance = provenance
+    }
+
+    // Backward-compatible decoding
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        rank = try c.decode(ImageRank.self, forKey: .rank)
+        filename = try c.decode(String.self, forKey: .filename)
+        provenance = try c.decodeIfPresent(ImageProvenance.self, forKey: .provenance)
     }
 }
 
 enum ImageRank: String, Codable, CaseIterable, Sendable {
-    case `final`
-    case shortlist
-    case candidate
-    case discarded
-
+    case `final`, shortlist, candidate, discarded
     var label: String {
         switch self {
         case .final: "Final"
@@ -98,7 +129,6 @@ enum ImageRank: String, Codable, CaseIterable, Sendable {
         case .discarded: "Discarded"
         }
     }
-
     var systemImage: String? {
         switch self {
         case .final: "star.fill"
@@ -107,8 +137,5 @@ enum ImageRank: String, Codable, CaseIterable, Sendable {
         case .discarded: "trash"
         }
     }
-
-    var defaultVisible: Bool {
-        self != .discarded
-    }
+    var defaultVisible: Bool { self != .discarded }
 }

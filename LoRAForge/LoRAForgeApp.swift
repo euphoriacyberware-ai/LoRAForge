@@ -4,6 +4,7 @@ import SwiftData
 @main
 struct LoRAForgeApp: App {
     let modelContainer: ModelContainer
+    @State private var generationManager = GenerationManager()
 
     init() {
         do {
@@ -29,12 +30,14 @@ struct LoRAForgeApp: App {
     var body: some Scene {
         DocumentGroup(newDocument: { LoRAForgeDocument() }) { config in
             ContentView(document: config.document)
+                .environment(generationManager)
         }
         .modelContainer(modelContainer)
 
         #if os(macOS)
         Settings {
             SettingsView()
+                .environment(generationManager)
         }
         .modelContainer(modelContainer)
         #endif

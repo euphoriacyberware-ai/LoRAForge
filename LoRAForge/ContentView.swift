@@ -1,10 +1,13 @@
 import SwiftUI
 import SwiftData
 import TaggingCore
+import DrawThingsQueue
 
 struct ContentView: View {
     @ObservedObject var document: LoRAForgeDocument
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(GenerationManager.self) private var generationManager: GenerationManager?
     @State private var selectedTab = AppTab.datasetBuilder
     @State private var reconciliationResult: ReconciliationResult?
     @State private var showReconciliation = false
@@ -23,6 +26,20 @@ struct ContentView: View {
             }
         }
         .task { setUp() }
+        .onDisappear {
+            generationManager?.unregisterDocument(document)
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            // Pause queue on background, resume on foreground
+            switch newPhase {
+            case .background:
+                generationManager?.queue?.pause()
+            case .active:
+                generationManager?.queue?.resume()
+            default:
+                break
+            }
+        }
         .sheet(isPresented: $showReconciliation) {
             if let result = reconciliationResult {
                 ReconciliationView(result: result, document: document)
@@ -53,6 +70,9 @@ struct ContentView: View {
         // Register as known project
         let projectRepo = SwiftDataKnownProjectsRepository(modelContext: modelContext)
         try? projectRepo.register(projectID: document.metadata.id, name: document.metadata.name)
+
+        // Register with generation manager for result routing
+        generationManager?.registerDocument(document)
 
         // Reconcile existing documents against current library
         if !document.schema.categories.isEmpty {
