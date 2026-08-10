@@ -28,12 +28,23 @@ struct ProjectDocument: Codable {
     }
 }
 
+enum CaptionMode: String, Codable, Sendable {
+    case tagged
+    case manual
+    case ollama
+}
+
 struct EntryDocument: Codable, Identifiable {
     let id: UUID
     var name: String
     var position: Int
     var images: [ImageDocument]
     var assignments: [AssignmentDocument]
+    var captionMode: CaptionMode
+    var manualCaptionText: String
+    var lockedCaptionText: String?
+
+    var isLocked: Bool { lockedCaptionText != nil }
 
     init(name: String, position: Int) {
         self.id = UUID()
@@ -41,6 +52,9 @@ struct EntryDocument: Codable, Identifiable {
         self.position = position
         self.images = []
         self.assignments = []
+        self.captionMode = .tagged
+        self.manualCaptionText = ""
+        self.lockedCaptionText = nil
     }
 
     var finalImage: ImageDocument? {

@@ -458,4 +458,67 @@ struct StoreTests {
         ]
         #expect(entry.activeImageCount == 2)
     }
+
+    // MARK: - Phase 6: Caption model
+
+    @Test("Caption fields round-trip through bundle")
+    func captionRoundTrip() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let categories = try repo.allCategories()
+        var doc = ProjectDocument(name: "CaptionTest", categories: categories)
+        var entry = EntryDocument(name: "Entry 1", position: 1)
+        entry.captionMode = .manual
+        entry.manualCaptionText = "A test caption"
+        doc.entries.append(entry)
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        let bundleURL = tempDir.appending(path: "Test.loraforge")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let schema = SchemaSnapshot(categories: categories, tags: [])
+        try ProjectBundle.create(at: bundleURL, project: doc, schema: schema)
+
+        let loaded = try ProjectBundle(url: bundleURL).readProject()
+        #expect(loaded.entries[0].captionMode == .manual)
+        #expect(loaded.entries[0].manualCaptionText == "A test caption")
+        #expect(!loaded.entries[0].isLocked)
+    }
+
+    @Test("Locking freezes caption text")
+    func lockingFreezes() throws {
+        var entry = EntryDocument(name: "Test", position: 1)
+        entry.captionMode = .manual
+        entry.manualCaptionText = "Frozen text"
+        entry.lockedCaptionText = "Frozen text"
+
+        #expect(entry.isLocked)
+        #expect(entry.lockedCaptionText == "Frozen text")
+    }
+
+    @Test("Unlocking clears locked text")
+    func unlocking() throws {
+        var entry = EntryDocument(name: "Test", position: 1)
+        entry.lockedCaptionText = "Frozen"
+        #expect(entry.isLocked)
+
+        entry.lockedCaptionText = nil
+        #expect(!entry.isLocked)
+    }
+
+    @Test("Assignments persist through caption mode changes")
+    func assignmentsPersistAcrossModes() throws {
+        var entry = EntryDocument(name: "Test", position: 1)
+        entry.assignments = [
+            AssignmentDocument(tagID: UUID(), selectionOrder: 0),
+            AssignmentDocument(tagID: UUID(), selectionOrder: 1),
+        ]
+        entry.captionMode = .manual
+        #expect(entry.assignments.count == 2)
+
+        entry.captionMode = .tagged
+        #expect(entry.assignments.count == 2)
+    }
 }

@@ -11,6 +11,7 @@ struct DatasetBuilderView: View {
     @State private var showingEmptyTrash = false
     @State private var discardFinalAlert: DiscardFinalAlert?
     @State private var importingForEntryID: UUID?
+    @State private var captioningEntryID: UUID?
 
     private var filteredEntries: [EntryDocument] {
         if entryFilter.isEmpty { return document.entries }
@@ -56,6 +57,17 @@ struct DatasetBuilderView: View {
                 importImages(urls, to: entryID)
             }
             importingForEntryID = nil
+        }
+        .sheet(item: $captioningEntryID) { entryID in
+            if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
+                CaptionEditorView(
+                    entry: $document.entries[idx],
+                    bundleURL: bundleURL,
+                    projectCategoryOrder: document.categoryOrder,
+                    projectCategoryEnabled: document.categoryEnabled,
+                    onChanged: onChanged
+                )
+            }
         }
     }
 
@@ -119,6 +131,7 @@ struct DatasetBuilderView: View {
                         visibleRanks: rankVisibility,
                         onSweep: { sweepEntry(id: entry.id) },
                         onImport: { importingForEntryID = entry.id },
+                        onCaption: { captioningEntryID = entry.id },
                         onSetRank: { imageID, rank in
                             handleRankChange(imageID: imageID, entryID: entry.id, newRank: rank)
                         },
@@ -272,6 +285,7 @@ private struct EntryRow: View {
     let visibleRanks: Set<ImageRank>
     let onSweep: () -> Void
     let onImport: () -> Void
+    let onCaption: () -> Void
     let onSetRank: (UUID, ImageRank) -> Void
     let onDeleteEntry: () -> Void
 
@@ -316,6 +330,12 @@ private struct EntryRow: View {
             Spacer()
 
             HStack(spacing: 8) {
+                Button(action: onCaption) {
+                    Label("Caption", systemImage: "text.bubble")
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
+
                 Button(action: onImport) {
                     Label("Add", systemImage: "photo.badge.plus")
                 }
@@ -430,6 +450,10 @@ private struct ImageThumbnail: View {
 }
 
 // MARK: - Alert Type
+
+extension UUID: @retroactive Identifiable {
+    public var id: UUID { self }
+}
 
 private struct DiscardFinalAlert: Identifiable {
     let id = UUID()
