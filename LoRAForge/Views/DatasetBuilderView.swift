@@ -7,12 +7,13 @@ struct DatasetBuilderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.undoManager) private var undoManager
 
+    // Navigation
+    @State private var navigationPath = NavigationPath()
+
     // Filters
     @State private var filterText = ""
     @State private var filterNoFinal = false
     @State private var visibleRanks: Set<ImageRank> = [.final, .shortlist, .candidate]
-
-    // Entry creation (no prompt — auto-named)
 
     // Empty trash
     @State private var showEmptyTrashWarning = false
@@ -29,7 +30,7 @@ struct DatasetBuilderView: View {
     @State private var auditResult: AuditResult?
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             VStack(spacing: 0) {
                 filterBar
                 Divider()
@@ -38,6 +39,18 @@ struct DatasetBuilderView: View {
             .navigationTitle(document.metadata.name)
             .withSettingsAccess()
             .toolbar { toolbarContent }
+            .navigationDestination(for: EntryNav.self) { nav in
+                switch nav {
+                case .caption(let entryID):
+                    if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
+                        CaptionEditorView(document: document, entryIndex: idx)
+                    }
+                case .generate(let entryID):
+                    if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
+                        GenerationEditorView(document: document, entryIndex: idx)
+                    }
+                }
+            }
             .fileImporter(
                 isPresented: $showImagePicker,
                 allowedContentTypes: [.image],
@@ -160,56 +173,29 @@ struct DatasetBuilderView: View {
     // MARK: - Entry List
 
     private var entryList: some View {
-        List {
-            ForEach(Array(filteredEntryIndices.enumerated()), id: \.element) { _, entryIndex in
-                EntryRowView(
-                    document: document,
-                    entryIndex: entryIndex,
-                    visibleRanks: visibleRanks,
-                    onSweep: { sweep(entryIndex: entryIndex) },
-                    onAddImages: {
-                        importTargetEntryID = document.entries[entryIndex].id
-                        showImagePicker = true
-                    },
-                    onDelete: {
-                        document.entries.remove(at: entryIndex)
-                    }
-                )
-                .swipeActions(edge: .leading) {
-                    Button { sweep(entryIndex: entryIndex) } label: {
-                        Label("Sweep", systemImage: "wind")
-                    }
-                    .tint(.orange)
-                }
-                .swipeActions(edge: .trailing) {
-                    Button {
-                        importTargetEntryID = document.entries[entryIndex].id
-                        showImagePicker = true
-                    } label: {
-                        Label("Add images", systemImage: "photo.badge.plus")
-                    }
-                    .tint(.blue)
-                }
-                .dropDestination(for: Data.self) { items, _ in
-                    let entryID = document.entries[entryIndex].id
-                    for data in items {
-                        document.addImage(data: data, extension: "png", to: entryID)
-                    }
-                    return !items.isEmpty
-                }
-            }
-        }
-        .listStyle(.plain)
-        .navigationDestination(for: UUID.self) { entryID in
-            if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
-                CaptionEditorView(document: document, entryIndex: idx)
-            }
-        }
-        .navigationDestination(for: EntryDestination.self) { dest in
-            switch dest {
-            case .generate(let entryID):
-                if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
-                    GenerationEditorView(document: document, entryIndex: idx)
+        ScrollView {
+            LazyVStack(spacing: 0) {
+                ForEach(Array(filteredEntryIndices.enumerated()), id: \.element) { _, entryIndex in
+                    EntryRowView(
+                        document: document,
+                        entryIndex: entryIndex,
+                        visibleRanks: visibleRanks,
+                        onSweep: { sweep(entryIndex: entryIndex) },
+                        onAddImages: {
+                            importTargetEntryID = document.entries[entryIndex].id
+                            showImagePicker = true
+                        },
+                        onDelete: {
+                            document.entries.remove(at: entryIndex)
+                        },
+                        onCaption: {
+                            navigationPath.append(EntryNav.caption(document.entries[entryIndex].id))
+                        },
+                        onGenerate: {
+                            navigationPath.append(EntryNav.generate(document.entries[entryIndex].id))
+                        }
+                    )
+                    Divider()
                 }
             }
         }
@@ -252,7 +238,6 @@ struct DatasetBuilderView: View {
         let candidateIndices = entry.images.indices.filter { entry.images[$0].rank == .candidate }
         guard !candidateIndices.isEmpty else { return }
 
-        // Save for undo
         let entryID = entry.id
         let saved: [(Int, ImageRank)] = candidateIndices.map { ($0, entry.images[$0].rank) }
 
@@ -305,6 +290,7 @@ struct DatasetBuilderView: View {
     }
 }
 
-enum EntryDestination: Hashable {
+enum EntryNav: Hashable {
+    case caption(UUID)
     case generate(UUID)
 }

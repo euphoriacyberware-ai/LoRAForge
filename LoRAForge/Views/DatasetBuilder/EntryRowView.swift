@@ -7,6 +7,8 @@ struct EntryRowView: View {
     var onSweep: () -> Void
     var onAddImages: () -> Void
     var onDelete: () -> Void
+    var onCaption: () -> Void
+    var onGenerate: () -> Void
 
     private var entry: DatasetEntry { document.entries[entryIndex] }
     private var position: String {
@@ -18,6 +20,7 @@ struct EntryRowView: View {
             entryHeader
                 .frame(width: 180, alignment: .leading)
                 .padding(.trailing, 8)
+                .contentShape(Rectangle())
                 .contextMenu { headerContextMenu }
             Divider()
             imageStrip
@@ -71,14 +74,14 @@ struct EntryRowView: View {
             Spacer(minLength: 4)
 
             HStack(spacing: 2) {
-                NavigationLink(value: document.entries[entryIndex].id) {
+                Button { onCaption() } label: {
                     Image(systemName: "text.bubble")
                         .frame(width: 28, height: 28)
                 }
                 .buttonStyle(.borderless)
                 .help("Caption")
 
-                NavigationLink(value: EntryDestination.generate(document.entries[entryIndex].id)) {
+                Button { onGenerate() } label: {
                     Image(systemName: "wand.and.stars")
                         .frame(width: 28, height: 28)
                 }
@@ -90,7 +93,10 @@ struct EntryRowView: View {
 
     @ViewBuilder
     private var headerContextMenu: some View {
-        NavigationLink(value: EntryDestination.generate(entry.id)) {
+        Button { onCaption() } label: {
+            Label("Caption", systemImage: "text.bubble")
+        }
+        Button { onGenerate() } label: {
             Label("Generate", systemImage: "wand.and.stars")
         }
         Button { onSweep() } label: {
@@ -154,6 +160,7 @@ struct ImageThumbnailView: View {
                     .padding(2)
             }
         }
+        .contentShape(Rectangle())
         .contextMenu { rankMenu }
         .alert("Discard final image?", isPresented: $showDiscardFinalWarning) {
             Button("Discard", role: .destructive) { setRank(.discarded) }
@@ -215,7 +222,6 @@ struct ImageThumbnailView: View {
     private func setRank(_ newRank: ImageRank) {
         guard let imgIdx = document.entries[entryIndex].images.firstIndex(where: { $0.id == image.id }) else { return }
 
-        // Promoting to final demotes current final to shortlist
         if newRank == .final {
             if let currentFinalIdx = document.entries[entryIndex].images.firstIndex(where: { $0.rank == .final }) {
                 document.entries[entryIndex].images[currentFinalIdx].rank = .shortlist
