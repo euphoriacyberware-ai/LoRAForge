@@ -10,6 +10,7 @@ struct ReferenceLibraryView: View {
     @State private var showingFilePicker = false
     @State private var imageToRemove: ReferenceImageDocument?
     @State private var errorMessage: String?
+    @State private var isDropTargeted = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -19,11 +20,24 @@ struct ReferenceLibraryView: View {
                 ContentUnavailableView(
                     "No reference images",
                     systemImage: "photo.stack",
-                    description: Text("Add reference images to use as moodboard hints during generation.")
+                    description: Text("Drop images here or use the + button to add reference images.")
                 )
             } else {
                 imageGrid
             }
+        }
+        .overlay {
+            if isDropTargeted {
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.accentColor, lineWidth: 3)
+                    .background(Color.accentColor.opacity(0.1))
+                    .padding(4)
+                    .allowsHitTesting(false)
+            }
+        }
+        .onDrop(of: [.image, .fileURL], isTargeted: $isDropTargeted) { providers in
+            handleDrop(providers)
+            return true
         }
         .navigationTitle("Reference Library")
         .fileImporter(
@@ -147,6 +161,52 @@ struct ReferenceLibraryView: View {
 
     private func entriesUsing(_ refID: UUID) -> Int {
         document.entries.filter { $0.referenceImageIDs.contains(refID) }.count
+    }
+
+    private func handleDrop(_ providers: [NSItemProvider]) {
+        for provider in providers {
+            // Try file URL first (Finder drag)
+            if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+                provider.loadItem(forTypeIdentifier: UTType.fileURL.identifier) { data, _ in
+                    guard let urlData = data as? Data,
+                          let url = URL(dataRepresentation: urlData, relativeTo: nil) else { return }
+                    Task { @MainActor in
+                        importImages([url])
+                    }
+                }
+            }
+            // Try image data (Photos app, other apps)
+            else if provider.hasItemConformingToTypeIdentifier(UTType.image.identifier) {
+                provider.loadDataRepresentation(forTypeIdentifier: UTType.image.identifier) { data, _ in
+                    guard let data else { return }
+                    Task { @MainActor in
+                        importImageData(data)
+                    }
+                }
+            }
+        }
+    }
+
+    private func importImageData(_ data: Data) {
+        let refsDir = bundleURL.appending(path: "references")
+        try? FileManager.default.createDirectory(at: refsDir, withIntermediateDirectories: true)
+
+        let hash = SHA256.hash(data: data).compactMap { String(format: "%02x", $0) }.joined()
+        if document.referenceImages.contains(where: { $0.contentHash == hash }) {
+            return // duplicate
+        }
+
+        let filename = "\(UUID().uuidString).png"
+        let dest = refsDir.appending(path: filename)
+
+        do {
+            try data.write(to: dest)
+            let refDoc = ReferenceImageDocument(filename: filename, contentHash: hash)
+            document.referenceImages.append(refDoc)
+            onChanged()
+        } catch {
+            errorMessage = "Failed to import dropped image: \(error.localizedDescription)"
+        }
     }
 }
 
