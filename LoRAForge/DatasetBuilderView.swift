@@ -14,6 +14,8 @@ struct DatasetBuilderView: View {
     @State private var captioningEntryID: UUID?
     @State private var showingExport = false
     @State private var importError: String?
+    @State private var editingGenerationEntryID: UUID?
+    @Environment(GenerationService.self) private var generation
 
     private var filteredEntries: [EntryDocument] {
         if entryFilter.isEmpty { return document.entries }
@@ -70,6 +72,14 @@ struct DatasetBuilderView: View {
         }
         .sheet(isPresented: $showingExport) {
             ExportDialogView(document: $document, bundleURL: bundleURL, onChanged: onChanged)
+        }
+        .sheet(item: $editingGenerationEntryID) { entryID in
+            if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
+                GenerationEditorView(
+                    entry: $document.entries[idx],
+                    onChanged: onChanged
+                )
+            }
         }
         .sheet(item: $captioningEntryID) { entryID in
             if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
@@ -149,6 +159,8 @@ struct DatasetBuilderView: View {
                         onSweep: { sweepEntry(id: entry.id) },
                         onImport: { importingForEntryID = entry.id },
                         onCaption: { captioningEntryID = entry.id },
+                        onEditGeneration: { editingGenerationEntryID = entry.id },
+                        onGenerate: { generateForEntry(entry) },
                         onSetRank: { imageID, rank in
                             handleRankChange(imageID: imageID, entryID: entry.id, newRank: rank)
                         },
@@ -178,6 +190,22 @@ struct DatasetBuilderView: View {
     }
 
     // MARK: - Actions
+
+    private func generateForEntry(_ entry: EntryDocument) {
+        let prompt = entry.generationPrompt
+        guard !prompt.trimmingCharacters(in: .whitespaces).isEmpty else {
+            importError = "Set a prompt in the generation settings before generating."
+            return
+        }
+        let seed: Int64? = entry.useCustomSeed ? entry.generationSeed : nil
+        generation.generate(
+            prompt: prompt,
+            negativePrompt: entry.generationNegativePrompt,
+            seed: seed,
+            projectID: document.id,
+            entryID: entry.id
+        )
+    }
 
     private func addEntry() {
         let position = document.entries.count + 1
@@ -306,6 +334,8 @@ private struct EntryRow: View {
     let onSweep: () -> Void
     let onImport: () -> Void
     let onCaption: () -> Void
+    let onEditGeneration: () -> Void
+    let onGenerate: () -> Void
     let onSetRank: (UUID, ImageRank) -> Void
     let onDeleteEntry: () -> Void
 
@@ -350,6 +380,19 @@ private struct EntryRow: View {
             Spacer()
 
             HStack(spacing: 8) {
+                Button(action: onEditGeneration) {
+                    Label("Settings", systemImage: "slider.horizontal.3")
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
+                .help("Edit generation settings")
+
+                Button(action: onGenerate) {
+                    Label("Generate", systemImage: "sparkles")
+                }
+                .buttonStyle(.borderless)
+                .font(.caption)
+
                 Button(action: onCaption) {
                     Label("Caption", systemImage: "text.bubble")
                 }

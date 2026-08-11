@@ -43,6 +43,12 @@ struct EntryDocument: Codable, Identifiable {
     var captionMode: CaptionMode
     var manualCaptionText: String
     var lockedCaptionText: String?
+    var generationPrompt: String
+    var generationNegativePrompt: String
+    var generationSeed: Int64?
+    var useCustomSeed: Bool
+    var generationConfigJSON: String
+    var useCustomConfig: Bool
 
     var isLocked: Bool { lockedCaptionText != nil }
 
@@ -55,6 +61,12 @@ struct EntryDocument: Codable, Identifiable {
         self.captionMode = .tagged
         self.manualCaptionText = ""
         self.lockedCaptionText = nil
+        self.generationPrompt = ""
+        self.generationNegativePrompt = ""
+        self.generationSeed = nil
+        self.useCustomSeed = false
+        self.generationConfigJSON = ""
+        self.useCustomConfig = false
     }
 
     var finalImage: ImageDocument? {
@@ -71,13 +83,21 @@ struct ImageDocument: Codable, Identifiable {
     let filename: String
     var rank: ImageRank
     let addedAt: Date
+    var provenance: ImageProvenance?
 
-    init(filename: String, rank: ImageRank = .candidate) {
+    init(filename: String, rank: ImageRank = .candidate, provenance: ImageProvenance? = nil) {
         self.id = UUID()
         self.filename = filename
         self.rank = rank
         self.addedAt = Date()
+        self.provenance = provenance
     }
+}
+
+struct ImageProvenance: Codable {
+    let prompt: String
+    let negativePrompt: String
+    let seed: Int64
 }
 
 enum ImageRank: String, Codable, CaseIterable, Sendable {
