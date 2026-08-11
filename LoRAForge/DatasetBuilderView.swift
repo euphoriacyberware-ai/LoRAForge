@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import TaggingCore
 
 struct DatasetBuilderView: View {
     @Binding var document: ProjectDocument
@@ -17,6 +18,7 @@ struct DatasetBuilderView: View {
     @State private var editingGenerationEntryID: UUID?
     @State private var showingAudit = false
     @Environment(GenerationService.self) private var generation
+    @Environment(TagRepository.self) private var repo
 
     private var filteredEntries: [EntryDocument] {
         if entryFilter.isEmpty { return document.entries }
@@ -166,28 +168,34 @@ struct DatasetBuilderView: View {
     // MARK: - Entry List
 
     private var entryList: some View {
-        ScrollView {
-            LazyVStack(spacing: 1) {
-                headerBar
+        VStack(spacing: 0) {
+            headerBar
+            List {
                 ForEach(filteredEntries) { entry in
                     EntryRow(
                         entry: entry,
                         bundleURL: bundleURL,
                         visibleRanks: rankVisibility,
-                        onSweep: { sweepEntry(id: entry.id) },
+                        captionPreview: captionPreviewFor(entry),
                         onImport: { importingForEntryID = entry.id },
                         onCaption: { captioningEntryID = entry.id },
                         onEditGeneration: { editingGenerationEntryID = entry.id },
                         onGenerate: { generateForEntry(entry) },
+                        onSweep: { sweepEntry(id: entry.id) },
+                        onInsertBefore: { insertEntry(before: entry.id) },
+                        onInsertAfter: { insertEntry(after: entry.id) },
                         onSetRank: { imageID, rank in
                             handleRankChange(imageID: imageID, entryID: entry.id, newRank: rank)
                         },
                         onDeleteEntry: { deleteEntry(id: entry.id) }
                     )
+                    .listRowInsets(EdgeInsets(top: 1, leading: 0, bottom: 1, trailing: 0))
+                    .listRowSeparator(.hidden)
                 }
+                .onMove(perform: moveEntries)
             }
+            .listStyle(.plain)
         }
-        .background(.background)
     }
 
     private var headerBar: some View {
@@ -356,9 +364,53 @@ struct DatasetBuilderView: View {
         onChanged()
     }
 
+    private func insertEntry(before id: UUID) {
+        guard let idx = document.entries.firstIndex(where: { $0.id == id }) else { return }
+        let entry = EntryDocument(name: "Entry \(document.entries.count + 1)", position: 0)
+        document.entries.insert(entry, at: idx)
+        reindexPositions()
+        onChanged()
+    }
+
+    private func insertEntry(after id: UUID) {
+        guard let idx = document.entries.firstIndex(where: { $0.id == id }) else { return }
+        let entry = EntryDocument(name: "Entry \(document.entries.count + 1)", position: 0)
+        document.entries.insert(entry, at: idx + 1)
+        reindexPositions()
+        onChanged()
+    }
+
+    private func moveEntries(from source: IndexSet, to destination: Int) {
+        document.entries.move(fromOffsets: source, toOffset: destination)
+        reindexPositions()
+        onChanged()
+    }
+
     private func reindexPositions() {
         for i in document.entries.indices {
             document.entries[i].position = i + 1
+        }
+    }
+
+    private func captionPreviewFor(_ entry: EntryDocument) -> String {
+        if let locked = entry.lockedCaptionText, !locked.isEmpty {
+            return locked
+        }
+        switch entry.captionMode {
+        case .manual, .ollama:
+            return entry.manualCaptionText.isEmpty ? "No caption" : entry.manualCaptionText
+        case .tagged:
+            if entry.assignments.isEmpty { return "No caption" }
+            let categories = (try? repo.allCategories()) ?? []
+            let allTags = (try? repo.allTags()) ?? []
+            let tagDict = Dictionary(uniqueKeysWithValues: allTags.map { ($0.id, $0) })
+            let domainAssignments = entry.assignments.map {
+                TagAssignment(tagID: $0.tagID, selectionOrder: $0.selectionOrder)
+            }
+            let rendered = CaptionRenderer.render(
+                assignments: domainAssignments, tags: tagDict, categories: categories
+            )
+            return rendered.isEmpty ? "No caption" : rendered
         }
     }
 }
@@ -369,11 +421,14 @@ private struct EntryRow: View {
     let entry: EntryDocument
     let bundleURL: URL
     let visibleRanks: Set<ImageRank>
-    let onSweep: () -> Void
+    let captionPreview: String
     let onImport: () -> Void
     let onCaption: () -> Void
     let onEditGeneration: () -> Void
     let onGenerate: () -> Void
+    let onSweep: () -> Void
+    let onInsertBefore: () -> Void
+    let onInsertAfter: () -> Void
     let onSetRank: (UUID, ImageRank) -> Void
     let onDeleteEntry: () -> Void
 
@@ -382,7 +437,7 @@ private struct EntryRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 0) {
+        HStack(alignment: .center, spacing: 0) {
             entryHeader
                 .frame(width: 240)
                 .padding(8)
@@ -394,14 +449,14 @@ private struct EntryRow: View {
     }
 
     private var entryHeader: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 6) {
             // Final image thumbnail
             finalThumbnail
                 .frame(width: 44, height: 44)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
 
+            // Center: name, caption, count
             VStack(alignment: .leading, spacing: 3) {
-                // Position + name
                 HStack(spacing: 4) {
                     Text(String(format: "%03d", entry.position))
                         .font(.system(.caption2, design: .monospaced))
@@ -411,62 +466,49 @@ private struct EntryRow: View {
                         .lineLimit(1)
                 }
 
-                // Caption preview
                 Text(captionPreview)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
 
-                // Action buttons — icon only
-                HStack(spacing: 2) {
-                    Label("\(entry.activeImageCount)", systemImage: "photo")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-
-                    Spacer()
-
-                    Group {
-                        Button(action: onEditGeneration) {
-                            Label("Generation settings", systemImage: "slider.horizontal.3")
-                        }
-                        .help("Generation settings")
-
-                        Button(action: onGenerate) {
-                            Label("Generate", systemImage: "sparkles")
-                        }
-                        .help("Generate image")
-
-                        Button(action: onCaption) {
-                            Label("Caption", systemImage: "text.bubble")
-                        }
-                        .help("Edit caption")
-
-                        Button(action: onImport) {
-                            Label("Add images", systemImage: "photo.badge.plus")
-                        }
-                        .help("Import images")
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .font(.caption)
-
-                    Spacer().frame(width: 4)
-
-                    Button(action: onSweep) {
-                        Label("Sweep", systemImage: "wind")
-                    }
-                    .labelStyle(.iconOnly)
-                    .buttonStyle(.borderless)
-                    .font(.caption)
-                    .help("Move all candidates to discarded")
-                }
+                Label("\(entry.activeImageCount)", systemImage: "photo")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
             }
+
+            Spacer(minLength: 4)
+
+            // Right: vertical icon buttons
+            VStack(spacing: 4) {
+                Button(action: onEditGeneration) {
+                    Label("Generation settings", systemImage: "slider.horizontal.3")
+                }
+                .help("Generation settings")
+
+                Button(action: onCaption) {
+                    Label("Caption", systemImage: "text.bubble")
+                }
+                .help("Edit caption")
+
+                Button(action: onImport) {
+                    Label("Add images", systemImage: "photo.badge.plus")
+                }
+                .help("Import images")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .font(.caption)
         }
         .contextMenu {
-            Button("Add images...", action: onImport)
-            Button("Sweep candidates", action: onSweep)
+            Button("Generate", systemImage: "sparkles", action: onGenerate)
+            Button("Sweep candidates", systemImage: "wind", action: onSweep)
             Divider()
-            Button("Delete entry", role: .destructive, action: onDeleteEntry)
+            Button("Insert entry before", systemImage: "arrow.up", action: onInsertBefore)
+            Button("Insert entry after", systemImage: "arrow.down", action: onInsertAfter)
+            Divider()
+            Button("Add images...", systemImage: "photo.badge.plus", action: onImport)
+            Divider()
+            Button("Delete entry", systemImage: "trash", role: .destructive, action: onDeleteEntry)
         }
     }
 
@@ -505,19 +547,6 @@ private struct EntryRow: View {
                     .font(.caption)
                     .foregroundStyle(.quaternary)
             }
-    }
-
-    private var captionPreview: String {
-        if let locked = entry.lockedCaptionText, !locked.isEmpty {
-            return locked
-        }
-        if entry.captionMode != .tagged && !entry.manualCaptionText.isEmpty {
-            return entry.manualCaptionText
-        }
-        if entry.assignments.isEmpty {
-            return "No caption"
-        }
-        return "Tagged"
     }
 
     private var imageStrip: some View {
