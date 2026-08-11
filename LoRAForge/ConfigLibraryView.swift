@@ -108,7 +108,7 @@ struct ConfigLibraryView: View {
                 }
 
                 ConfigTextView(model: configModel)
-                    .id(selectedID)
+                    .id(ObjectIdentifier(configModel))
                     .onChange(of: configModel.text) {
                         if let idx = presets.firstIndex(where: { $0.id == selectedID }) {
                             presets[idx].configJSON = configModel.text
