@@ -179,7 +179,7 @@ struct DatasetBuilderView: View {
                 }
             }
         }
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(.background)
     }
 
     private var headerBar: some View {
@@ -371,7 +371,7 @@ private struct EntryRow: View {
             imageStrip
                 .padding(.vertical, 4)
         }
-        .background(Color(nsColor: .controlBackgroundColor))
+        .background(.background)
     }
 
     private var entryHeader: some View {

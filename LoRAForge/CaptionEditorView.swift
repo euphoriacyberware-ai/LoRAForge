@@ -54,12 +54,7 @@ struct CaptionEditorView: View {
 
     var body: some View {
         NavigationStack {
-            HSplitView {
-                imageWell
-                    .frame(minWidth: 200, idealWidth: 300)
-                editorPanel
-                    .frame(minWidth: 350)
-            }
+            captionEditorContent
             .navigationTitle(entry.name)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -85,7 +80,29 @@ struct CaptionEditorView: View {
                 Text(ollamaError ?? "")
             }
         }
+        #if os(macOS)
         .frame(minWidth: 700, minHeight: 500)
+        #endif
+    }
+
+    @ViewBuilder
+    private var captionEditorContent: some View {
+        #if os(macOS)
+        HSplitView {
+            imageWell
+                .frame(minWidth: 200, idealWidth: 300)
+            editorPanel
+                .frame(minWidth: 350)
+        }
+        #else
+        ScrollView {
+            VStack(spacing: 0) {
+                imageWell
+                    .frame(height: 250)
+                editorPanel
+            }
+        }
+        #endif
     }
 
     // MARK: - Image Well
@@ -432,7 +449,7 @@ private struct TagRowView: View {
                         .buttonStyle(.plain)
                     }
                 }
-                .background(Color(nsColor: .controlBackgroundColor))
+                .background(.background)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .shadow(radius: 2)
                 .padding(.leading, 110)
