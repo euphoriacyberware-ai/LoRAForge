@@ -219,24 +219,8 @@ struct GenerationEditorView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Toggle("Use custom", isOn: $entry.useCustomConfig)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .onChange(of: entry.useCustomConfig) { _, useCustom in
-                        if useCustom && configModel == nil {
-                            initConfigModel()
-                        }
-                        onChanged()
-                    }
-            }
-
-            // Preset picker
-            if entry.useCustomConfig && !presets.isEmpty {
-                HStack {
-                    Text("Load preset:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Menu("Presets") {
+                if !presets.isEmpty {
+                    Menu("Load preset") {
                         ForEach(presets) { preset in
                             Button(preset.name) {
                                 configModel = ConfigEditorModel(text: preset.configJSON)
@@ -250,17 +234,12 @@ struct GenerationEditorView: View {
                 }
             }
 
-            if entry.useCustomConfig, let configModel {
+            if let configModel {
                 ConfigTextView(model: configModel)
                     .onChange(of: configModel.text) {
                         entry.generationConfigJSON = configModel.text
                         onChanged()
                     }
-            } else {
-                Text("Turn on Use custom to edit.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
             Text("Seed and batch size are overridden by the app.")
@@ -270,15 +249,12 @@ struct GenerationEditorView: View {
         .padding()
         .onAppear {
             presets = (try? presetRepo.allPresets()) ?? []
-            if entry.useCustomConfig {
-                initConfigModel()
-            }
+            initConfigModel()
         }
     }
 
     private func initConfigModel() {
         if entry.generationConfigJSON.trimmingCharacters(in: .whitespaces).isEmpty {
-            // Start from default config
             configModel = ConfigEditorModel(DrawThingsConfiguration(), style: .nonDefaultOnly)
             entry.generationConfigJSON = configModel?.text ?? ""
         } else {

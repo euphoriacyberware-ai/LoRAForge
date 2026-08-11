@@ -96,7 +96,7 @@ final class GenerationService {
         prompt: String,
         negativePrompt: String,
         seed: Int64?,
-        configJSON: String?,
+        configJSON: String,
         projectConfigJSON: String?,
         projectID: UUID,
         entryID: UUID,
@@ -107,10 +107,12 @@ final class GenerationService {
             return
         }
 
-        // Cascade: entry custom → project default → app default → library default
+        // Entry config is authoritative (inherited from project default at creation).
+        // Fall back through project → app → library default only for legacy entries
+        // with empty config.
         var config: DrawThingsConfiguration
-        if let json = configJSON, !json.trimmingCharacters(in: .whitespaces).isEmpty,
-           let parsed = ConfigurationInterop.configuration(from: json) {
+        if !configJSON.trimmingCharacters(in: .whitespaces).isEmpty,
+           let parsed = ConfigurationInterop.configuration(from: configJSON) {
             config = parsed
         } else if let json = projectConfigJSON, !json.trimmingCharacters(in: .whitespaces).isEmpty,
                   let parsed = ConfigurationInterop.configuration(from: json) {

@@ -283,7 +283,7 @@ struct DatasetBuilderView: View {
             prompt: prompt,
             negativePrompt: entry.generationNegativePrompt,
             seed: seed,
-            configJSON: entry.useCustomConfig ? entry.generationConfigJSON : nil,
+            configJSON: entry.generationConfigJSON,
             projectConfigJSON: document.defaultGenerationConfigJSON,
             projectID: document.id,
             entryID: entry.id,
@@ -293,7 +293,11 @@ struct DatasetBuilderView: View {
 
     private func addEntry() {
         let position = document.entries.count + 1
-        let entry = EntryDocument(name: "Entry \(position)", position: position)
+        let entry = EntryDocument(
+            name: "Entry \(position)",
+            position: position,
+            defaultConfigJSON: document.defaultGenerationConfigJSON
+        )
         document.entries.append(entry)
         onChanged()
     }

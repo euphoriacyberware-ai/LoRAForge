@@ -10,6 +10,8 @@ struct ConfigLibraryView: View {
     @State private var configModel: ConfigEditorModel?
     @State private var newName = ""
     @State private var presetToDelete: SDGenerationPreset?
+    @State private var presetToRename: SDGenerationPreset?
+    @State private var renameName = ""
 
     var body: some View {
         HStack(spacing: 0) {
@@ -32,6 +34,10 @@ struct ConfigLibraryView: View {
                     Text(preset.name)
                         .tag(preset.id)
                         .contextMenu {
+                            Button("Rename") {
+                                renameName = preset.name
+                                presetToRename = preset
+                            }
                             Button("Duplicate") { duplicatePreset(preset) }
                             Divider()
                             Button("Delete", role: .destructive) { presetToDelete = preset }
@@ -67,6 +73,14 @@ struct ConfigLibraryView: View {
             if let preset = presetToDelete {
                 Text("Delete '\(preset.name)'?")
             }
+        }
+        .alert("Rename preset", isPresented: .init(
+            get: { presetToRename != nil },
+            set: { if !$0 { presetToRename = nil } }
+        )) {
+            TextField("Name", text: $renameName)
+            Button("Rename") { performRename() }
+            Button("Cancel", role: .cancel) { presetToRename = nil }
         }
     }
 
@@ -133,6 +147,16 @@ struct ConfigLibraryView: View {
 
     private func duplicatePreset(_ preset: SDGenerationPreset) {
         _ = try? presetRepo.addPreset(name: "\(preset.name) Copy", configJSON: preset.configJSON)
+        refresh()
+    }
+
+    private func performRename() {
+        guard let preset = presetToRename else { return }
+        let trimmed = renameName.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { presetToRename = nil; return }
+        preset.name = trimmed
+        try? presetRepo.updatePreset(preset)
+        presetToRename = nil
         refresh()
     }
 
