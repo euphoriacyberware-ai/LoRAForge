@@ -3,6 +3,7 @@ import SwiftUI
 enum SidebarItem: Hashable {
     case project(id: UUID)
     case tagLibrary
+    case configLibrary
 }
 
 enum ProjectTab: String, CaseIterable {
@@ -77,6 +78,8 @@ struct ContentView: View {
             Section {
                 Label("Tag Library", systemImage: "tag")
                     .tag(SidebarItem.tagLibrary)
+                Label("Config Library", systemImage: "slider.horizontal.3")
+                    .tag(SidebarItem.configLibrary)
             }
         }
         .navigationTitle("LoRAForge")
@@ -177,6 +180,8 @@ struct ContentView: View {
     private var detail: some View {
         if sidebarSelection == .tagLibrary {
             TagLibraryView()
+        } else if sidebarSelection == .configLibrary {
+            ConfigLibraryView()
         } else {
             projectContent
         }
