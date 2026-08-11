@@ -1,4 +1,7 @@
 import SwiftUI
+import DTConfigEditorKit
+import DTConfigBridge
+import DrawThingsClient
 
 struct GenerationEditorView: View {
     @Binding var entry: EntryDocument
@@ -10,6 +13,7 @@ struct GenerationEditorView: View {
     @State private var showingPromptTab = true // true = prompt, false = negative
     @State private var showingRefPicker = false
     @State private var refPickerSlot = 0
+    @State private var configModel: ConfigEditorModel?
 
     var body: some View {
         NavigationStack {
@@ -216,24 +220,25 @@ struct GenerationEditorView: View {
                 Toggle("Use custom", isOn: $entry.useCustomConfig)
                     .toggleStyle(.switch)
                     .controlSize(.small)
-                    .onChange(of: entry.useCustomConfig) { onChanged() }
+                    .onChange(of: entry.useCustomConfig) { _, useCustom in
+                        if useCustom && configModel == nil {
+                            initConfigModel()
+                        }
+                        onChanged()
+                    }
             }
 
-            if entry.useCustomConfig {
-                TextEditor(text: $entry.generationConfigJSON)
-                    .font(.system(.body, design: .monospaced))
-                    .onChange(of: entry.generationConfigJSON) { onChanged() }
+            if entry.useCustomConfig, let configModel {
+                ConfigTextView(model: configModel)
+                    .onChange(of: configModel.text) {
+                        entry.generationConfigJSON = configModel.text
+                        onChanged()
+                    }
             } else {
-                TextEditor(text: .constant(defaultConfigPreview))
-                    .font(.system(.body, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                    .disabled(true)
-            }
-
-            if !entry.useCustomConfig {
                 Text("Turn on Use custom to edit.")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
             Text("Seed and batch size are overridden by the app.")
@@ -241,20 +246,21 @@ struct GenerationEditorView: View {
                 .foregroundStyle(.tertiary)
         }
         .padding()
+        .onAppear {
+            if entry.useCustomConfig {
+                initConfigModel()
+            }
+        }
     }
 
-    private var defaultConfigPreview: String {
-        """
-        {
-          "steps": 30,
-          "cfg_scale": 7.0,
-          "sampler": "dpmpp_2m",
-          "scheduler": "karras",
-          "width": 1024,
-          "height": 1024,
-          "batch_size": 1
+    private func initConfigModel() {
+        if entry.generationConfigJSON.trimmingCharacters(in: .whitespaces).isEmpty {
+            // Start from default config
+            configModel = ConfigEditorModel(DrawThingsConfiguration(), style: .nonDefaultOnly)
+            entry.generationConfigJSON = configModel?.text ?? ""
+        } else {
+            configModel = ConfigEditorModel(text: entry.generationConfigJSON)
         }
-        """
     }
 }
 

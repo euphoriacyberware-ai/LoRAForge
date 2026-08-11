@@ -1,4 +1,7 @@
 import SwiftUI
+import DTConfigEditorKit
+import DTConfigBridge
+import DrawThingsClient
 
 struct SettingsView: View {
     var body: some View {
@@ -17,8 +20,7 @@ struct SettingsView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             Tab("Generation", systemImage: "wand.and.stars") {
-                Text("Generation settings")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                GenerationSettingsTab()
             }
         }
         #if os(macOS)
@@ -217,6 +219,52 @@ private struct OllamaProfileEditor: View {
                     }
                 }
             }
+        }
+    }
+}
+
+private struct GenerationSettingsTab: View {
+    @State private var configModel = ConfigEditorModel(
+        DrawThingsConfiguration(), style: .nonDefaultOnly
+    )
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Default generation configuration")
+                .font(.headline)
+            Text("New entries inherit this configuration. Applies to new projects.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            ConfigTextView(model: configModel)
+
+            HStack {
+                if configModel.isValid {
+                    Label("Valid", systemImage: "checkmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.green)
+                } else {
+                    Label("Invalid JSON", systemImage: "exclamationmark.triangle")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                Spacer()
+                Text("Seed and batch size are overridden by the app.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .onAppear {
+            // Load saved default config
+            if let saved = UserDefaults.standard.string(forKey: "defaultGenerationConfig"),
+               !saved.isEmpty {
+                configModel = ConfigEditorModel(text: saved)
+            }
+        }
+        .onChange(of: configModel.text) {
+            UserDefaults.standard.set(configModel.text, forKey: "defaultGenerationConfig")
         }
     }
 }

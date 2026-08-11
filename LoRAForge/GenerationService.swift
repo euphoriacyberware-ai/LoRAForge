@@ -106,10 +106,14 @@ final class GenerationService {
             return
         }
 
-        // Parse custom config JSON, or use defaults
+        // Parse custom config JSON, fall back to app default, then library default
         var config: DrawThingsConfiguration
         if let json = configJSON, !json.trimmingCharacters(in: .whitespaces).isEmpty,
            let parsed = ConfigurationInterop.configuration(from: json) {
+            config = parsed
+        } else if let defaultJSON = UserDefaults.standard.string(forKey: "defaultGenerationConfig"),
+                  !defaultJSON.trimmingCharacters(in: .whitespaces).isEmpty,
+                  let parsed = ConfigurationInterop.configuration(from: defaultJSON) {
             config = parsed
         } else {
             config = DrawThingsConfiguration()
