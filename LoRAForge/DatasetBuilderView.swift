@@ -384,7 +384,7 @@ private struct EntryRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             entryHeader
-                .frame(width: 200)
+                .frame(width: 240)
                 .padding(8)
             Divider()
             imageStrip
@@ -394,61 +394,72 @@ private struct EntryRow: View {
     }
 
     private var entryHeader: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(String(format: "%03d", entry.position))
-                    .font(.system(.caption, design: .monospaced))
-                    .foregroundStyle(.secondary)
-                Text(entry.name)
-                    .font(.headline)
-                    .lineLimit(1)
-            }
+        HStack(alignment: .top, spacing: 8) {
+            // Final image thumbnail
+            finalThumbnail
+                .frame(width: 44, height: 44)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
 
-            HStack(spacing: 8) {
-                Label("\(entry.activeImageCount)", systemImage: "photo")
+            VStack(alignment: .leading, spacing: 3) {
+                // Position + name
+                HStack(spacing: 4) {
+                    Text(String(format: "%03d", entry.position))
+                        .font(.system(.caption2, design: .monospaced))
+                        .foregroundStyle(.tertiary)
+                    Text(entry.name)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                }
+
+                // Caption preview
+                Text(captionPreview)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if entry.finalImage != nil {
-                    Image(systemName: "star.fill")
-                        .font(.caption)
-                        .foregroundStyle(.yellow)
-                }
-            }
+                    .lineLimit(1)
 
-            Spacer()
+                // Action buttons — icon only
+                HStack(spacing: 2) {
+                    Label("\(entry.activeImageCount)", systemImage: "photo")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
 
-            HStack(spacing: 8) {
-                Button(action: onEditGeneration) {
-                    Label("Settings", systemImage: "slider.horizontal.3")
-                }
-                .buttonStyle(.borderless)
-                .font(.caption)
-                .help("Edit generation settings")
+                    Spacer()
 
-                Button(action: onGenerate) {
-                    Label("Generate", systemImage: "sparkles")
-                }
-                .buttonStyle(.borderless)
-                .font(.caption)
+                    Group {
+                        Button(action: onEditGeneration) {
+                            Label("Generation settings", systemImage: "slider.horizontal.3")
+                        }
+                        .help("Generation settings")
 
-                Button(action: onCaption) {
-                    Label("Caption", systemImage: "text.bubble")
-                }
-                .buttonStyle(.borderless)
-                .font(.caption)
+                        Button(action: onGenerate) {
+                            Label("Generate", systemImage: "sparkles")
+                        }
+                        .help("Generate image")
 
-                Button(action: onImport) {
-                    Label("Add", systemImage: "photo.badge.plus")
-                }
-                .buttonStyle(.borderless)
-                .font(.caption)
+                        Button(action: onCaption) {
+                            Label("Caption", systemImage: "text.bubble")
+                        }
+                        .help("Edit caption")
 
-                Button(action: onSweep) {
-                    Label("Sweep", systemImage: "wind")
+                        Button(action: onImport) {
+                            Label("Add images", systemImage: "photo.badge.plus")
+                        }
+                        .help("Import images")
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+
+                    Spacer().frame(width: 4)
+
+                    Button(action: onSweep) {
+                        Label("Sweep", systemImage: "wind")
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .font(.caption)
+                    .help("Move all candidates to discarded")
                 }
-                .buttonStyle(.borderless)
-                .font(.caption)
-                .help("Move all candidates to discarded")
             }
         }
         .contextMenu {
@@ -457,6 +468,56 @@ private struct EntryRow: View {
             Divider()
             Button("Delete entry", role: .destructive, action: onDeleteEntry)
         }
+    }
+
+    @ViewBuilder
+    private var finalThumbnail: some View {
+        if let finalImg = entry.finalImage {
+            let imageURL = bundleURL.appending(path: "images/\(finalImg.filename)")
+            #if os(macOS)
+            if let nsImage = NSImage(contentsOf: imageURL) {
+                Image(nsImage: nsImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                thumbnailPlaceholder
+            }
+            #else
+            if let data = try? Data(contentsOf: imageURL),
+               let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                thumbnailPlaceholder
+            }
+            #endif
+        } else {
+            thumbnailPlaceholder
+        }
+    }
+
+    private var thumbnailPlaceholder: some View {
+        Rectangle()
+            .fill(Color.gray.opacity(0.15))
+            .overlay {
+                Image(systemName: "photo")
+                    .font(.caption)
+                    .foregroundStyle(.quaternary)
+            }
+    }
+
+    private var captionPreview: String {
+        if let locked = entry.lockedCaptionText, !locked.isEmpty {
+            return locked
+        }
+        if entry.captionMode != .tagged && !entry.manualCaptionText.isEmpty {
+            return entry.manualCaptionText
+        }
+        if entry.assignments.isEmpty {
+            return "No caption"
+        }
+        return "Tagged"
     }
 
     private var imageStrip: some View {
