@@ -5,11 +5,12 @@ import SwiftData
 struct LoRAForgeApp: App {
     let modelContainer: ModelContainer
     let tagRepository: TagRepository
+    let ollamaRepository: OllamaRepository
     let libraryManager: LibraryManager
     let generationService: GenerationService
 
     init() {
-        let schema = Schema([SDCategory.self, SDTag.self])
+        let schema = Schema([SDCategory.self, SDTag.self, SDOllamaProfile.self])
 
         func makeContainer() throws -> ModelContainer {
             let config = ModelConfiguration(schema: schema)
@@ -32,6 +33,7 @@ struct LoRAForgeApp: App {
             self.modelContainer = container
             self.tagRepository = TagRepository(modelContext: container.mainContext)
             try tagRepository.seedBuiltInCategoriesIfNeeded()
+            self.ollamaRepository = OllamaRepository(modelContext: container.mainContext)
             self.libraryManager = LibraryManager()
             self.generationService = GenerationService(library: libraryManager)
         } catch {
@@ -43,6 +45,7 @@ struct LoRAForgeApp: App {
         WindowGroup {
             ContentView()
                 .environment(tagRepository)
+                .environment(ollamaRepository)
                 .environment(libraryManager)
                 .environment(generationService)
         }
@@ -52,6 +55,7 @@ struct LoRAForgeApp: App {
         Settings {
             SettingsView()
                 .environment(tagRepository)
+                .environment(ollamaRepository)
                 .environment(libraryManager)
                 .environment(generationService)
         }

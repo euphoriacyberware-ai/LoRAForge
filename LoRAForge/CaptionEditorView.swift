@@ -9,12 +9,17 @@ struct CaptionEditorView: View {
     let onChanged: () -> Void
 
     @Environment(TagRepository.self) private var repo
+    @Environment(OllamaRepository.self) private var ollamaRepo
     @Environment(\.dismiss) private var dismiss
 
     @State private var categories: [TagCategory] = []
     @State private var allTags: [UUID: [Tag]] = [:]
     @State private var previousCaptionText: String?
     @State private var showingUnlockDiff = false
+    @State private var ollamaProfiles: [SDOllamaProfile] = []
+    @State private var showingProfilePicker = false
+    @State private var isOllamaRunning = false
+    @State private var ollamaError: String?
 
     private var enabledCategories: [TagCategory] {
         projectCategoryOrder.compactMap { catID in
@@ -62,6 +67,23 @@ struct CaptionEditorView: View {
                 }
             }
             .onAppear(perform: loadData)
+            .sheet(isPresented: $showingProfilePicker) {
+                OllamaProfilePickerSheet(
+                    profiles: ollamaProfiles,
+                    onSelect: { profile in
+                        showingProfilePicker = false
+                        runOllama(profile: profile)
+                    }
+                )
+            }
+            .alert("Ollama error", isPresented: .init(
+                get: { ollamaError != nil },
+                set: { if !$0 { ollamaError = nil } }
+            )) {
+                Button("OK") { ollamaError = nil }
+            } message: {
+                Text(ollamaError ?? "")
+            }
         }
         .frame(minWidth: 700, minHeight: 500)
     }
@@ -157,14 +179,19 @@ struct CaptionEditorView: View {
                 )
             }
 
-            // Ollama wand — present but disabled until phase 11
-            Button {} label: {
-                Label("Ollama", systemImage: "wand.and.stars")
+            // Ollama wand
+            Button { showingProfilePicker = true } label: {
+                if isOllamaRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Label("Ollama", systemImage: "wand.and.stars")
+                }
             }
-            .disabled(true)
+            .disabled(entry.finalImage == nil || entry.isLocked || isOllamaRunning)
             .help(entry.finalImage == nil
                   ? "Requires a final image"
-                  : "Ollama captioning will be available in a future update")
+                  : "Auto-caption with a vision model")
         }
         .padding(8)
     }
@@ -258,6 +285,35 @@ struct CaptionEditorView: View {
         categories = (try? repo.allCategories()) ?? []
         for cat in categories {
             allTags[cat.id] = (try? repo.tags(in: cat.id)) ?? []
+        }
+        ollamaProfiles = (try? ollamaRepo.allProfiles()) ?? []
+    }
+
+    private func runOllama(profile: SDOllamaProfile) {
+        guard let finalImg = entry.finalImage else { return }
+        let imageURL = bundleURL.appending(path: "images/\(finalImg.filename)")
+        guard let imageData = try? Data(contentsOf: imageURL) else {
+            ollamaError = "Could not load the final image."
+            return
+        }
+
+        isOllamaRunning = true
+        Task {
+            do {
+                let response = try await OllamaClient.generate(
+                    endpoint: profile.endpoint,
+                    model: profile.model,
+                    instruction: profile.instruction,
+                    imageData: imageData
+                )
+                previousCaptionText = entry.manualCaptionText
+                entry.captionMode = .ollama
+                entry.manualCaptionText = response
+                onChanged()
+            } catch {
+                ollamaError = error.localizedDescription
+            }
+            isOllamaRunning = false
         }
     }
 
@@ -448,6 +504,53 @@ private struct TagRowView: View {
                 assignments.append(AssignmentDocument(tagID: domainTag.id, selectionOrder: maxOrder + 1))
             }
             onChanged()
+        }
+    }
+}
+
+// MARK: - Ollama Profile Picker
+
+private struct OllamaProfilePickerSheet: View {
+    let profiles: [SDOllamaProfile]
+    let onSelect: (SDOllamaProfile) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            List {
+                if profiles.isEmpty {
+                    Text("No Ollama profiles configured. Add one in Settings > Ollama.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(profiles) { profile in
+                        Button {
+                            onSelect(profile)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(profile.name).font(.headline)
+                                Text("\(profile.model) — \(profile.endpoint)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                Text(profile.instruction)
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
+                                    .lineLimit(2)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+            .navigationTitle("Choose Ollama profile")
+            #if os(macOS)
+            .frame(minWidth: 350, minHeight: 250)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+            }
         }
     }
 }
