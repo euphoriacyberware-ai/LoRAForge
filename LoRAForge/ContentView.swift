@@ -13,6 +13,7 @@ enum ProjectTab: String, CaseIterable {
 struct ContentView: View {
     @Environment(TagRepository.self) private var repo
     @Environment(LibraryManager.self) private var library
+    @Environment(GenerationService.self) private var generation
     @State private var sidebarSelection: SidebarItem?
     @State private var lastProjectID: UUID?
     @State private var selectedTab: ProjectTab = .datasetBuilder
@@ -23,6 +24,8 @@ struct ContentView: View {
     @State private var currentDocument: ProjectDocument?
     @State private var renamingProjectID: UUID?
     @State private var renameText = ""
+    @State private var showingQueuePopover = false
+    @State private var showingProjectSettings = false
 
     var body: some View {
         NavigationSplitView {
@@ -82,13 +85,6 @@ struct ContentView: View {
             }
         }
         #if os(iOS)
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Button { showingSettings = true } label: {
-                    Label("Settings", systemImage: "gear")
-                }
-            }
-        }
         .sheet(isPresented: $showingSettings) {
             NavigationStack {
                 SettingsView()
@@ -221,6 +217,46 @@ struct ContentView: View {
                 }
                 .pickerStyle(.segmented)
                 .fixedSize()
+            }
+            ToolbarItemGroup(placement: .automatic) {
+                // Queue manager — visible when items are queued or processing
+                if generation.pendingCount > 0 || generation.isProcessing {
+                    Button { showingQueuePopover.toggle() } label: {
+                        Label("Queue (\(generation.pendingCount))", systemImage: "list.number")
+                    }
+                    .popover(isPresented: $showingQueuePopover) {
+                        QueueManagerView()
+                    }
+                }
+
+                // Project settings — hidden on Tag Library
+                if case .project = sidebarSelection, currentDocument != nil {
+                    Button { showingProjectSettings = true } label: {
+                        Label("Project settings", systemImage: "folder.badge.gearshape")
+                    }
+                }
+
+                // App settings
+                #if os(iOS)
+                Button { showingSettings = true } label: {
+                    Label("Settings", systemImage: "gear")
+                }
+                #else
+                SettingsLink {
+                    Label("Settings", systemImage: "gear")
+                }
+                #endif
+            }
+        }
+        .sheet(isPresented: $showingProjectSettings) {
+            if currentDocument != nil {
+                ProjectSettingsView(
+                    document: Binding(
+                        get: { currentDocument! },
+                        set: { currentDocument = $0 }
+                    ),
+                    onChanged: { saveCurrentProject() }
+                )
             }
         }
     }

@@ -124,6 +124,14 @@ struct DatasetBuilderView: View {
                 }
             }
 
+            Button { generateUnfilled() } label: {
+                Label("Generate unfilled", systemImage: "sparkles")
+            }
+            .disabled(!generation.isConnected || entriesWithoutFinal.isEmpty)
+            .help(entriesWithoutFinal.isEmpty
+                  ? "All entries have a final image"
+                  : "Generate for \(entriesWithoutFinal.count) entr\(entriesWithoutFinal.count == 1 ? "y" : "ies") without a final")
+
             Button { showingExport = true } label: {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
@@ -199,7 +207,17 @@ struct DatasetBuilderView: View {
         .padding(.vertical, 6)
     }
 
+    private var entriesWithoutFinal: [EntryDocument] {
+        document.entries.filter { $0.finalImage == nil && !$0.generationPrompt.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
     // MARK: - Actions
+
+    private func generateUnfilled() {
+        for entry in entriesWithoutFinal {
+            generateForEntry(entry)
+        }
+    }
 
     private func generateForEntry(_ entry: EntryDocument) {
         let prompt = entry.generationPrompt
