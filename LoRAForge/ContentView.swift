@@ -225,6 +225,25 @@ struct ContentView: View {
                 .fixedSize()
             }
             ToolbarItemGroup(placement: .automatic) {
+                // Draw Things connection toggle
+                Button {
+                    if generation.isConnected {
+                        generation.disconnect()
+                    } else {
+                        generation.connect()
+                    }
+                } label: {
+                    Label(
+                        generation.isConnected ? "Connected" : "Connect",
+                        systemImage: generation.isConnected ? "bolt.fill" : "bolt.slash"
+                    )
+                }
+                .labelStyle(.iconOnly)
+                .help(generation.isConnected
+                      ? "Connected to Draw Things — click to disconnect"
+                      : "Connect to Draw Things at \(generation.serverAddress)")
+                .foregroundStyle(generation.isConnected ? .green : .secondary)
+
                 // Queue manager — visible when items are queued or processing
                 if generation.pendingCount > 0 || generation.isProcessing {
                     Button { showingQueuePopover.toggle() } label: {
