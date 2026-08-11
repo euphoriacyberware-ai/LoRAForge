@@ -19,17 +19,17 @@ struct GenerationEditorView: View {
         NavigationStack {
             HStack(spacing: 0) {
                 promptPanel
-                    .frame(minWidth: 220, idealWidth: 280)
+                    .frame(minWidth: 260, idealWidth: 340)
                 Divider()
                 seedAndReferencesPanel
-                    .frame(minWidth: 200, idealWidth: 240)
+                    .frame(minWidth: 220, idealWidth: 280)
                 Divider()
                 configPanel
-                    .frame(minWidth: 240, idealWidth: 300)
+                    .frame(minWidth: 300, idealWidth: 400)
             }
             .navigationTitle("Entry generation editor")
             #if os(macOS)
-            .frame(minWidth: 700, minHeight: 450)
+            .frame(minWidth: 900, idealWidth: 1100, minHeight: 550, idealHeight: 650)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {

@@ -81,7 +81,7 @@ struct CaptionEditorView: View {
             }
         }
         #if os(macOS)
-        .frame(minWidth: 700, minHeight: 500)
+        .frame(minWidth: 900, idealWidth: 1100, minHeight: 600, idealHeight: 700)
         #endif
     }
 
