@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import DrawThingsQueue
 import DrawThingsClient
+import DTConfigBridge
 #if os(macOS)
 import AppKit
 #else
@@ -95,6 +96,7 @@ final class GenerationService {
         prompt: String,
         negativePrompt: String,
         seed: Int64?,
+        configJSON: String?,
         projectID: UUID,
         entryID: UUID,
         referenceImageData: [Data] = []
@@ -104,7 +106,16 @@ final class GenerationService {
             return
         }
 
-        var config = DrawThingsConfiguration()
+        // Parse custom config JSON, or use defaults
+        var config: DrawThingsConfiguration
+        if let json = configJSON, !json.trimmingCharacters(in: .whitespaces).isEmpty,
+           let parsed = ConfigurationInterop.configuration(from: json) {
+            config = parsed
+        } else {
+            config = DrawThingsConfiguration()
+        }
+
+        // App owns seed and batch size — override regardless of config
         let actualSeed = seed ?? Int64(Int.random(in: 0...Int(UInt32.max)))
         config.seed = actualSeed
         config.batchSize = 1
