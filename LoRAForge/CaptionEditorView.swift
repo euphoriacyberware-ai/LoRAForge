@@ -88,11 +88,13 @@ struct CaptionEditorView: View {
     @ViewBuilder
     private var captionEditorContent: some View {
         #if os(macOS)
-        HSplitView {
+        HStack(spacing: 0) {
             imageWell
-                .frame(minWidth: 200, idealWidth: 300)
+                .frame(minWidth: 200, maxWidth: 400)
+            Divider()
             editorPanel
-                .frame(minWidth: 350)
+                .frame(minWidth: 400)
+                .layoutPriority(1)
         }
         #else
         ScrollView {
@@ -151,11 +153,16 @@ struct CaptionEditorView: View {
 
     private var editorPanel: some View {
         VStack(spacing: 0) {
+            // Pinned top: mode bar + caption field
             modeAndLockBar
             Divider()
             captionField
             Divider()
+
+            // Scrollable middle: tag panel
             tagPanel
+
+            // Pinned bottom: preview
             Divider()
             renderPreview
         }
