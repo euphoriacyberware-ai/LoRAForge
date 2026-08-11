@@ -58,14 +58,6 @@ struct ProjectBundle {
     }
 
     private func writeAtomic(_ data: Data, to destination: URL) throws {
-        let temp = destination.deletingLastPathComponent()
-            .appending(path: ".\(destination.lastPathComponent).tmp")
-        try data.write(to: temp, options: .atomic)
-        let fm = FileManager.default
-        if fm.fileExists(atPath: destination.path) {
-            _ = try fm.replaceItemAt(destination, withItemAt: temp)
-        } else {
-            try fm.moveItem(at: temp, to: destination)
-        }
+        try data.write(to: destination, options: .atomic)
     }
 }

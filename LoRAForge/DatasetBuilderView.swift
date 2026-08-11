@@ -77,6 +77,8 @@ struct DatasetBuilderView: View {
             if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
                 GenerationEditorView(
                     entry: $document.entries[idx],
+                    referenceImages: document.referenceImages,
+                    bundleURL: bundleURL,
                     onChanged: onChanged
                 )
             }
@@ -198,12 +200,21 @@ struct DatasetBuilderView: View {
             return
         }
         let seed: Int64? = entry.useCustomSeed ? entry.generationSeed : nil
+
+        // Load reference image data for moodboard hints
+        let refData: [Data] = entry.referenceImageIDs.compactMap { refID in
+            guard let ref = document.referenceImages.first(where: { $0.id == refID }) else { return nil }
+            let url = bundleURL.appending(path: "references/\(ref.filename)")
+            return try? Data(contentsOf: url)
+        }
+
         generation.generate(
             prompt: prompt,
             negativePrompt: entry.generationNegativePrompt,
             seed: seed,
             projectID: document.id,
-            entryID: entry.id
+            entryID: entry.id,
+            referenceImageData: refData
         )
     }
 

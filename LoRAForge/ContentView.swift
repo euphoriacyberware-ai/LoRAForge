@@ -195,7 +195,14 @@ struct ContentView: View {
                         onChanged: { saveCurrentProject() }
                     )
                 case .referenceLibrary:
-                    ReferenceLibraryView()
+                    ReferenceLibraryView(
+                        document: Binding(
+                            get: { currentDocument! },
+                            set: { currentDocument = $0 }
+                        ),
+                        bundleURL: library.bundleURL(for: id) ?? URL(filePath: "/"),
+                        onChanged: { saveCurrentProject() }
+                    )
                 }
             } else {
                 ContentUnavailableView(

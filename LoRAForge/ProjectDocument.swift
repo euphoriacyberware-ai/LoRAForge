@@ -9,6 +9,7 @@ struct ProjectDocument: Codable {
     var categoryEnabled: [UUID: Bool]
     var lastExportBaseName: String?
     var entries: [EntryDocument]
+    var referenceImages: [ReferenceImageDocument]
 
     init(name: String, categories: [TagCategory]) {
         self.id = UUID()
@@ -17,6 +18,7 @@ struct ProjectDocument: Codable {
         self.categoryOrder = categories.sorted { $0.position < $1.position }.map(\.id)
         self.categoryEnabled = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.isEnabled) })
         self.entries = []
+        self.referenceImages = []
     }
 
     var totalImageCount: Int {
@@ -49,6 +51,7 @@ struct EntryDocument: Codable, Identifiable {
     var useCustomSeed: Bool
     var generationConfigJSON: String
     var useCustomConfig: Bool
+    var referenceImageIDs: [UUID]
 
     var isLocked: Bool { lockedCaptionText != nil }
 
@@ -67,6 +70,7 @@ struct EntryDocument: Codable, Identifiable {
         self.useCustomSeed = false
         self.generationConfigJSON = ""
         self.useCustomConfig = false
+        self.referenceImageIDs = []
     }
 
     var finalImage: ImageDocument? {
@@ -98,6 +102,20 @@ struct ImageProvenance: Codable {
     let prompt: String
     let negativePrompt: String
     let seed: Int64
+}
+
+struct ReferenceImageDocument: Codable, Identifiable {
+    let id: UUID
+    let filename: String
+    let contentHash: String
+    let addedAt: Date
+
+    init(filename: String, contentHash: String) {
+        self.id = UUID()
+        self.filename = filename
+        self.contentHash = contentHash
+        self.addedAt = Date()
+    }
 }
 
 enum ImageRank: String, Codable, CaseIterable, Sendable {

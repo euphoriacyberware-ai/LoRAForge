@@ -281,10 +281,7 @@ struct StoreTests {
 
     @Test("Atomic write survives overwrite")
     func atomicOverwrite() throws {
-        let repo = try freshRepository()
-        try repo.seedBuiltInCategoriesIfNeeded()
-
-        let categories = try repo.allCategories()
+        let categories = BuiltInCategory.defaultCategories
         var doc = ProjectDocument(name: "Original", categories: categories)
         let schema = SchemaSnapshot(categories: categories, tags: [])
 
@@ -375,10 +372,7 @@ struct StoreTests {
 
     @Test("Entries with images round-trip through bundle")
     func entryImageRoundTrip() throws {
-        let repo = try freshRepository()
-        try repo.seedBuiltInCategoriesIfNeeded()
-
-        let categories = try repo.allCategories()
+        let categories = BuiltInCategory.defaultCategories
         var doc = ProjectDocument(name: "ImageTest", categories: categories)
         var entry = EntryDocument(name: "Entry 1", position: 1)
         entry.images = [
@@ -463,10 +457,7 @@ struct StoreTests {
 
     @Test("Caption fields round-trip through bundle")
     func captionRoundTrip() throws {
-        let repo = try freshRepository()
-        try repo.seedBuiltInCategoriesIfNeeded()
-
-        let categories = try repo.allCategories()
+        let categories = BuiltInCategory.defaultCategories
         var doc = ProjectDocument(name: "CaptionTest", categories: categories)
         var entry = EntryDocument(name: "Entry 1", position: 1)
         entry.captionMode = .manual
@@ -526,10 +517,7 @@ struct StoreTests {
 
     @Test("Export produces correct filenames and sidecars")
     func exportFilenames() throws {
-        let repo = try freshRepository()
-        try repo.seedBuiltInCategoriesIfNeeded()
-
-        let categories = try repo.allCategories()
+        let categories = BuiltInCategory.defaultCategories
         var doc = ProjectDocument(name: "Maya", categories: categories)
         var entry1 = EntryDocument(name: "Entry 1", position: 1)
         entry1.images = [ImageDocument(filename: "img1.png", rank: .final)]

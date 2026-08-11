@@ -71,7 +71,8 @@ final class GenerationService {
         negativePrompt: String,
         seed: Int64?,
         projectID: UUID,
-        entryID: UUID
+        entryID: UUID,
+        referenceImageData: [Data] = []
     ) {
         guard let queue else {
             lastError = "Not connected to Draw Things server"
@@ -84,10 +85,19 @@ final class GenerationService {
         config.batchSize = 1
         config.batchCount = 1
 
+        // Build moodboard hints from reference images
+        var hints: [HintProto] = []
+        if !referenceImageData.isEmpty {
+            let builder = HintBuilder()
+            builder.addMoodboardImages(referenceImageData, weight: 1.0)
+            hints = builder.build()
+        }
+
         let request = queue.enqueue(
             prompt: prompt,
             negativePrompt: negativePrompt,
-            configuration: config
+            configuration: config,
+            hints: hints
         )
 
         requestMap[request.id] = RequestTarget(projectID: projectID, entryID: entryID)
