@@ -219,11 +219,11 @@ final class GenerationService {
 
         let imageDoc = ImageDocument(filename: filename, provenance: provenance)
 
-        // Load the project, add the image, save
+        // Load the project, add the image, save, and notify UI
         if var doc = try? library.loadDocument(id: target.projectID) {
             if let entryIdx = doc.entries.firstIndex(where: { $0.id == target.entryID }) {
                 doc.entries[entryIdx].images.append(imageDoc)
-                library.updateDocument(doc)
+                library.updateDocumentExternally(doc)
                 try? library.saveImmediately(id: target.projectID)
             }
         }

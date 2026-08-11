@@ -49,6 +49,12 @@ struct ContentView: View {
                 currentDocument = try? library.loadDocument(id: id)
             }
         }
+        .onChange(of: library.lastExternalUpdateProjectID) { _, updatedID in
+            guard let updatedID else { return }
+            if case .project(let id) = sidebarSelection, id == updatedID {
+                currentDocument = try? library.loadDocument(id: id)
+            }
+        }
         #if os(macOS)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
             library.saveAllDirty()

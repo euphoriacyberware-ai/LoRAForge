@@ -14,6 +14,7 @@ final class LibraryManager {
 
     private(set) var projects: [ProjectInfo] = []
     private(set) var libraryURL: URL
+    private(set) var lastExternalUpdateProjectID: UUID?
 
     private var loadedDocuments: [UUID: ProjectDocument] = [:]
     private var saveTask: [UUID: Task<Void, Never>] = [:]
@@ -113,6 +114,11 @@ final class LibraryManager {
     func updateDocument(_ doc: ProjectDocument) {
         loadedDocuments[doc.id] = doc
         scheduleSave(id: doc.id)
+    }
+
+    func updateDocumentExternally(_ doc: ProjectDocument) {
+        loadedDocuments[doc.id] = doc
+        lastExternalUpdateProjectID = doc.id
     }
 
     func scheduleSave(id: UUID) {
