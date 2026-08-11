@@ -15,6 +15,7 @@ struct DatasetBuilderView: View {
     @State private var showingExport = false
     @State private var importError: String?
     @State private var editingGenerationEntryID: UUID?
+    @State private var showingAudit = false
     @Environment(GenerationService.self) private var generation
 
     private var filteredEntries: [EntryDocument] {
@@ -73,6 +74,9 @@ struct DatasetBuilderView: View {
         .sheet(isPresented: $showingExport) {
             ExportDialogView(document: $document, bundleURL: bundleURL, onChanged: onChanged)
         }
+        .sheet(isPresented: $showingAudit) {
+            AuditView(document: document, bundleURL: bundleURL)
+        }
         .sheet(item: $editingGenerationEntryID) { entryID in
             if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
                 GenerationEditorView(
@@ -109,6 +113,10 @@ struct DatasetBuilderView: View {
             rankToggles
 
             Spacer()
+
+            Button { showingAudit = true } label: {
+                Label("Audit", systemImage: "chart.bar")
+            }
 
             if document.discardedImageCount > 0 {
                 Button { showingEmptyTrash = true } label: {

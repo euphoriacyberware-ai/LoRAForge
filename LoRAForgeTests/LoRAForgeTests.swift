@@ -597,4 +597,98 @@ struct StoreTests {
         #expect(ExportManager.sanitizeBaseName("test/name") == "testname")
         #expect(ExportManager.sanitizeBaseName("") == "export")
     }
+
+    // MARK: - Phase 12: Auditing
+
+    @Test("Audit scopes to tagged-mode entries with final image")
+    func auditScope() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let categories = try repo.allCategories()
+        let poseTag = try repo.addTag(canonicalString: "standing", toCategoryID: BuiltInCategory.pose.id)
+        let allTags = try repo.allTags()
+        let tagDict = Dictionary(uniqueKeysWithValues: allTags.map { ($0.id, $0) })
+
+        var doc = ProjectDocument(name: "AuditTest", categories: categories)
+
+        // Entry 1: tagged + final → scoped
+        var e1 = EntryDocument(name: "E1", position: 1)
+        e1.captionMode = .tagged
+        e1.images = [ImageDocument(filename: "a.png", rank: .final)]
+        e1.assignments = [AssignmentDocument(tagID: poseTag.id, selectionOrder: 0)]
+
+        // Entry 2: manual + final → excluded (not tagged)
+        var e2 = EntryDocument(name: "E2", position: 2)
+        e2.captionMode = .manual
+        e2.images = [ImageDocument(filename: "b.png", rank: .final)]
+
+        // Entry 3: tagged but no final → excluded
+        var e3 = EntryDocument(name: "E3", position: 3)
+        e3.captionMode = .tagged
+
+        doc.entries = [e1, e2, e3]
+
+        let result = AuditEngine.audit(document: doc, categories: categories, allTags: tagDict)
+        #expect(result.totalEntries == 3)
+        #expect(result.scopedEntries == 1)
+        #expect(result.excludedNoFinal == 1)
+        #expect(result.excludedNotTagged == 1)
+    }
+
+    @Test("Audit computes per-category coverage and tag frequency")
+    func auditCoverage() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let categories = try repo.allCategories()
+        let standing = try repo.addTag(canonicalString: "standing", toCategoryID: BuiltInCategory.pose.id)
+        let sitting = try repo.addTag(canonicalString: "sitting", toCategoryID: BuiltInCategory.pose.id)
+        let allTags = try repo.allTags()
+        let tagDict = Dictionary(uniqueKeysWithValues: allTags.map { ($0.id, $0) })
+
+        var doc = ProjectDocument(name: "CoverageTest", categories: categories)
+
+        // 3 scoped entries: 2 have Pose assigned, 1 does not
+        var e1 = EntryDocument(name: "E1", position: 1)
+        e1.captionMode = .tagged
+        e1.images = [ImageDocument(filename: "a.png", rank: .final)]
+        e1.assignments = [AssignmentDocument(tagID: standing.id, selectionOrder: 0)]
+
+        var e2 = EntryDocument(name: "E2", position: 2)
+        e2.captionMode = .tagged
+        e2.images = [ImageDocument(filename: "b.png", rank: .final)]
+        e2.assignments = [AssignmentDocument(tagID: standing.id, selectionOrder: 0)]
+
+        var e3 = EntryDocument(name: "E3", position: 3)
+        e3.captionMode = .tagged
+        e3.images = [ImageDocument(filename: "c.png", rank: .final)]
+        e3.assignments = [AssignmentDocument(tagID: sitting.id, selectionOrder: 0)]
+
+        doc.entries = [e1, e2, e3]
+
+        let result = AuditEngine.audit(document: doc, categories: categories, allTags: tagDict)
+        #expect(result.scopedEntries == 3)
+
+        let poseResult = result.categoryResults.first { $0.id == BuiltInCategory.pose.id }!
+        #expect(poseResult.coverage == 1.0) // all 3 entries have a Pose tag
+        #expect(poseResult.tagFrequencies.count == 2) // standing and sitting
+
+        let standingFreq = poseResult.tagFrequencies.first { $0.tagName == "standing" }!
+        #expect(standingFreq.count == 2)
+        // standing: 2/3 = 66.7%, below 70% high threshold — not flagged
+        #expect(!standingFreq.isAboveHigh)
+    }
+
+    @Test("Audit states explicit denominator")
+    func auditDenominator() throws {
+        let categories = BuiltInCategory.defaultCategories
+        var doc = ProjectDocument(name: "Empty", categories: categories)
+        doc.entries = []
+
+        let result = AuditEngine.audit(document: doc, categories: categories, allTags: [:])
+        #expect(result.totalEntries == 0)
+        #expect(result.scopedEntries == 0)
+        #expect(result.categoryResults.isEmpty)
+    }
 }
