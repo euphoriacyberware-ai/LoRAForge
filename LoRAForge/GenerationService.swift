@@ -10,6 +10,9 @@ import UIKit
 
 @Observable
 final class GenerationService {
+    static func enableDebugLogging() {
+        DrawThingsClientLogger.minimumLevel = .debug
+    }
     private(set) var isConnected = false
     private(set) var isPaused = false
     private(set) var lastError: String?

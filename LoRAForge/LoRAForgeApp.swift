@@ -36,6 +36,9 @@ struct LoRAForgeApp: App {
             self.ollamaRepository = OllamaRepository(modelContext: container.mainContext)
             self.libraryManager = LibraryManager()
             self.generationService = GenerationService(library: libraryManager)
+            #if DEBUG
+            GenerationService.enableDebugLogging()
+            #endif
         } catch {
             fatalError("Could not initialize data store: \(error)")
         }
