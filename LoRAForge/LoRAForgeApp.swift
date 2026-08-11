@@ -6,6 +6,7 @@ struct LoRAForgeApp: App {
     let modelContainer: ModelContainer
     let tagRepository: TagRepository
     let libraryManager: LibraryManager
+    let generationService: GenerationService
 
     init() {
         let schema = Schema([SDCategory.self, SDTag.self])
@@ -32,6 +33,7 @@ struct LoRAForgeApp: App {
             self.tagRepository = TagRepository(modelContext: container.mainContext)
             try tagRepository.seedBuiltInCategoriesIfNeeded()
             self.libraryManager = LibraryManager()
+            self.generationService = GenerationService(library: libraryManager)
         } catch {
             fatalError("Could not initialize data store: \(error)")
         }
@@ -42,6 +44,7 @@ struct LoRAForgeApp: App {
             ContentView()
                 .environment(tagRepository)
                 .environment(libraryManager)
+                .environment(generationService)
         }
         .modelContainer(modelContainer)
 
@@ -50,6 +53,7 @@ struct LoRAForgeApp: App {
             SettingsView()
                 .environment(tagRepository)
                 .environment(libraryManager)
+                .environment(generationService)
         }
         .modelContainer(modelContainer)
         #endif

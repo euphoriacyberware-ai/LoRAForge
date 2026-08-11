@@ -7,8 +7,7 @@ struct SettingsView: View {
                 GeneralSettingsTab()
             }
             Tab("Draw Things", systemImage: "paintbrush") {
-                Text("Draw Things settings")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                DrawThingsSettingsTab()
             }
             Tab("Ollama", systemImage: "brain") {
                 Text("Ollama settings")
@@ -42,6 +41,51 @@ private struct GeneralSettingsTab: View {
                 }
                 LabeledContent("Projects") {
                     Text("\(library.projects.count)")
+                }
+            }
+        }
+        .formStyle(.grouped)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct DrawThingsSettingsTab: View {
+    @Environment(GenerationService.self) private var generation
+
+    var body: some View {
+        @Bindable var generation = generation
+        Form {
+            Section("Server") {
+                TextField("Address", text: $generation.serverAddress)
+                HStack {
+                    if generation.isConnected {
+                        Label("Connected", systemImage: "checkmark.circle.fill")
+                            .foregroundStyle(.green)
+                    } else {
+                        Label("Disconnected", systemImage: "xmark.circle")
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button(generation.isConnected ? "Disconnect" : "Connect") {
+                        if generation.isConnected {
+                            generation.disconnect()
+                        } else {
+                            generation.connect()
+                        }
+                    }
+                }
+                if let error = generation.lastError {
+                    Text(error)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
+            Section("Queue") {
+                LabeledContent("Pending") { Text("\(generation.pendingCount)") }
+                LabeledContent("Processing") { Text(generation.isProcessing ? "Yes" : "No") }
+                if generation.isPaused {
+                    Label("Paused", systemImage: "pause.circle")
+                        .foregroundStyle(.orange)
                 }
             }
         }

@@ -521,4 +521,92 @@ struct StoreTests {
         entry.captionMode = .tagged
         #expect(entry.assignments.count == 2)
     }
+
+    // MARK: - Phase 7: Export
+
+    @Test("Export produces correct filenames and sidecars")
+    func exportFilenames() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let categories = try repo.allCategories()
+        var doc = ProjectDocument(name: "Maya", categories: categories)
+        var entry1 = EntryDocument(name: "Entry 1", position: 1)
+        entry1.images = [ImageDocument(filename: "img1.png", rank: .final)]
+        entry1.captionMode = .manual
+        entry1.manualCaptionText = "test caption"
+        var entry2 = EntryDocument(name: "Entry 2", position: 2)
+        entry2.images = [ImageDocument(filename: "img2.png", rank: .candidate)]
+        // entry2 has no final — should be skipped
+        doc.entries = [entry1, entry2]
+
+        let tempDir = FileManager.default.temporaryDirectory
+            .appending(path: UUID().uuidString)
+        let bundleURL = tempDir.appending(path: "Test.loraforge")
+        let exportDir = tempDir.appending(path: "export")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        try ProjectBundle.create(at: bundleURL, project: doc, schema: SchemaSnapshot(categories: categories, tags: []))
+        // Create the image file so copy works
+        try "".write(to: bundleURL.appending(path: "images/img1.png"), atomically: true, encoding: .utf8)
+        try FileManager.default.createDirectory(at: exportDir, withIntermediateDirectories: true)
+
+        let result = try ExportManager.export(
+            document: doc, bundleURL: bundleURL, to: exportDir,
+            baseName: "maya", scope: .finalsOnly,
+            categories: categories, allTags: [:]
+        )
+
+        #expect(result.exportedEntries == 1)
+        #expect(result.skippedEntries == 1)
+        #expect(FileManager.default.fileExists(atPath: exportDir.appending(path: "maya_001.png").path))
+        #expect(FileManager.default.fileExists(atPath: exportDir.appending(path: "maya_001.txt").path))
+
+        // Sidecar content
+        let sidecar = try String(contentsOf: exportDir.appending(path: "maya_001.txt"), encoding: .utf8)
+        #expect(sidecar == "test caption\n")
+    }
+
+    @Test("Locked entries export stored text, unlocked tagged render fresh")
+    func exportCaptionSource() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+
+        let poseID = BuiltInCategory.pose.id
+        let tag = try repo.addTag(canonicalString: "standing", toCategoryID: poseID)
+        let categories = try repo.allCategories()
+        let tags = try repo.allTags()
+        let tagDict = Dictionary(uniqueKeysWithValues: tags.map { ($0.id, $0) })
+
+        // Locked entry — exports stored text
+        var locked = EntryDocument(name: "Locked", position: 1)
+        locked.captionMode = .tagged
+        locked.lockedCaptionText = "old caption before changes"
+
+        // Unlocked tagged entry — renders fresh
+        var unlocked = EntryDocument(name: "Unlocked", position: 2)
+        unlocked.captionMode = .tagged
+        unlocked.assignments = [AssignmentDocument(tagID: tag.id, selectionOrder: 0)]
+
+        let lockedCaption = ExportManager.captionForExport(entry: locked, categories: categories, allTags: tagDict)
+        let unlockedCaption = ExportManager.captionForExport(entry: unlocked, categories: categories, allTags: tagDict)
+
+        #expect(lockedCaption == "old caption before changes")
+        #expect(unlockedCaption == "standing")
+    }
+
+    @Test("Empty caption produces empty sidecar with trailing newline")
+    func emptySidecar() throws {
+        let entry = EntryDocument(name: "Empty", position: 1)
+        let caption = ExportManager.captionForExport(entry: entry, categories: [], allTags: [:])
+        #expect(caption.isEmpty)
+        // The sidecar would be "\n" — just the trailing newline
+    }
+
+    @Test("Base name sanitization removes illegal characters")
+    func baseNameSanitization() throws {
+        #expect(ExportManager.sanitizeBaseName("my project") == "myproject")
+        #expect(ExportManager.sanitizeBaseName("test/name") == "testname")
+        #expect(ExportManager.sanitizeBaseName("") == "export")
+    }
 }
