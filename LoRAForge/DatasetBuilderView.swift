@@ -17,6 +17,7 @@ struct DatasetBuilderView: View {
     @State private var importError: String?
     @State private var editingGenerationEntryID: UUID?
     @State private var showingAudit = false
+    @State private var selectedImageIDs: Set<UUID> = []
     @Environment(GenerationService.self) private var generation
     @Environment(TagRepository.self) private var repo
 
@@ -168,34 +169,70 @@ struct DatasetBuilderView: View {
     // MARK: - Entry List
 
     private var entryList: some View {
-        VStack(spacing: 0) {
-            headerBar
-            List {
-                ForEach(filteredEntries) { entry in
-                    EntryRow(
-                        entry: entry,
-                        bundleURL: bundleURL,
-                        visibleRanks: rankVisibility,
-                        captionPreview: captionPreviewFor(entry),
-                        onImport: { importingForEntryID = entry.id },
-                        onCaption: { captioningEntryID = entry.id },
-                        onEditGeneration: { editingGenerationEntryID = entry.id },
-                        onGenerate: { generateForEntry(entry) },
-                        onSweep: { sweepEntry(id: entry.id) },
-                        onInsertBefore: { insertEntry(before: entry.id) },
-                        onInsertAfter: { insertEntry(after: entry.id) },
-                        onSetRank: { imageID, rank in
-                            handleRankChange(imageID: imageID, entryID: entry.id, newRank: rank)
-                        },
-                        onDeleteEntry: { deleteEntry(id: entry.id) }
-                    )
-                    .listRowInsets(EdgeInsets(top: 1, leading: 0, bottom: 1, trailing: 0))
-                    .listRowSeparator(.hidden)
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                LazyVStack(spacing: 1) {
+                    headerBar
+                    ForEach(filteredEntries) { entry in
+                        EntryRow(
+                            entry: entry,
+                            bundleURL: bundleURL,
+                            visibleRanks: rankVisibility,
+                            captionPreview: captionPreviewFor(entry),
+                            selectedImageIDs: $selectedImageIDs,
+                            onImport: { importingForEntryID = entry.id },
+                            onCaption: { captioningEntryID = entry.id },
+                            onEditGeneration: { editingGenerationEntryID = entry.id },
+                            onGenerate: { generateForEntry(entry) },
+                            onSweep: { sweepEntry(id: entry.id) },
+                            onInsertBefore: { insertEntry(before: entry.id) },
+                            onInsertAfter: { insertEntry(after: entry.id) },
+                            onSetRank: { imageID, rank in
+                                setRankForSelection(imageID: imageID, entryID: entry.id, rank: rank)
+                            },
+                            onDeleteEntry: { deleteEntry(id: entry.id) }
+                        )
+                    }
                 }
-                .onMove(perform: moveEntries)
             }
-            .listStyle(.plain)
+            .background(.background)
+
+            // Bottom toolbar for selected images
+            if !selectedImageIDs.isEmpty {
+                selectionToolbar
+            }
         }
+    }
+
+    private var selectionToolbar: some View {
+        HStack(spacing: 16) {
+            Text("\(selectedImageIDs.count) selected")
+                .font(.subheadline.weight(.medium))
+
+            Spacer()
+
+            ForEach(ImageRank.allCases, id: \.self) { rank in
+                Button {
+                    applyRankToSelection(rank)
+                } label: {
+                    if let icon = rank.badgeIcon {
+                        Label(rank.label, systemImage: icon)
+                    } else {
+                        Text(rank.label)
+                    }
+                }
+                .help(rank.label)
+            }
+
+            Spacer()
+
+            Button("Deselect") {
+                selectedImageIDs.removeAll()
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 10)
+        .background(.regularMaterial)
     }
 
     private var headerBar: some View {
@@ -364,6 +401,36 @@ struct DatasetBuilderView: View {
         onChanged()
     }
 
+    private func setRankForSelection(imageID: UUID, entryID: UUID, rank: ImageRank) {
+        // If the image is in the selection, apply to all selected
+        if selectedImageIDs.contains(imageID) {
+            applyRankToSelection(rank)
+        } else {
+            handleRankChange(imageID: imageID, entryID: entryID, newRank: rank)
+        }
+    }
+
+    private func applyRankToSelection(_ rank: ImageRank) {
+        for entryIdx in document.entries.indices {
+            for imgIdx in document.entries[entryIdx].images.indices {
+                let img = document.entries[entryIdx].images[imgIdx]
+                guard selectedImageIDs.contains(img.id) else { continue }
+
+                if rank == .final {
+                    // Demote existing final in this entry
+                    for i in document.entries[entryIdx].images.indices {
+                        if document.entries[entryIdx].images[i].rank == .final {
+                            document.entries[entryIdx].images[i].rank = .shortlist
+                        }
+                    }
+                }
+                document.entries[entryIdx].images[imgIdx].rank = rank
+            }
+        }
+        selectedImageIDs.removeAll()
+        onChanged()
+    }
+
     private func insertEntry(before id: UUID) {
         guard let idx = document.entries.firstIndex(where: { $0.id == id }) else { return }
         let entry = EntryDocument(name: "Entry \(document.entries.count + 1)", position: 0)
@@ -422,6 +489,7 @@ private struct EntryRow: View {
     let bundleURL: URL
     let visibleRanks: Set<ImageRank>
     let captionPreview: String
+    @Binding var selectedImageIDs: Set<UUID>
     let onImport: () -> Void
     let onCaption: () -> Void
     let onEditGeneration: () -> Void
@@ -556,11 +624,21 @@ private struct EntryRow: View {
                     ImageThumbnail(
                         image: image,
                         bundleURL: bundleURL,
+                        isSelected: selectedImageIDs.contains(image.id),
+                        onTap: { toggleSelection(image.id) },
                         onSetRank: { rank in onSetRank(image.id, rank) }
                     )
                 }
             }
             .padding(.horizontal, 4)
+        }
+    }
+
+    private func toggleSelection(_ imageID: UUID) {
+        if selectedImageIDs.contains(imageID) {
+            selectedImageIDs.remove(imageID)
+        } else {
+            selectedImageIDs.insert(imageID)
         }
     }
 }
@@ -570,6 +648,8 @@ private struct EntryRow: View {
 private struct ImageThumbnail: View {
     let image: ImageDocument
     let bundleURL: URL
+    let isSelected: Bool
+    let onTap: () -> Void
     let onSetRank: (ImageRank) -> Void
 
     private var imageURL: URL {
@@ -581,6 +661,10 @@ private struct ImageThumbnail: View {
             loadedImage
                 .frame(width: 100, height: 100)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 6)
+                        .stroke(Color.accentColor, lineWidth: isSelected ? 3 : 0)
+                )
 
             if let icon = image.rank.badgeIcon {
                 Image(systemName: icon)
@@ -591,6 +675,7 @@ private struct ImageThumbnail: View {
                     .padding(4)
             }
         }
+        .onTapGesture { onTap() }
         .contextMenu {
             ForEach(ImageRank.allCases, id: \.self) { rank in
                 if rank != image.rank {
