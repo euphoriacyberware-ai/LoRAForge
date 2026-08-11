@@ -18,6 +18,8 @@ struct DatasetBuilderView: View {
     @State private var editingGenerationEntryID: UUID?
     @State private var showingAudit = false
     @State private var selectedImageIDs: Set<UUID> = []
+    @State private var lightboxTarget: LightboxTarget?
+    @AppStorage("thumbnailSize") private var thumbnailSize: Double = 100
     @Environment(GenerationService.self) private var generation
     @Environment(TagRepository.self) private var repo
 
@@ -101,6 +103,16 @@ struct DatasetBuilderView: View {
                 )
             }
         }
+        .sheet(item: $lightboxTarget) { target in
+            LightboxView(
+                document: $document,
+                bundleURL: bundleURL,
+                initialEntryID: target.entryID,
+                initialImageID: target.imageID,
+                visibleRanks: rankVisibility,
+                onChanged: onChanged
+            )
+        }
     }
 
     // MARK: - Toolbar
@@ -114,6 +126,12 @@ struct DatasetBuilderView: View {
             Spacer()
 
             rankToggles
+
+            HStack(spacing: 4) {
+                Image(systemName: "photo").font(.caption2).foregroundStyle(.secondary)
+                Slider(value: $thumbnailSize, in: 60...200).frame(width: 100)
+                Image(systemName: "photo").font(.caption).foregroundStyle(.secondary)
+            }
 
             Spacer()
 
@@ -178,6 +196,7 @@ struct DatasetBuilderView: View {
                             entry: entry,
                             bundleURL: bundleURL,
                             visibleRanks: rankVisibility,
+                            thumbnailSize: CGFloat(thumbnailSize),
                             captionPreview: captionPreviewFor(entry),
                             selectedImageIDs: $selectedImageIDs,
                             onImport: { importingForEntryID = entry.id },
@@ -190,7 +209,10 @@ struct DatasetBuilderView: View {
                             onSetRank: { imageID, rank in
                                 setRankForSelection(imageID: imageID, entryID: entry.id, rank: rank)
                             },
-                            onDeleteEntry: { deleteEntry(id: entry.id) }
+                            onDeleteEntry: { deleteEntry(id: entry.id) },
+                            onDoubleTapImage: { imageID in
+                                lightboxTarget = LightboxTarget(entryID: entry.id, imageID: imageID)
+                            }
                         )
                     }
                 }
@@ -493,6 +515,7 @@ private struct EntryRow: View {
     let entry: EntryDocument
     let bundleURL: URL
     let visibleRanks: Set<ImageRank>
+    let thumbnailSize: CGFloat
     let captionPreview: String
     @Binding var selectedImageIDs: Set<UUID>
     let onImport: () -> Void
@@ -504,6 +527,7 @@ private struct EntryRow: View {
     let onInsertAfter: () -> Void
     let onSetRank: (UUID, ImageRank) -> Void
     let onDeleteEntry: () -> Void
+    let onDoubleTapImage: (UUID) -> Void
 
     private var visibleImages: [ImageDocument] {
         entry.images.filter { visibleRanks.contains($0.rank) }
@@ -629,8 +653,10 @@ private struct EntryRow: View {
                     ImageThumbnail(
                         image: image,
                         bundleURL: bundleURL,
+                        size: thumbnailSize,
                         isSelected: selectedImageIDs.contains(image.id),
                         onTap: { toggleSelection(image.id) },
+                        onDoubleTap: { onDoubleTapImage(image.id) },
                         onSetRank: { rank in onSetRank(image.id, rank) }
                     )
                 }
@@ -653,8 +679,10 @@ private struct EntryRow: View {
 private struct ImageThumbnail: View {
     let image: ImageDocument
     let bundleURL: URL
+    let size: CGFloat
     let isSelected: Bool
     let onTap: () -> Void
+    let onDoubleTap: () -> Void
     let onSetRank: (ImageRank) -> Void
 
     private var imageURL: URL {
@@ -664,7 +692,7 @@ private struct ImageThumbnail: View {
     var body: some View {
         ZStack(alignment: .topTrailing) {
             loadedImage
-                .frame(width: 100, height: 100)
+                .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
                 .overlay(
                     RoundedRectangle(cornerRadius: 6)
@@ -680,7 +708,8 @@ private struct ImageThumbnail: View {
                     .padding(4)
             }
         }
-        .onTapGesture { onTap() }
+        .onTapGesture(count: 2) { onDoubleTap() }
+        .onTapGesture(count: 1) { onTap() }
         .contextMenu {
             ForEach(ImageRank.allCases, id: \.self) { rank in
                 if rank != image.rank {
