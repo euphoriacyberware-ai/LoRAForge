@@ -10,9 +10,10 @@ struct TagLibraryView: View {
     var body: some View {
         HStack(spacing: 0) {
             categoryList
-                .frame(minWidth: 220, idealWidth: 280, maxWidth: 350)
+                .frame(width: 280)
             Divider()
             tagDetail
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationTitle("Tag Library")
         .onAppear(perform: refresh)
