@@ -40,7 +40,7 @@ final class GenerationService {
     init(library: LibraryManager) {
         self.library = library
         self.serverAddress = UserDefaults.standard.string(forKey: "dtServerAddress") ?? "localhost:7859"
-        self.useTLS = UserDefaults.standard.object(forKey: "dtUseTLS") as? Bool ?? false
+        self.useTLS = UserDefaults.standard.object(forKey: "dtUseTLS") as? Bool ?? true
         self.sharedSecret = UserDefaults.standard.string(forKey: "dtSharedSecret") ?? ""
         loadRequestMap()
     }
@@ -49,13 +49,26 @@ final class GenerationService {
 
     func connect() {
         disconnect()
+        let secret = sharedSecret.isEmpty ? nil : sharedSecret
         do {
-            let secret = sharedSecret.isEmpty ? nil : sharedSecret
-            let q = try DrawThingsQueue(address: serverAddress, useTLS: useTLS, sharedSecret: secret)
+            // Test the connection first with an echo call
+            let service = try DrawThingsService(address: serverAddress, useTLS: useTLS)
+            let q = DrawThingsQueue(service: service, sharedSecret: secret)
             queue = q
-            isConnected = true
             observeQueue(q)
             startIngestion(q)
+
+            // Verify connectivity asynchronously
+            Task {
+                do {
+                    _ = try await service.echo()
+                    isConnected = true
+                    lastError = nil
+                } catch {
+                    lastError = "Connection test failed: \(error.localizedDescription)"
+                    isConnected = false
+                }
+            }
         } catch {
             lastError = "Connection failed: \(error.localizedDescription)"
             isConnected = false
