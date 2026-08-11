@@ -19,6 +19,12 @@ final class GenerationService {
     var serverAddress: String {
         didSet { UserDefaults.standard.set(serverAddress, forKey: "dtServerAddress") }
     }
+    var useTLS: Bool {
+        didSet { UserDefaults.standard.set(useTLS, forKey: "dtUseTLS") }
+    }
+    var sharedSecret: String {
+        didSet { UserDefaults.standard.set(sharedSecret, forKey: "dtSharedSecret") }
+    }
 
     private var queue: DrawThingsQueue?
     private var requestMap: [UUID: RequestTarget] = [:]
@@ -34,6 +40,8 @@ final class GenerationService {
     init(library: LibraryManager) {
         self.library = library
         self.serverAddress = UserDefaults.standard.string(forKey: "dtServerAddress") ?? "localhost:7859"
+        self.useTLS = UserDefaults.standard.object(forKey: "dtUseTLS") as? Bool ?? false
+        self.sharedSecret = UserDefaults.standard.string(forKey: "dtSharedSecret") ?? ""
         loadRequestMap()
     }
 
@@ -42,7 +50,8 @@ final class GenerationService {
     func connect() {
         disconnect()
         do {
-            let q = try DrawThingsQueue(address: serverAddress, useTLS: false)
+            let secret = sharedSecret.isEmpty ? nil : sharedSecret
+            let q = try DrawThingsQueue(address: serverAddress, useTLS: useTLS, sharedSecret: secret)
             queue = q
             isConnected = true
             observeQueue(q)

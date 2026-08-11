@@ -56,6 +56,9 @@ private struct DrawThingsSettingsTab: View {
         Form {
             Section("Server") {
                 TextField("Address", text: $generation.serverAddress)
+                Toggle("Use TLS", isOn: $generation.useTLS)
+                TextField("Shared secret", text: $generation.sharedSecret)
+                    .textFieldStyle(.roundedBorder)
                 HStack {
                     if generation.isConnected {
                         Label("Connected", systemImage: "checkmark.circle.fill")
