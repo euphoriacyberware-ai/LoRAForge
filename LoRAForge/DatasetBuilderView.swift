@@ -284,6 +284,7 @@ struct DatasetBuilderView: View {
             negativePrompt: entry.generationNegativePrompt,
             seed: seed,
             configJSON: entry.useCustomConfig ? entry.generationConfigJSON : nil,
+            projectConfigJSON: document.defaultGenerationConfigJSON,
             projectID: document.id,
             entryID: entry.id,
             referenceImageData: refData

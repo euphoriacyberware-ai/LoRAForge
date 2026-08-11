@@ -10,6 +10,7 @@ struct ProjectDocument: Codable {
     var lastExportBaseName: String?
     var entries: [EntryDocument]
     var referenceImages: [ReferenceImageDocument]
+    var defaultGenerationConfigJSON: String
 
     init(name: String, categories: [TagCategory]) {
         self.id = UUID()
@@ -19,6 +20,7 @@ struct ProjectDocument: Codable {
         self.categoryEnabled = Dictionary(uniqueKeysWithValues: categories.map { ($0.id, $0.isEnabled) })
         self.entries = []
         self.referenceImages = []
+        self.defaultGenerationConfigJSON = UserDefaults.standard.string(forKey: "defaultGenerationConfig") ?? ""
     }
 
     var totalImageCount: Int {

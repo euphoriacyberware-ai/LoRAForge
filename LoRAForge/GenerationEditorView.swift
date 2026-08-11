@@ -10,10 +10,12 @@ struct GenerationEditorView: View {
     let onChanged: () -> Void
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(GenerationPresetRepository.self) private var presetRepo
     @State private var showingPromptTab = true // true = prompt, false = negative
     @State private var showingRefPicker = false
     @State private var refPickerSlot = 0
     @State private var configModel: ConfigEditorModel?
+    @State private var presets: [SDGenerationPreset] = []
 
     var body: some View {
         NavigationStack {
@@ -228,6 +230,26 @@ struct GenerationEditorView: View {
                     }
             }
 
+            // Preset picker
+            if entry.useCustomConfig && !presets.isEmpty {
+                HStack {
+                    Text("Load preset:")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Menu("Presets") {
+                        ForEach(presets) { preset in
+                            Button(preset.name) {
+                                configModel = ConfigEditorModel(text: preset.configJSON)
+                                entry.generationConfigJSON = preset.configJSON
+                                onChanged()
+                            }
+                        }
+                    }
+                    .menuStyle(.borderlessButton)
+                    .fixedSize()
+                }
+            }
+
             if entry.useCustomConfig, let configModel {
                 ConfigTextView(model: configModel)
                     .onChange(of: configModel.text) {
@@ -247,6 +269,7 @@ struct GenerationEditorView: View {
         }
         .padding()
         .onAppear {
+            presets = (try? presetRepo.allPresets()) ?? []
             if entry.useCustomConfig {
                 initConfigModel()
             }

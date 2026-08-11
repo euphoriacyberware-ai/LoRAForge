@@ -224,40 +224,87 @@ private struct OllamaProfileEditor: View {
 }
 
 private struct GenerationSettingsTab: View {
+    @Environment(GenerationPresetRepository.self) private var presetRepo
+    @State private var presets: [SDGenerationPreset] = []
     @State private var configModel = ConfigEditorModel(
         DrawThingsConfiguration(), style: .nonDefaultOnly
     )
+    @State private var newPresetName = ""
+    @State private var editingPreset: SDGenerationPreset?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Default generation configuration")
-                .font(.headline)
-            Text("New entries inherit this configuration. Applies to new projects.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        HStack(spacing: 0) {
+            // Left: preset library
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Configuration presets")
+                    .font(.headline)
 
-            ConfigTextView(model: configModel)
-
-            HStack {
-                if configModel.isValid {
-                    Label("Valid", systemImage: "checkmark.circle")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                } else {
-                    Label("Invalid JSON", systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
+                List {
+                    ForEach(presets) { preset in
+                        HStack {
+                            Text(preset.name)
+                            Spacer()
+                            Button("Load") { loadPreset(preset) }
+                                .buttonStyle(.borderless)
+                                .font(.caption)
+                        }
+                        .contextMenu {
+                            Button("Load into default") { loadPreset(preset) }
+                            Button("Update from current") {
+                                preset.configJSON = configModel.text
+                                try? presetRepo.updatePreset(preset)
+                            }
+                            Divider()
+                            Button("Delete", role: .destructive) {
+                                try? presetRepo.deletePreset(preset)
+                                refresh()
+                            }
+                        }
+                    }
                 }
-                Spacer()
-                Text("Seed and batch size are overridden by the app.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                .listStyle(.plain)
+                .frame(minHeight: 150)
+
+                HStack {
+                    TextField("New preset name", text: $newPresetName)
+                        .textFieldStyle(.roundedBorder)
+                    Button("Save") { saveAsPreset() }
+                        .disabled(newPresetName.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
             }
+            .frame(width: 220)
+            .padding()
+
+            Divider()
+
+            // Right: default config editor
+            VStack(alignment: .leading, spacing: 8) {
+                Text("App default configuration")
+                    .font(.headline)
+                Text("New projects inherit this. Seed and batch size are overridden.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                ConfigTextView(model: configModel)
+
+                HStack {
+                    if configModel.isValid {
+                        Label("Valid", systemImage: "checkmark.circle")
+                            .font(.caption)
+                            .foregroundStyle(.green)
+                    } else {
+                        Label("Invalid JSON", systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.red)
+                    }
+                    Spacer()
+                }
+            }
+            .padding()
         }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
-            // Load saved default config
+            refresh()
             if let saved = UserDefaults.standard.string(forKey: "defaultGenerationConfig"),
                !saved.isEmpty {
                 configModel = ConfigEditorModel(text: saved)
@@ -266,6 +313,22 @@ private struct GenerationSettingsTab: View {
         .onChange(of: configModel.text) {
             UserDefaults.standard.set(configModel.text, forKey: "defaultGenerationConfig")
         }
+    }
+
+    private func refresh() {
+        presets = (try? presetRepo.allPresets()) ?? []
+    }
+
+    private func loadPreset(_ preset: SDGenerationPreset) {
+        configModel = ConfigEditorModel(text: preset.configJSON)
+    }
+
+    private func saveAsPreset() {
+        let name = newPresetName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        _ = try? presetRepo.addPreset(name: name, configJSON: configModel.text)
+        newPresetName = ""
+        refresh()
     }
 }
 

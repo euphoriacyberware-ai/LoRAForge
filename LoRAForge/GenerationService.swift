@@ -97,6 +97,7 @@ final class GenerationService {
         negativePrompt: String,
         seed: Int64?,
         configJSON: String?,
+        projectConfigJSON: String?,
         projectID: UUID,
         entryID: UUID,
         referenceImageData: [Data] = []
@@ -106,10 +107,13 @@ final class GenerationService {
             return
         }
 
-        // Parse custom config JSON, fall back to app default, then library default
+        // Cascade: entry custom → project default → app default → library default
         var config: DrawThingsConfiguration
         if let json = configJSON, !json.trimmingCharacters(in: .whitespaces).isEmpty,
            let parsed = ConfigurationInterop.configuration(from: json) {
+            config = parsed
+        } else if let json = projectConfigJSON, !json.trimmingCharacters(in: .whitespaces).isEmpty,
+                  let parsed = ConfigurationInterop.configuration(from: json) {
             config = parsed
         } else if let defaultJSON = UserDefaults.standard.string(forKey: "defaultGenerationConfig"),
                   !defaultJSON.trimmingCharacters(in: .whitespaces).isEmpty,

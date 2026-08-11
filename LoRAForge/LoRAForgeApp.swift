@@ -6,11 +6,12 @@ struct LoRAForgeApp: App {
     let modelContainer: ModelContainer
     let tagRepository: TagRepository
     let ollamaRepository: OllamaRepository
+    let presetRepository: GenerationPresetRepository
     let libraryManager: LibraryManager
     let generationService: GenerationService
 
     init() {
-        let schema = Schema([SDCategory.self, SDTag.self, SDOllamaProfile.self])
+        let schema = Schema([SDCategory.self, SDTag.self, SDOllamaProfile.self, SDGenerationPreset.self])
 
         func makeContainer() throws -> ModelContainer {
             let config = ModelConfiguration(schema: schema)
@@ -34,6 +35,7 @@ struct LoRAForgeApp: App {
             self.tagRepository = TagRepository(modelContext: container.mainContext)
             try tagRepository.seedBuiltInCategoriesIfNeeded()
             self.ollamaRepository = OllamaRepository(modelContext: container.mainContext)
+            self.presetRepository = GenerationPresetRepository(modelContext: container.mainContext)
             self.libraryManager = LibraryManager()
             self.generationService = GenerationService(library: libraryManager)
             #if DEBUG
@@ -49,6 +51,7 @@ struct LoRAForgeApp: App {
             ContentView()
                 .environment(tagRepository)
                 .environment(ollamaRepository)
+                .environment(presetRepository)
                 .environment(libraryManager)
                 .environment(generationService)
         }
@@ -59,6 +62,7 @@ struct LoRAForgeApp: App {
             SettingsView()
                 .environment(tagRepository)
                 .environment(ollamaRepository)
+                .environment(presetRepository)
                 .environment(libraryManager)
                 .environment(generationService)
         }
