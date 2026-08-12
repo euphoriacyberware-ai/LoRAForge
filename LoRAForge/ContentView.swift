@@ -318,7 +318,7 @@ struct ContentView: View {
                     Button { showingQueuePopover.toggle() } label: {
                         Label("Queue", systemImage: "hourglass")
                     }
-                    .badge(generation.pendingCount)
+                    .badge(generation.pendingCount + (generation.isProcessing ? 1 : 0))
                     .popover(isPresented: $showingQueuePopover) {
                         QueueManagerView()
                     }
