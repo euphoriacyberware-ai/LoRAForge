@@ -972,7 +972,9 @@ struct GenerateUnfilledButton: View {
 
             Button(action: action) {
                 HStack(spacing: 4) {
-                    Image(systemName: "sparkles")
+                    Label("Generate", systemImage: "sparkles")
+                    Text("\(unfilledCount)")
+                        .monospacedDigit()
                     if count > 1 {
                         Text("×\(count)")
                             .monospacedDigit()
@@ -981,9 +983,6 @@ struct GenerateUnfilledButton: View {
                             .padding(.vertical, 1)
                             .background(Capsule().fill(.white.opacity(0.25)))
                     }
-                    Text("·")
-                    Text("\(unfilledCount)")
-                        .monospacedDigit()
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)

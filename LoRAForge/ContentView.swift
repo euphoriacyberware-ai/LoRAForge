@@ -91,7 +91,7 @@ struct ContentView: View {
         .navigationSplitViewColumnWidth(min: 180, ideal: 220)
         #endif
         .toolbar {
-            ToolbarItemGroup(placement: .automatic) {
+            ToolbarItem(placement: .primaryAction) {
                 Button { showingNewProject = true } label: {
                     Label("New project", systemImage: "plus")
                 }
@@ -291,7 +291,7 @@ struct ContentView: View {
                     }
                     .help(unfilled.isEmpty
                           ? "All entries have a final image"
-                          : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final")
+                          : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final — \(generateUnfilledCount * unfilled.count) total")
                 }
 
                 // Draw Things connection toggle
