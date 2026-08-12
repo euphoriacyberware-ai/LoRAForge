@@ -103,16 +103,6 @@ struct DatasetBuilderView: View {
                 )
             }
         }
-        .sheet(item: $lightboxTarget) { target in
-            LightboxView(
-                document: $document,
-                bundleURL: bundleURL,
-                initialEntryID: target.entryID,
-                initialImageID: target.imageID,
-                visibleRanks: rankVisibility,
-                onChanged: onChanged
-            )
-        }
     }
 
     // MARK: - Toolbar
@@ -214,6 +204,23 @@ struct DatasetBuilderView: View {
                                 lightboxTarget = LightboxTarget(entryID: entry.id, imageID: imageID)
                             }
                         )
+                        .draggable(entry.id.uuidString) {
+                            Text(entry.name)
+                                .padding(8)
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                        }
+                        .dropDestination(for: String.self) { items, _ in
+                            guard let draggedIDString = items.first,
+                                  let draggedID = UUID(uuidString: draggedIDString),
+                                  draggedID != entry.id,
+                                  let fromIdx = document.entries.firstIndex(where: { $0.id == draggedID }),
+                                  let toIdx = document.entries.firstIndex(where: { $0.id == entry.id })
+                            else { return false }
+                            document.entries.move(fromOffsets: IndexSet(integer: fromIdx), toOffset: toIdx > fromIdx ? toIdx + 1 : toIdx)
+                            reindexPositions()
+                            onChanged()
+                            return true
+                        }
                     }
                 }
             }
@@ -223,6 +230,16 @@ struct DatasetBuilderView: View {
             if !selectedImageIDs.isEmpty {
                 selectionToolbar
             }
+        }
+        .sheet(item: $lightboxTarget) { target in
+            LightboxView(
+                document: $document,
+                bundleURL: bundleURL,
+                initialEntryID: target.entryID,
+                initialImageID: target.imageID,
+                visibleRanks: rankVisibility,
+                onChanged: onChanged
+            )
         }
     }
 
@@ -596,6 +613,7 @@ private struct EntryRow: View {
             .buttonStyle(.borderless)
             .font(.caption)
         }
+        .contentShape(Rectangle())
         .contextMenu {
             Button("Generate", systemImage: "sparkles", action: onGenerate)
             Button("Sweep candidates", systemImage: "wind", action: onSweep)
@@ -685,6 +703,8 @@ private struct ImageThumbnail: View {
     let onDoubleTap: () -> Void
     let onSetRank: (ImageRank) -> Void
 
+    @State private var lastTapTime = Date.distantPast
+
     private var imageURL: URL {
         bundleURL.appending(path: "images/\(image.filename)")
     }
@@ -708,8 +728,16 @@ private struct ImageThumbnail: View {
                     .padding(4)
             }
         }
-        .onTapGesture(count: 2) { onDoubleTap() }
-        .onTapGesture(count: 1) { onTap() }
+        .onTapGesture {
+            let now = Date()
+            if now.timeIntervalSince(lastTapTime) < 0.3 {
+                onDoubleTap()
+                lastTapTime = .distantPast
+            } else {
+                onTap()
+                lastTapTime = now
+            }
+        }
         .contextMenu {
             ForEach(ImageRank.allCases, id: \.self) { rank in
                 if rank != image.rank {

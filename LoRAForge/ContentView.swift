@@ -50,9 +50,9 @@ struct ContentView: View {
                 currentDocument = try? library.loadDocument(id: id)
             }
         }
-        .onChange(of: library.lastExternalUpdateProjectID) { _, updatedID in
-            guard let updatedID else { return }
-            if case .project(let id) = sidebarSelection, id == updatedID {
+        .onChange(of: library.lastExternalUpdate) { _, update in
+            guard let update else { return }
+            if case .project(let id) = sidebarSelection, id == update.projectID {
                 currentDocument = try? library.loadDocument(id: id)
             }
         }

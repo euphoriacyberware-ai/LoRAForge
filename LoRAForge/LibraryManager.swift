@@ -14,7 +14,12 @@ final class LibraryManager {
 
     private(set) var projects: [ProjectInfo] = []
     private(set) var libraryURL: URL
-    private(set) var lastExternalUpdateProjectID: UUID?
+    struct ExternalUpdate: Equatable {
+        let projectID: UUID
+        private let nonce = UUID()
+    }
+
+    private(set) var lastExternalUpdate: ExternalUpdate?
 
     private var loadedDocuments: [UUID: ProjectDocument] = [:]
     private var saveTask: [UUID: Task<Void, Never>] = [:]
@@ -118,7 +123,7 @@ final class LibraryManager {
 
     func updateDocumentExternally(_ doc: ProjectDocument) {
         loadedDocuments[doc.id] = doc
-        lastExternalUpdateProjectID = doc.id
+        lastExternalUpdate = ExternalUpdate(projectID: doc.id)
     }
 
     func scheduleSave(id: UUID) {
