@@ -252,8 +252,9 @@ struct ContentView: View {
                 // Queue manager — visible when items are queued or processing
                 if generation.pendingCount > 0 || generation.isProcessing {
                     Button { showingQueuePopover.toggle() } label: {
-                        Label("Queue (\(generation.pendingCount))", systemImage: "hourglass.circle")
+                        Label("Queue", systemImage: "hourglass.circle")
                     }
+                    .badge(generation.pendingCount)
                     .popover(isPresented: $showingQueuePopover) {
                         QueueManagerView()
                     }
