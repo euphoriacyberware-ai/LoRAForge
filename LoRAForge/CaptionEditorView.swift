@@ -242,7 +242,7 @@ struct CaptionEditorView: View {
                 TextEditor(text: $entry.manualCaptionText)
                     .font(.body)
                     .frame(minHeight: 60, maxHeight: 100)
-                    .onChange(of: entry.manualCaptionText) { onChanged() }
+                    .onChange(of: entry.manualCaptionText) { updatePreview(); onChanged() }
             }
         }
         .padding(.horizontal, 8)
@@ -276,7 +276,7 @@ struct CaptionEditorView: View {
                             availableTags: allTags[category.id] ?? [],
                             repo: repo,
                             onChanged: {
-                                if entry.captionMode == .tagged { onChanged() }
+                                updatePreview()
                                 onChanged()
                             }
                         )
@@ -333,6 +333,7 @@ struct CaptionEditorView: View {
                 previousCaptionText = entry.manualCaptionText
                 entry.captionMode = .ollama
                 entry.manualCaptionText = response
+                updatePreview()
                 onChanged()
             } catch {
                 ollamaError = error.localizedDescription
@@ -355,11 +356,17 @@ struct CaptionEditorView: View {
         }
 
         entry.captionMode = newMode
+        updatePreview()
         onChanged()
+    }
+
+    private func updatePreview() {
+        entry.captionPreviewText = currentCaptionText
     }
 
     private func lockEntry() {
         entry.lockedCaptionText = currentCaptionText
+        updatePreview()
         onChanged()
     }
 
@@ -368,6 +375,7 @@ struct CaptionEditorView: View {
             showingUnlockDiff = true
         }
         entry.lockedCaptionText = nil
+        updatePreview()
         onChanged()
     }
 }

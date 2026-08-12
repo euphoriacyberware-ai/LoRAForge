@@ -260,60 +260,57 @@ final class GenerationService {
     private func startIngestion(_ q: DrawThingsQueue) {
         resultTask = Task { [weak self] in
             for await result in q.results {
-                await self?.ingest(result)
-            }
-        }
-    }
+                guard let self else { return }
 
-    @MainActor
-    private func ingest(_ result: GenerationResult) {
-        guard let target = requestMap.removeValue(forKey: result.id) else { return }
-        saveRequestMap()
+                // 1. Claim target on main (observable mutation)
+                guard let target = requestMap.removeValue(forKey: result.id) else { continue }
+                saveRequestMap()
 
-        guard let library, let image = result.images.first else { return }
+                guard let library = self.library, let image = result.images.first else { continue }
+                guard let bundleURL = library.bundleURL(for: target.projectID) else { continue }
 
-        // Write image to the target project's bundle
-        guard let bundleURL = library.bundleURL(for: target.projectID) else {
-            // Orphan — project deleted or moved
-            return
-        }
+                // 2. Heavy work off main: image conversion + file I/O
+                let filename = UUID().uuidString + ".png"
+                let imageDoc = await Task.detached {
+                    let imagesDir = bundleURL.appending(path: "images")
+                    try? FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
 
-        let imagesDir = bundleURL.appending(path: "images")
-        try? FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
+                    let destURL = imagesDir.appending(path: filename)
 
-        let filename = "\(UUID().uuidString).png"
-        let destURL = imagesDir.appending(path: filename)
+                    #if os(macOS)
+                    if let tiff = image.tiffRepresentation,
+                       let bitmap = NSBitmapImageRep(data: tiff),
+                       let png = bitmap.representation(using: .png, properties: [:]) {
+                        try? png.write(to: destURL)
+                    }
+                    #else
+                    if let data = image.pngData() {
+                        try? data.write(to: destURL)
+                    }
+                    #endif
 
-        // Write image data
-        #if os(macOS)
-        if let tiff = image.tiffRepresentation,
-           let bitmap = NSBitmapImageRep(data: tiff),
-           let png = bitmap.representation(using: .png, properties: [:]) {
-            try? png.write(to: destURL)
-        }
-        #else
-        if let data = image.pngData() {
-            try? data.write(to: destURL)
-        }
-        #endif
+                    let provenance = ImageProvenance(
+                        prompt: result.request.prompt,
+                        negativePrompt: result.request.negativePrompt,
+                        seed: result.request.configuration.seed ?? 0,
+                        configJSON: target.configJSON,
+                        referenceImageIDs: target.referenceImageIDs
+                    )
+                    return ImageDocument(filename: filename, provenance: provenance)
+                }.value
 
-        // Build provenance
-        let provenance = ImageProvenance(
-            prompt: result.request.prompt,
-            negativePrompt: result.request.negativePrompt,
-            seed: result.request.configuration.seed ?? 0,
-            configJSON: target.configJSON,
-            referenceImageIDs: target.referenceImageIDs
-        )
+                // 3. Update document on main (observable), save off main
+                if var doc = try? library.loadDocument(id: target.projectID) {
+                    if let entryIdx = doc.entries.firstIndex(where: { $0.id == target.entryID }) {
+                        doc.entries[entryIdx].images.append(imageDoc)
+                        library.updateDocumentExternally(doc)
+                    }
+                }
 
-        let imageDoc = ImageDocument(filename: filename, provenance: provenance)
-
-        // Load the project, add the image, save, and notify UI
-        if var doc = try? library.loadDocument(id: target.projectID) {
-            if let entryIdx = doc.entries.firstIndex(where: { $0.id == target.entryID }) {
-                doc.entries[entryIdx].images.append(imageDoc)
-                library.updateDocumentExternally(doc)
-                try? library.saveImmediately(id: target.projectID)
+                // Save on a detached task to avoid blocking ingestion
+                Task.detached {
+                    try? library.saveImmediately(id: target.projectID)
+                }
             }
         }
     }

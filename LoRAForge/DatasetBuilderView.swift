@@ -1,6 +1,5 @@
 import SwiftUI
 import UniformTypeIdentifiers
-import TaggingCore
 
 struct DatasetBuilderView: View {
     @Binding var document: ProjectDocument
@@ -27,7 +26,6 @@ struct DatasetBuilderView: View {
     #endif
     @AppStorage("thumbnailSize") private var thumbnailSize: Double = 100
     @Environment(GenerationService.self) private var generation
-    @Environment(TagRepository.self) private var repo
     @Environment(TemplateManager.self) private var templateManager
 
     private var filteredEntries: [EntryDocument] {
@@ -252,7 +250,7 @@ struct DatasetBuilderView: View {
                             bundleURL: bundleURL,
                             visibleRanks: rankVisibility,
                             thumbnailSize: CGFloat(thumbnailSize),
-                            captionPreview: captionPreviewFor(entry),
+                            captionPreview: entry.captionPreviewText.isEmpty ? "No caption" : entry.captionPreviewText,
                             selectedImageIDs: $selectedImageIDs,
                             onImport: { importingForEntryID = entry.id },
                             onCaption: { captioningEntryID = entry.id },
@@ -614,27 +612,6 @@ struct DatasetBuilderView: View {
         }
     }
 
-    private func captionPreviewFor(_ entry: EntryDocument) -> String {
-        if let locked = entry.lockedCaptionText, !locked.isEmpty {
-            return locked
-        }
-        switch entry.captionMode {
-        case .manual, .ollama:
-            return entry.manualCaptionText.isEmpty ? "No caption" : entry.manualCaptionText
-        case .tagged:
-            if entry.assignments.isEmpty { return "No caption" }
-            let categories = (try? repo.allCategories()) ?? []
-            let allTags = (try? repo.allTags()) ?? []
-            let tagDict = Dictionary(uniqueKeysWithValues: allTags.map { ($0.id, $0) })
-            let domainAssignments = entry.assignments.map {
-                TagAssignment(tagID: $0.tagID, selectionOrder: $0.selectionOrder)
-            }
-            let rendered = CaptionRenderer.render(
-                assignments: domainAssignments, tags: tagDict, categories: categories
-            )
-            return rendered.isEmpty ? "No caption" : rendered
-        }
-    }
 }
 
 // MARK: - Entry Row
@@ -747,37 +724,16 @@ private struct EntryRow: View {
     private var finalThumbnail: some View {
         if let finalImg = entry.finalImage {
             let imageURL = bundleURL.appending(path: "images/\(finalImg.filename)")
-            #if os(macOS)
-            if let nsImage = NSImage(contentsOf: imageURL) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                thumbnailPlaceholder
-            }
-            #else
-            if let data = try? Data(contentsOf: imageURL),
-               let uiImage = UIImage(data: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-            } else {
-                thumbnailPlaceholder
-            }
-            #endif
+            ThumbnailView(url: imageURL, size: 44)
         } else {
-            thumbnailPlaceholder
+            Rectangle()
+                .fill(Color.gray.opacity(0.15))
+                .overlay {
+                    Image(systemName: "photo")
+                        .font(.caption)
+                        .foregroundStyle(.quaternary)
+                }
         }
-    }
-
-    private var thumbnailPlaceholder: some View {
-        Rectangle()
-            .fill(Color.gray.opacity(0.15))
-            .overlay {
-                Image(systemName: "photo")
-                    .font(.caption)
-                    .foregroundStyle(.quaternary)
-            }
     }
 
     private var imageStrip: some View {
@@ -896,35 +852,8 @@ private struct ImageThumbnail: View {
         #endif
     }
 
-    @ViewBuilder
     private var loadedImage: some View {
-        #if os(macOS)
-        if let nsImage = NSImage(contentsOf: imageURL) {
-            Image(nsImage: nsImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        } else {
-            placeholder
-        }
-        #else
-        if let data = try? Data(contentsOf: imageURL),
-           let uiImage = UIImage(data: data) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-        } else {
-            placeholder
-        }
-        #endif
-    }
-
-    private var placeholder: some View {
-        Rectangle()
-            .fill(Color.gray.opacity(0.2))
-            .overlay {
-                Image(systemName: "photo")
-                    .foregroundStyle(.secondary)
-            }
+        ThumbnailView(url: imageURL, size: size)
     }
 }
 
