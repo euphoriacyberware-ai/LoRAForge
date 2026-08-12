@@ -956,9 +956,6 @@ struct GenerateUnfilledButton: View {
     var disabled: Bool
     let action: () -> Void
 
-    @State private var showCountPopover = false
-    @State private var countText = ""
-
     var body: some View {
         HStack(spacing: 2) {
             Button {
@@ -981,10 +978,6 @@ struct GenerateUnfilledButton: View {
                             .padding(.horizontal, 4)
                             .padding(.vertical, 1)
                             .background(Capsule().fill(.white.opacity(0.25)))
-                            .onTapGesture {
-                                countText = "\(count)"
-                                showCountPopover = true
-                            }
                     }
                     Text("·")
                     Text("\(unfilledCount)")
@@ -992,37 +985,12 @@ struct GenerateUnfilledButton: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)
-                .background(Capsule().fill(Color.accentColor))
+                .background(Capsule().fill(Color.red))
                 .foregroundColor(.white)
                 .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .disabled(disabled)
-            .popover(isPresented: $showCountPopover) {
-                VStack(spacing: 12) {
-                    Text("Images per entry")
-                        .font(.headline)
-                    TextField("Count", text: $countText)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
-                        .multilineTextAlignment(.center)
-                        #if os(iOS)
-                        .keyboardType(.numberPad)
-                        #endif
-                        .onSubmit { applyCount() }
-                    Text("1 – 50")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    HStack(spacing: 12) {
-                        Button("Cancel") { showCountPopover = false }
-                            .buttonStyle(.bordered)
-                        Button("Apply") { applyCount() }
-                            .buttonStyle(.borderedProminent)
-                    }
-                }
-                .padding()
-                .frame(width: 170)
-            }
 
             Button {
                 if count < 50 { count += 1 }
@@ -1034,15 +1002,8 @@ struct GenerateUnfilledButton: View {
             .disabled(count >= 50 || disabled)
             .opacity(count < 50 && !disabled ? 1.0 : 0.4)
         }
-        .foregroundColor(.accentColor)
+        .foregroundColor(.red)
         .opacity(disabled ? 0.6 : 1.0)
-    }
-
-    private func applyCount() {
-        if let n = Int(countText) {
-            count = min(max(n, 1), 50)
-        }
-        showCountPopover = false
     }
 }
 

@@ -276,6 +276,24 @@ struct ContentView: View {
                 .fixedSize()
             }
             ToolbarItemGroup(placement: .automatic) {
+                // Generate unfilled — visible on Dataset Builder when connected
+                if selectedTab == .datasetBuilder,
+                   generation.isConnected,
+                   case .project = sidebarSelection,
+                   let doc = currentDocument {
+                    let unfilled = entriesWithoutFinal(in: doc)
+                    GenerateUnfilledButton(
+                        count: $generateUnfilledCount,
+                        unfilledCount: unfilled.count,
+                        disabled: unfilled.isEmpty
+                    ) {
+                        generateUnfilled(in: doc)
+                    }
+                    .help(unfilled.isEmpty
+                          ? "All entries have a final image"
+                          : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final")
+                }
+
                 // Draw Things connection toggle
                 Button {
                     if generation.isConnected {
@@ -298,30 +316,12 @@ struct ContentView: View {
                 // Queue manager — visible when items are queued or processing
                 if generation.pendingCount > 0 || generation.isProcessing {
                     Button { showingQueuePopover.toggle() } label: {
-                        Label("Queue", systemImage: "hourglass.circle")
+                        Label("Queue", systemImage: "hourglass")
                     }
                     .badge(generation.pendingCount)
                     .popover(isPresented: $showingQueuePopover) {
                         QueueManagerView()
                     }
-                }
-
-                // Generate unfilled — visible on Dataset Builder when connected
-                if selectedTab == .datasetBuilder,
-                   generation.isConnected,
-                   case .project = sidebarSelection,
-                   let doc = currentDocument {
-                    let unfilled = entriesWithoutFinal(in: doc)
-                    GenerateUnfilledButton(
-                        count: $generateUnfilledCount,
-                        unfilledCount: unfilled.count,
-                        disabled: unfilled.isEmpty
-                    ) {
-                        generateUnfilled(in: doc)
-                    }
-                    .help(unfilled.isEmpty
-                          ? "All entries have a final image"
-                          : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final")
                 }
 
                 // Project settings — hidden on Tag Library
