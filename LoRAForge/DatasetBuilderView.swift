@@ -234,11 +234,6 @@ struct DatasetBuilderView: View {
                                 lightboxTarget = LightboxTarget(entryID: entry.id, imageID: imageID)
                             }
                         )
-                        .draggable(entry.id.uuidString) {
-                            Text(entry.name)
-                                .padding(8)
-                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-                        }
                         .dropDestination(for: String.self) { items, _ in
                             guard let draggedIDString = items.first,
                                   let draggedID = UUID(uuidString: draggedIDString),
@@ -608,6 +603,11 @@ private struct EntryRow: View {
             entryHeader
                 .frame(width: 240)
                 .padding(8)
+                .draggable(entry.id.uuidString) {
+                    Text(entry.name)
+                        .padding(8)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
+                }
             Divider()
             imageStrip
                 .padding(.vertical, 4)
