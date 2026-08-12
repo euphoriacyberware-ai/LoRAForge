@@ -179,7 +179,34 @@ struct DatasetBuilderView: View {
 
     // MARK: - Entry List
 
+    private var selectedImageInfo: (entry: EntryDocument, image: ImageDocument)? {
+        guard selectedImageIDs.count == 1, let imageID = selectedImageIDs.first else { return nil }
+        for entry in document.entries {
+            if let image = entry.images.first(where: { $0.id == imageID }) {
+                return (entry, image)
+            }
+        }
+        return nil
+    }
+
     private var entryList: some View {
+        HStack(spacing: 0) {
+            entryListContent
+
+            if let info = selectedImageInfo {
+                Divider()
+                ImageInspectorView(
+                    image: info.image,
+                    entry: info.entry,
+                    referenceImages: document.referenceImages,
+                    bundleURL: bundleURL
+                )
+                .frame(width: 280)
+            }
+        }
+    }
+
+    private var entryListContent: some View {
         ZStack(alignment: .bottom) {
             ScrollView {
                 LazyVStack(spacing: 1) {
@@ -351,7 +378,8 @@ struct DatasetBuilderView: View {
             projectConfigJSON: document.defaultGenerationConfigJSON,
             projectID: document.id,
             entryID: entry.id,
-            referenceImageData: refData
+            referenceImageData: refData,
+            referenceImageIDs: entry.referenceImageIDs
         )
     }
 

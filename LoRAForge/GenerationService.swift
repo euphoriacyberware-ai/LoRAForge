@@ -39,6 +39,23 @@ final class GenerationService {
     struct RequestTarget: Codable {
         let projectID: UUID
         let entryID: UUID
+        var configJSON: String?
+        var referenceImageIDs: [UUID]?
+
+        init(projectID: UUID, entryID: UUID, configJSON: String? = nil, referenceImageIDs: [UUID]? = nil) {
+            self.projectID = projectID
+            self.entryID = entryID
+            self.configJSON = configJSON
+            self.referenceImageIDs = referenceImageIDs
+        }
+
+        init(from decoder: Decoder) throws {
+            let c = try decoder.container(keyedBy: CodingKeys.self)
+            projectID = try c.decode(UUID.self, forKey: .projectID)
+            entryID = try c.decode(UUID.self, forKey: .entryID)
+            configJSON = try c.decodeIfPresent(String.self, forKey: .configJSON)
+            referenceImageIDs = try c.decodeIfPresent([UUID].self, forKey: .referenceImageIDs)
+        }
     }
 
     init(library: LibraryManager) {
@@ -100,7 +117,8 @@ final class GenerationService {
         projectConfigJSON: String?,
         projectID: UUID,
         entryID: UUID,
-        referenceImageData: [Data] = []
+        referenceImageData: [Data] = [],
+        referenceImageIDs: [UUID] = []
     ) {
         guard let queue else {
             lastError = "Not connected to Draw Things server"
@@ -146,7 +164,15 @@ final class GenerationService {
             hints: hints
         )
 
-        requestMap[request.id] = RequestTarget(projectID: projectID, entryID: entryID)
+        // Serialize the final config (after seed/batch overrides) for provenance
+        let finalConfigJSON = ConfigurationInterop.text(from: config, style: .nonDefaultOnly)
+
+        requestMap[request.id] = RequestTarget(
+            projectID: projectID,
+            entryID: entryID,
+            configJSON: finalConfigJSON,
+            referenceImageIDs: referenceImageIDs.isEmpty ? nil : referenceImageIDs
+        )
         saveRequestMap()
     }
 
@@ -224,7 +250,9 @@ final class GenerationService {
         let provenance = ImageProvenance(
             prompt: result.request.prompt,
             negativePrompt: result.request.negativePrompt,
-            seed: result.request.configuration.seed ?? 0
+            seed: result.request.configuration.seed ?? 0,
+            configJSON: target.configJSON,
+            referenceImageIDs: target.referenceImageIDs
         )
 
         let imageDoc = ImageDocument(filename: filename, provenance: provenance)

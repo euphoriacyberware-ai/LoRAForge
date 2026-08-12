@@ -150,6 +150,8 @@ struct ImageProvenance: Codable {
     let prompt: String
     let negativePrompt: String
     let seed: Int64
+    var configJSON: String?
+    var referenceImageIDs: [UUID]?
 }
 
 struct ReferenceImageDocument: Codable, Identifiable {
