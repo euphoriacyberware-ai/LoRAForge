@@ -17,6 +17,8 @@ struct DatasetBuilderView: View {
     @State private var importError: String?
     @State private var editingGenerationEntryID: UUID?
     @State private var showingAudit = false
+    @State private var showingSaveTemplate = false
+    @State private var showingLoadTemplate = false
     @State private var selectedImageIDs: Set<UUID> = []
     @State private var lightboxTarget: LightboxTarget?
     #if os(macOS)
@@ -25,6 +27,7 @@ struct DatasetBuilderView: View {
     @AppStorage("thumbnailSize") private var thumbnailSize: Double = 100
     @Environment(GenerationService.self) private var generation
     @Environment(TagRepository.self) private var repo
+    @Environment(TemplateManager.self) private var templateManager
 
     private var filteredEntries: [EntryDocument] {
         if entryFilter.isEmpty { return document.entries }
@@ -84,6 +87,21 @@ struct DatasetBuilderView: View {
         }
         .sheet(isPresented: $showingAudit) {
             AuditView(document: document, bundleURL: bundleURL)
+        }
+        .sheet(isPresented: $showingSaveTemplate) {
+            SaveTemplateSheet(
+                entries: document.entries,
+                projectName: document.name,
+                templateManager: templateManager
+            )
+        }
+        .sheet(isPresented: $showingLoadTemplate) {
+            LoadTemplateSheet(
+                templateManager: templateManager,
+                onLoad: { template, replace in
+                    loadTemplate(template, replace: replace)
+                }
+            )
         }
         .sheet(item: $editingGenerationEntryID) { entryID in
             if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
@@ -145,6 +163,20 @@ struct DatasetBuilderView: View {
             .help(entriesWithoutFinal.isEmpty
                   ? "All entries have a final image"
                   : "Generate for \(entriesWithoutFinal.count) entr\(entriesWithoutFinal.count == 1 ? "y" : "ies") without a final")
+
+            Menu {
+                Button("Save entries as template...") {
+                    showingSaveTemplate = true
+                }
+                .disabled(document.entries.isEmpty)
+
+                Button("Load template into project...") {
+                    showingLoadTemplate = true
+                }
+                .disabled(templateManager.templates.isEmpty)
+            } label: {
+                Label("Templates", systemImage: "doc.on.doc")
+            }
 
             Button { showingExport = true } label: {
                 Label("Export", systemImage: "square.and.arrow.up")
@@ -376,6 +408,32 @@ struct DatasetBuilderView: View {
             referenceImageData: refData,
             referenceImageIDs: entry.referenceImageIDs
         )
+    }
+
+    private func loadTemplate(_ template: Template, replace: Bool) {
+        if replace {
+            for entry in document.entries {
+                for image in entry.images {
+                    let imageURL = bundleURL.appending(path: "images/\(image.filename)")
+                    try? FileManager.default.removeItem(at: imageURL)
+                }
+            }
+            document.entries.removeAll()
+        }
+
+        let startPosition = (document.entries.map(\.position).max() ?? 0) + 1
+        for (index, tp) in template.prompts.sorted(by: { $0.order < $1.order }).enumerated() {
+            let promptPrefix = String(tp.text.prefix(30)).trimmingCharacters(in: .whitespaces)
+            let name = promptPrefix.isEmpty ? "Entry \(startPosition + index)" : promptPrefix
+            var entry = EntryDocument(
+                name: name,
+                position: startPosition + index,
+                defaultConfigJSON: document.defaultGenerationConfigJSON
+            )
+            entry.generationPrompt = tp.text
+            document.entries.append(entry)
+        }
+        onChanged()
     }
 
     private func addEntry() {
@@ -862,6 +920,132 @@ private struct ImageThumbnail: View {
                 Image(systemName: "photo")
                     .foregroundStyle(.secondary)
             }
+    }
+}
+
+// MARK: - Save Template Sheet
+
+private struct SaveTemplateSheet: View {
+    let entries: [EntryDocument]
+    let projectName: String
+    let templateManager: TemplateManager
+    @Environment(\.dismiss) private var dismiss
+    @State private var templateName = ""
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Save as template")
+                .font(.headline)
+
+            TextField("Template name", text: $templateName)
+                .textFieldStyle(.roundedBorder)
+
+            Text("This will save \(entries.count) entr\(entries.count == 1 ? "y" : "ies") as a reusable template.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+                Button("Save") {
+                    saveTemplate()
+                    dismiss()
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(templateName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding()
+        .frame(width: 350)
+        .onAppear { templateName = projectName }
+    }
+
+    private func saveTemplate() {
+        let prompts = entries.enumerated().map { index, entry in
+            TemplatePrompt(
+                id: UUID(),
+                order: index,
+                text: entry.generationPrompt,
+                sourceSlotIndex: nil,
+                generateCount: 1
+            )
+        }
+        let template = Template(
+            id: UUID(),
+            name: templateName.trimmingCharacters(in: .whitespaces),
+            createdAt: Date(),
+            prompts: prompts
+        )
+        templateManager.add(template)
+    }
+}
+
+// MARK: - Load Template Sheet
+
+private struct LoadTemplateSheet: View {
+    let templateManager: TemplateManager
+    let onLoad: (Template, Bool) -> Void
+    @Environment(\.dismiss) private var dismiss
+    @State private var selectedTemplateID: UUID?
+
+    private var selectedTemplate: Template? {
+        guard let id = selectedTemplateID else { return nil }
+        return templateManager.templates.first { $0.id == id }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text("Load template")
+                .font(.headline)
+                .padding()
+
+            Divider()
+
+            List(templateManager.templates, selection: $selectedTemplateID) { template in
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(template.name)
+                        .font(.headline)
+                    HStack {
+                        Text("\(template.prompts.count) prompt(s)")
+                        Text("—")
+                        Text(template.createdAt, style: .date)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                }
+                .tag(template.id)
+            }
+            .frame(minHeight: 200)
+
+            Divider()
+
+            HStack {
+                Button("Cancel") { dismiss() }
+                    .keyboardShortcut(.cancelAction)
+
+                Spacer()
+
+                Button("Replace entries") {
+                    if let template = selectedTemplate {
+                        onLoad(template, true)
+                        dismiss()
+                    }
+                }
+                .disabled(selectedTemplateID == nil)
+
+                Button("Append entries") {
+                    if let template = selectedTemplate {
+                        onLoad(template, false)
+                        dismiss()
+                    }
+                }
+                .keyboardShortcut(.defaultAction)
+                .disabled(selectedTemplateID == nil)
+            }
+            .padding()
+        }
+        .frame(minWidth: 420, idealWidth: 500, minHeight: 350, idealHeight: 400)
     }
 }
 

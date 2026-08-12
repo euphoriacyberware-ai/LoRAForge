@@ -8,6 +8,7 @@ struct LoRAForgeApp: App {
     let ollamaRepository: OllamaRepository
     let presetRepository: GenerationPresetRepository
     let libraryManager: LibraryManager
+    let templateManager: TemplateManager
     let generationService: GenerationService
 
     init() {
@@ -37,6 +38,7 @@ struct LoRAForgeApp: App {
             self.ollamaRepository = OllamaRepository(modelContext: container.mainContext)
             self.presetRepository = GenerationPresetRepository(modelContext: container.mainContext)
             self.libraryManager = LibraryManager()
+            self.templateManager = TemplateManager()
             self.generationService = GenerationService(library: libraryManager)
             #if DEBUG
             GenerationService.enableDebugLogging()
@@ -53,6 +55,7 @@ struct LoRAForgeApp: App {
                 .environment(ollamaRepository)
                 .environment(presetRepository)
                 .environment(libraryManager)
+                .environment(templateManager)
                 .environment(generationService)
         }
         .modelContainer(modelContainer)
@@ -64,6 +67,7 @@ struct LoRAForgeApp: App {
                 .environment(ollamaRepository)
                 .environment(presetRepository)
                 .environment(libraryManager)
+                .environment(templateManager)
                 .environment(generationService)
         }
         .modelContainer(modelContainer)

@@ -4,6 +4,7 @@ enum SidebarItem: Hashable {
     case project(id: UUID)
     case tagLibrary
     case configLibrary
+    case templateLibrary
 }
 
 enum ProjectTab: String, CaseIterable {
@@ -75,11 +76,13 @@ struct ContentView: View {
                 }
             }
 
-            Section {
+            Section("App Libraries") {
                 Label("Tag Library", systemImage: "tag")
                     .tag(SidebarItem.tagLibrary)
                 Label("Config Library", systemImage: "slider.horizontal.3")
                     .tag(SidebarItem.configLibrary)
+                Label("Templates Library", systemImage: "doc.on.doc")
+                    .tag(SidebarItem.templateLibrary)
             }
         }
         .navigationTitle("LoRAForge")
@@ -182,6 +185,8 @@ struct ContentView: View {
             TagLibraryView()
         } else if sidebarSelection == .configLibrary {
             ConfigLibraryView()
+        } else if sidebarSelection == .templateLibrary {
+            TemplateLibraryView()
         } else {
             projectContent
         }
