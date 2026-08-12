@@ -19,6 +19,9 @@ final class GenerationService {
     private(set) var lastError: String?
     private(set) var pendingCount = 0
     private(set) var isProcessing = false
+    private(set) var currentRequest: GenerationRequest?
+    private(set) var currentProgress: GenerationProgress?
+    private(set) var pendingRequests: [GenerationRequest] = []
 
     var serverAddress: String {
         didSet { UserDefaults.standard.set(serverAddress, forKey: "dtServerAddress") }
@@ -105,6 +108,9 @@ final class GenerationService {
         isPaused = false
         pendingCount = 0
         isProcessing = false
+        currentRequest = nil
+        currentProgress = nil
+        pendingRequests = []
     }
 
     // MARK: - Enqueue
@@ -176,8 +182,40 @@ final class GenerationService {
         saveRequestMap()
     }
 
-    func pendingRequests(for projectID: UUID) -> Int {
+    func pendingRequestCount(for projectID: UUID) -> Int {
         requestMap.values.filter { $0.projectID == projectID }.count
+    }
+
+    // MARK: - Queue Control
+
+    func togglePause() {
+        guard let queue else { return }
+        if isPaused {
+            queue.resume()
+        } else {
+            queue.pause()
+        }
+    }
+
+    func cancelRequest(id: UUID) {
+        queue?.cancel(id: id)
+    }
+
+    func clearPending() {
+        guard let queue else { return }
+        for request in queue.pendingRequests {
+            queue.cancel(id: request.id)
+        }
+    }
+
+    /// Entry name for a queued request, looked up from the request map and library.
+    func entryName(for requestID: UUID) -> String? {
+        guard let target = requestMap[requestID],
+              let library,
+              let doc = try? library.loadDocument(id: target.projectID),
+              let entry = doc.entries.first(where: { $0.id == target.entryID })
+        else { return nil }
+        return entry.name
     }
 
     // MARK: - Observation
@@ -195,12 +233,25 @@ final class GenerationService {
 
         q.$pendingRequests
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] in self?.pendingCount = $0.count }
+            .sink { [weak self] in
+                self?.pendingCount = $0.count
+                self?.pendingRequests = $0
+            }
             .store(in: &cancellables)
 
         q.$isProcessing
             .receive(on: DispatchQueue.main)
             .sink { [weak self] in self?.isProcessing = $0 }
+            .store(in: &cancellables)
+
+        q.$currentRequest
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.currentRequest = $0 }
+            .store(in: &cancellables)
+
+        q.$currentProgress
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] in self?.currentProgress = $0 }
             .store(in: &cancellables)
     }
 
