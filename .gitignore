@@ -2,3 +2,6 @@
 .build/
 Packages/*/.build/
 /LoRAForge.xcodeproj/xcuserdata/brian.cantin.xcuserdatad
+/References/LoRAForge-main
+LoRAForge.xcodeproj/xcuserdata/brian.cantin.xcuserdatad/xcschemes/xcschememanagement.plist
+Packages/TaggingCore/.swiftpm/xcode/xcuserdata/brian.cantin.xcuserdatad/xcschemes/xcschememanagement.plist
