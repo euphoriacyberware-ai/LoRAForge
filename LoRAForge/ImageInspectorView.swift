@@ -60,6 +60,10 @@ struct ImageInspectorView: View {
 
         return VStack(alignment: .leading, spacing: 8) {
             sectionHeader("Generation settings")
+            promptRow("Prompt", value: provenance.prompt)
+            if !provenance.negativePrompt.isEmpty {
+                promptRow("Negative", value: provenance.negativePrompt)
+            }
             settingRow("Model", value: config?.model.truncatedFilename ?? dash)
             settingRow("Sampler", value: config.map { samplerDisplayName($0.sampler) } ?? dash)
             settingRow("Size", value: config.map { "\($0.width) \u{00D7} \($0.height)" } ?? dash)
@@ -192,6 +196,17 @@ struct ImageInspectorView: View {
         Text(title)
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(.secondary)
+    }
+
+    private func promptRow(_ label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Text(value)
+                .font(.caption)
+                .textSelection(.enabled)
+        }
     }
 
     private func settingRow(_ label: String, value: String) -> some View {
