@@ -1,5 +1,5 @@
 {
-  "originHash" : "3f16ffac7231b586e7ea9d12a4c0ddaea491b764a6dafd3904658514b50f8cb4",
+  "originHash" : "394a0c05d046ec0fbaa20dc923cf13e8d64cc4fc55fc82cad8437d8579d59e9b",
   "pins" : [
     {
       "identity" : "drawthingsqueue",
@@ -25,7 +25,7 @@
       "location" : "https://github.com/euphoriacyberware-ai/DTConfigEditorKit",
       "state" : {
         "branch" : "main",
-        "revision" : "e9c00df300a8d41507a5e4385ca3769258e81859"
+        "revision" : "cb38da5d6f60d63445887fbdadef416b492b2ea5"
       }
     },
     {

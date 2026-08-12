@@ -19,6 +19,7 @@ struct DatasetBuilderView: View {
     @State private var showingAudit = false
     @State private var showingSaveTemplate = false
     @State private var showingLoadTemplate = false
+    @AppStorage("generateUnfilledCount") private var generateUnfilledCount: Int = 1
     @State private var selectedImageIDs: Set<UUID> = []
     @State private var lightboxTarget: LightboxTarget?
     #if os(macOS)
@@ -156,13 +157,15 @@ struct DatasetBuilderView: View {
                 }
             }
 
-            Button { generateUnfilled() } label: {
-                Label("Generate unfilled", systemImage: "sparkles")
+            GenerateUnfilledButton(
+                count: $generateUnfilledCount,
+                disabled: !generation.isConnected || entriesWithoutFinal.isEmpty
+            ) {
+                generateUnfilled()
             }
-            .disabled(!generation.isConnected || entriesWithoutFinal.isEmpty)
             .help(entriesWithoutFinal.isEmpty
                   ? "All entries have a final image"
-                  : "Generate for \(entriesWithoutFinal.count) entr\(entriesWithoutFinal.count == 1 ? "y" : "ies") without a final")
+                  : "Generate \(generateUnfilledCount)× for \(entriesWithoutFinal.count) entr\(entriesWithoutFinal.count == 1 ? "y" : "ies") without a final")
 
             Menu {
                 Button("Save entries as template...") {
@@ -378,7 +381,9 @@ struct DatasetBuilderView: View {
 
     private func generateUnfilled() {
         for entry in entriesWithoutFinal {
-            generateForEntry(entry)
+            for _ in 0..<generateUnfilledCount {
+                generateForEntry(entry)
+            }
         }
     }
 
@@ -920,6 +925,105 @@ private struct ImageThumbnail: View {
                 Image(systemName: "photo")
                     .foregroundStyle(.secondary)
             }
+    }
+}
+
+// MARK: - Generate Unfilled Button
+
+private struct GenerateUnfilledButton: View {
+    @Binding var count: Int
+    var disabled: Bool
+    let action: () -> Void
+
+    @State private var showCountPopover = false
+    @State private var countText = ""
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Button {
+                if count > 1 { count -= 1 }
+            } label: {
+                Image(systemName: "minus.circle.fill")
+                    .font(.title3)
+            }
+            .buttonStyle(.plain)
+            .disabled(count <= 1 || disabled)
+            .opacity(count > 1 && !disabled ? 1.0 : 0.4)
+
+            Button(action: action) {
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                    if count == 1 {
+                        Text("Generate unfilled")
+                            .fontWeight(.medium)
+                    } else {
+                        Text("Generate unfilled")
+                            .fontWeight(.medium)
+                        Text("×\(count)")
+                            .monospacedDigit()
+                            .fontWeight(.bold)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Capsule().fill(.white.opacity(0.25)))
+                            .onTapGesture {
+                                countText = "\(count)"
+                                showCountPopover = true
+                            }
+                    }
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 5)
+                .background(Capsule().fill(Color.accentColor))
+                .foregroundColor(.white)
+                .contentShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            .disabled(disabled)
+            .popover(isPresented: $showCountPopover) {
+                VStack(spacing: 12) {
+                    Text("Images per entry")
+                        .font(.headline)
+                    TextField("Count", text: $countText)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 80)
+                        .multilineTextAlignment(.center)
+                        #if os(iOS)
+                        .keyboardType(.numberPad)
+                        #endif
+                        .onSubmit { applyCount() }
+                    Text("1 – 50")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    HStack(spacing: 12) {
+                        Button("Cancel") { showCountPopover = false }
+                            .buttonStyle(.bordered)
+                        Button("Apply") { applyCount() }
+                            .buttonStyle(.borderedProminent)
+                    }
+                }
+                .padding()
+                .frame(width: 170)
+            }
+
+            Button {
+                if count < 50 { count += 1 }
+            } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.title3)
+            }
+            .buttonStyle(.plain)
+            .disabled(count >= 50 || disabled)
+            .opacity(count < 50 && !disabled ? 1.0 : 0.4)
+        }
+        .foregroundColor(.accentColor)
+        .opacity(disabled ? 0.6 : 1.0)
+    }
+
+    private func applyCount() {
+        if let n = Int(countText) {
+            count = min(max(n, 1), 50)
+        }
+        showCountPopover = false
     }
 }
 
