@@ -86,6 +86,7 @@ struct LightboxView: View {
     @State private var zoomLevel: Int = 0 // 0 = fit, 1..5 = zoom steps
     @State private var nativeImageSize: CGSize = .zero
     @State private var discardFinalAlert: LightboxDiscardAlert?
+    @FocusState private var isFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
     // zoomLevel 1 = 50%, 2 = 75%, 3 = 100%, 4 = 150%, 5 = 200%
@@ -164,6 +165,9 @@ struct LightboxView: View {
         .task(id: currentImageID) {
             loadNativeSize()
         }
+        .focusable()
+        .focused($isFocused)
+        .onAppear { isFocused = true }
         #if os(macOS)
         .onKeyPress(.leftArrow) { navigateLeft(); return .handled }
         .onKeyPress(.rightArrow) { navigateRight(); return .handled }
