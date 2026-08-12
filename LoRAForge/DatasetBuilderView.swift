@@ -726,7 +726,7 @@ private struct EntryRow: View {
                         bundleURL: bundleURL,
                         size: thumbnailSize,
                         isSelected: selectedImageIDs.contains(image.id),
-                        onTap: { toggleSelection(image.id) },
+                        onTap: { multi in selectImage(image.id, multiSelect: multi) },
                         onDoubleTap: { onDoubleTapImage(image.id) },
                         onSetRank: { rank in onSetRank(image.id, rank) }
                     )
@@ -736,11 +736,19 @@ private struct EntryRow: View {
         }
     }
 
-    private func toggleSelection(_ imageID: UUID) {
-        if selectedImageIDs.contains(imageID) {
-            selectedImageIDs.remove(imageID)
+    private func selectImage(_ imageID: UUID, multiSelect: Bool) {
+        if multiSelect {
+            if selectedImageIDs.contains(imageID) {
+                selectedImageIDs.remove(imageID)
+            } else {
+                selectedImageIDs.insert(imageID)
+            }
         } else {
-            selectedImageIDs.insert(imageID)
+            if selectedImageIDs == [imageID] {
+                selectedImageIDs.removeAll()
+            } else {
+                selectedImageIDs = [imageID]
+            }
         }
     }
 }
@@ -752,7 +760,7 @@ private struct ImageThumbnail: View {
     let bundleURL: URL
     let size: CGFloat
     let isSelected: Bool
-    let onTap: () -> Void
+    let onTap: (_ multiSelect: Bool) -> Void
     let onDoubleTap: () -> Void
     let onSetRank: (ImageRank) -> Void
 
@@ -781,13 +789,15 @@ private struct ImageThumbnail: View {
                     .padding(4)
             }
         }
+        #if os(macOS)
         .onTapGesture {
             let now = Date()
             if now.timeIntervalSince(lastTapTime) < 0.3 {
                 onDoubleTap()
                 lastTapTime = .distantPast
             } else {
-                onTap()
+                let multiSelect = NSEvent.modifierFlags.contains(.command)
+                onTap(multiSelect)
                 lastTapTime = now
             }
         }
@@ -806,6 +816,21 @@ private struct ImageThumbnail: View {
                 }
             }
         }
+        #else
+        .onTapGesture {
+            let now = Date()
+            if now.timeIntervalSince(lastTapTime) < 0.3 {
+                onDoubleTap()
+                lastTapTime = .distantPast
+            } else {
+                onTap(false)
+                lastTapTime = now
+            }
+        }
+        .onLongPressGesture {
+            onTap(true)
+        }
+        #endif
     }
 
     @ViewBuilder
