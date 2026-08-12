@@ -1,10 +1,76 @@
 import SwiftUI
 
-struct LightboxTarget: Identifiable {
+struct LightboxTarget: Identifiable, Equatable {
     let id = UUID()
     let entryID: UUID
     let imageID: UUID
 }
+
+// MARK: - macOS Window Manager
+
+#if os(macOS)
+@MainActor
+final class LightboxWindowManager {
+    private var window: NSWindow?
+    private let delegate = LightboxWindowDelegate()
+
+    func show(_ content: some View, onClose: @escaping () -> Void) {
+        close()
+
+        let w = UserDefaults.standard.double(forKey: "lightboxWidth")
+        let h = UserDefaults.standard.double(forKey: "lightboxHeight")
+        let width = w >= 800 ? w : 1100
+        let height = h >= 600 ? h : 800
+
+        let win = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: width, height: height),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        win.minSize = NSSize(width: 800, height: 600)
+        win.title = "Lightbox"
+        win.isReleasedWhenClosed = false
+        win.contentView = NSHostingView(rootView: content)
+        win.center()
+
+        delegate.onClose = { [weak self] in
+            self?.saveSize()
+            self?.window = nil
+            onClose()
+        }
+        win.delegate = delegate
+
+        win.makeKeyAndOrderFront(nil)
+        window = win
+    }
+
+    func close() {
+        saveSize()
+        delegate.onClose = nil
+        window?.close()
+        window = nil
+    }
+
+    private func saveSize() {
+        guard let window else { return }
+        UserDefaults.standard.set(Double(window.frame.width), forKey: "lightboxWidth")
+        UserDefaults.standard.set(Double(window.frame.height), forKey: "lightboxHeight")
+    }
+}
+
+private class LightboxWindowDelegate: NSObject, NSWindowDelegate {
+    var onClose: (() -> Void)?
+
+    func windowWillClose(_ notification: Notification) {
+        let callback = onClose
+        onClose = nil
+        callback?()
+    }
+}
+#endif
+
+// MARK: - Lightbox View
 
 struct LightboxView: View {
     @Binding var document: ProjectDocument
@@ -13,31 +79,36 @@ struct LightboxView: View {
     let initialImageID: UUID
     let visibleRanks: Set<ImageRank>
     let onChanged: () -> Void
+    var onDismiss: (() -> Void)?
 
     @State private var currentEntryID: UUID
     @State private var currentImageID: UUID
     @State private var zoomLevel: Int = 0 // 0 = fit, 1..5 = zoom steps
     @State private var nativeImageSize: CGSize = .zero
     @State private var discardFinalAlert: LightboxDiscardAlert?
-    @State private var lastKnownSize: CGSize = .zero
-    #if os(macOS)
-    @AppStorage("lightboxWidth") private var savedWidth: Double = 1100
-    @AppStorage("lightboxHeight") private var savedHeight: Double = 800
-    #endif
     @Environment(\.dismiss) private var dismiss
 
     // zoomLevel 1 = 50%, 2 = 75%, 3 = 100%, 4 = 150%, 5 = 200%
     private static let zoomSteps: [CGFloat] = [0.5, 0.75, 1.0, 1.5, 2.0]
 
-    init(document: Binding<ProjectDocument>, bundleURL: URL, initialEntryID: UUID, initialImageID: UUID, visibleRanks: Set<ImageRank>, onChanged: @escaping () -> Void) {
+    init(document: Binding<ProjectDocument>, bundleURL: URL, initialEntryID: UUID, initialImageID: UUID, visibleRanks: Set<ImageRank>, onChanged: @escaping () -> Void, onDismiss: (() -> Void)? = nil) {
         self._document = document
         self.bundleURL = bundleURL
         self.initialEntryID = initialEntryID
         self.initialImageID = initialImageID
         self.visibleRanks = visibleRanks
         self.onChanged = onChanged
+        self.onDismiss = onDismiss
         self._currentEntryID = State(initialValue: initialEntryID)
         self._currentImageID = State(initialValue: initialImageID)
+    }
+
+    private func closeLightbox() {
+        if let onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
+        }
     }
 
     private var filteredEntries: [EntryDocument] {
@@ -80,23 +151,6 @@ struct LightboxView: View {
             Divider()
             bottomBar
         }
-        #if os(macOS)
-        .frame(minWidth: 800, idealWidth: savedWidth, maxWidth: .infinity,
-               minHeight: 600, idealHeight: savedHeight, maxHeight: .infinity)
-        .background(
-            GeometryReader { geo in
-                Color.clear.onChange(of: geo.size) { _, newSize in
-                    lastKnownSize = newSize
-                }
-            }
-        )
-        .onDisappear {
-            if lastKnownSize.width > 0 {
-                savedWidth = lastKnownSize.width
-                savedHeight = lastKnownSize.height
-            }
-        }
-        #endif
         .alert(item: $discardFinalAlert) { alert in
             Alert(
                 title: Text("Discard final image?"),
@@ -115,7 +169,7 @@ struct LightboxView: View {
         .onKeyPress(.rightArrow) { navigateRight(); return .handled }
         .onKeyPress(.upArrow) { navigateUp(); return .handled }
         .onKeyPress(.downArrow) { navigateDown(); return .handled }
-        .onKeyPress(.escape) { dismiss(); return .handled }
+        .onKeyPress(.escape) { closeLightbox(); return .handled }
         #endif
     }
 
@@ -126,7 +180,7 @@ struct LightboxView: View {
             Text(imagePositionLabel)
                 .font(.headline)
             Spacer()
-            Button("Done") { dismiss() }
+            Button("Done") { closeLightbox() }
                 .keyboardShortcut(.cancelAction)
         }
         .padding(.horizontal)
@@ -377,7 +431,7 @@ struct LightboxView: View {
                     currentEntryID = nextEntry.id
                     currentImageID = firstImage.id
                 } else {
-                    dismiss()
+                    closeLightbox()
                 }
             }
             zoomLevel = 0

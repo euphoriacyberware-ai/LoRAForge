@@ -19,6 +19,9 @@ struct DatasetBuilderView: View {
     @State private var showingAudit = false
     @State private var selectedImageIDs: Set<UUID> = []
     @State private var lightboxTarget: LightboxTarget?
+    #if os(macOS)
+    @State private var lightboxManager = LightboxWindowManager()
+    #endif
     @AppStorage("thumbnailSize") private var thumbnailSize: Double = 100
     @Environment(GenerationService.self) private var generation
     @Environment(TagRepository.self) private var repo
@@ -243,16 +246,25 @@ struct DatasetBuilderView: View {
             )
         }
         #else
-        .sheet(item: $lightboxTarget) { target in
-            LightboxView(
-                document: $document,
-                bundleURL: bundleURL,
-                initialEntryID: target.entryID,
-                initialImageID: target.imageID,
-                visibleRanks: rankVisibility,
-                onChanged: onChanged
-            )
+        .onChange(of: lightboxTarget) { _, target in
+            if let target {
+                lightboxManager.show(
+                    LightboxView(
+                        document: $document,
+                        bundleURL: bundleURL,
+                        initialEntryID: target.entryID,
+                        initialImageID: target.imageID,
+                        visibleRanks: rankVisibility,
+                        onChanged: onChanged,
+                        onDismiss: { lightboxTarget = nil }
+                    ),
+                    onClose: { lightboxTarget = nil }
+                )
+            } else {
+                lightboxManager.close()
+            }
         }
+        .onDisappear { lightboxManager.close() }
         #endif
     }
 
