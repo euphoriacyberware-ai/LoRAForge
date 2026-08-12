@@ -703,6 +703,7 @@ private struct EntryRow: View {
     let thumbnailSize: CGFloat
     let captionPreview: String
     @Binding var selectedImageIDs: Set<UUID>
+    @Environment(GenerationService.self) private var generation
     let onImport: () -> Void
     let onCaption: () -> Void
     let onEditGeneration: () -> Void
@@ -791,6 +792,7 @@ private struct EntryRow: View {
         .contentShape(Rectangle())
         .contextMenu {
             Button("Generate", systemImage: "sparkles", action: onGenerate)
+                .disabled(!generation.isConnected)
             Button("Sweep candidates", systemImage: "wind", action: onSweep)
             Divider()
             Button("Insert entry before", systemImage: "arrow.up", action: onInsertBefore)
