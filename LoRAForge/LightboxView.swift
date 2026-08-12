@@ -166,6 +166,7 @@ struct LightboxView: View {
             loadNativeSize()
         }
         .focusable()
+        .focusEffectDisabled()
         .focused($isFocused)
         .onAppear { isFocused = true }
         #if os(macOS)
