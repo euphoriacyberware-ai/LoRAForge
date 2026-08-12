@@ -100,7 +100,9 @@ struct ReferenceLibraryView: View {
                         refImage: refImage,
                         bundleURL: bundleURL,
                         usageCount: entriesUsing(refImage.id),
-                        onRemove: { imageToRemove = refImage }
+                        onRemove: { imageToRemove = refImage },
+                        onAppendToAll: { appendReferenceToAllEntries(refImage.id) },
+                        onReplaceInAll: { replaceReferenceInAllEntries(refImage.id) }
                     )
                 }
             }
@@ -163,6 +165,22 @@ struct ReferenceLibraryView: View {
         document.entries.filter { $0.referenceImageIDs.contains(refID) }.count
     }
 
+    private func appendReferenceToAllEntries(_ refID: UUID) {
+        for i in document.entries.indices {
+            if !document.entries[i].referenceImageIDs.contains(refID) {
+                document.entries[i].referenceImageIDs.append(refID)
+            }
+        }
+        onChanged()
+    }
+
+    private func replaceReferenceInAllEntries(_ refID: UUID) {
+        for i in document.entries.indices {
+            document.entries[i].referenceImageIDs = [refID]
+        }
+        onChanged()
+    }
+
     private func handleDrop(_ providers: [NSItemProvider]) {
         for provider in providers {
             // Try file URL first (Finder drag)
@@ -217,6 +235,8 @@ private struct ReferenceImageCell: View {
     let bundleURL: URL
     let usageCount: Int
     let onRemove: () -> Void
+    let onAppendToAll: () -> Void
+    let onReplaceInAll: () -> Void
 
     private var imageURL: URL {
         bundleURL.appending(path: "references/\(refImage.filename)")
@@ -245,6 +265,18 @@ private struct ReferenceImageCell: View {
                 Text("Unused")
                     .font(.caption2)
                     .foregroundStyle(.tertiary)
+            }
+        }
+        .contextMenu {
+            Button("Append to all entries", systemImage: "plus.rectangle.on.rectangle") {
+                onAppendToAll()
+            }
+            Button("Replace in all entries", systemImage: "arrow.triangle.2.circlepath") {
+                onReplaceInAll()
+            }
+            Divider()
+            Button("Remove", systemImage: "trash", role: .destructive) {
+                onRemove()
             }
         }
     }

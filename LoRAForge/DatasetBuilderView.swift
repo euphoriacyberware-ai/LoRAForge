@@ -1,4 +1,5 @@
 import SwiftUI
+import CryptoKit
 import UniformTypeIdentifiers
 
 struct DatasetBuilderView: View {
@@ -232,7 +233,13 @@ struct DatasetBuilderView: View {
                     image: info.image,
                     entry: info.entry,
                     referenceImages: document.referenceImages,
-                    bundleURL: bundleURL
+                    bundleURL: bundleURL,
+                    onCloneToEntry: info.image.provenance != nil ? {
+                        cloneImageToEntry(imageID: info.image.id, entryID: info.entry.id)
+                    } : nil,
+                    onAddToReferences: info.image.provenance != nil ? {
+                        addImageToReferences(imageID: info.image.id, entryID: info.entry.id)
+                    } : nil
                 )
                 .frame(width: 280)
             }
@@ -265,6 +272,12 @@ struct DatasetBuilderView: View {
                             onDeleteEntry: { deleteEntry(id: entry.id) },
                             onDoubleTapImage: { imageID in
                                 lightboxTarget = LightboxTarget(entryID: entry.id, imageID: imageID)
+                            },
+                            onCloneToEntry: { imageID in
+                                cloneImageToEntry(imageID: imageID, entryID: entry.id)
+                            },
+                            onAddToReferences: { imageID in
+                                addImageToReferences(imageID: imageID, entryID: entry.id)
                             }
                         )
                         .dropDestination(for: String.self) { items, _ in
@@ -341,6 +354,22 @@ struct DatasetBuilderView: View {
                     }
                 }
                 .help(rank.label)
+            }
+
+            if let info = selectedImageInfo, info.image.provenance != nil {
+                Divider().frame(height: 20)
+                Button {
+                    cloneImageToEntry(imageID: info.image.id, entryID: info.entry.id)
+                } label: {
+                    Label("Clone to new entry", systemImage: "doc.on.doc")
+                }
+                .help("Clone to new entry")
+                Button {
+                    addImageToReferences(imageID: info.image.id, entryID: info.entry.id)
+                } label: {
+                    Label("Add to references", systemImage: "photo.on.rectangle")
+                }
+                .help("Add to references")
             }
 
             Spacer()
@@ -606,6 +635,80 @@ struct DatasetBuilderView: View {
         onChanged()
     }
 
+    private func cloneImageToEntry(imageID: UUID, entryID: UUID) {
+        guard let entryIdx = document.entries.firstIndex(where: { $0.id == entryID }),
+              let imgIdx = document.entries[entryIdx].images.firstIndex(where: { $0.id == imageID }),
+              let provenance = document.entries[entryIdx].images[imgIdx].provenance
+        else { return }
+
+        // Name from prompt prefix or fallback
+        let promptPrefix = String(provenance.prompt.prefix(30)).trimmingCharacters(in: .whitespaces)
+        let name = promptPrefix.isEmpty ? "Entry \(document.entries.count + 1)" : promptPrefix
+
+        var entry = EntryDocument(
+            name: name,
+            position: document.entries.count + 1,
+            defaultConfigJSON: provenance.configJSON ?? document.defaultGenerationConfigJSON
+        )
+        entry.generationPrompt = provenance.prompt
+        entry.generationNegativePrompt = provenance.negativePrompt
+        entry.generationConfigJSON = provenance.configJSON ?? document.defaultGenerationConfigJSON
+        entry.referenceImageIDs = provenance.referenceImageIDs ?? []
+        entry.useCustomSeed = true
+        entry.generationSeed = provenance.seed
+
+        // Copy image file
+        let sourceFilename = document.entries[entryIdx].images[imgIdx].filename
+        let sourceURL = bundleURL.appending(path: "images/\(sourceFilename)")
+        let ext = (sourceFilename as NSString).pathExtension.isEmpty ? "png" : (sourceFilename as NSString).pathExtension
+        let newFilename = "\(UUID().uuidString).\(ext)"
+        let destURL = bundleURL.appending(path: "images/\(newFilename)")
+
+        do {
+            try FileManager.default.copyItem(at: sourceURL, to: destURL)
+            let imageDoc = ImageDocument(filename: newFilename, provenance: provenance)
+            entry.images.append(imageDoc)
+        } catch {
+            importError = "Failed to clone image: \(error.localizedDescription)"
+            return
+        }
+
+        document.entries.append(entry)
+        onChanged()
+    }
+
+    private func addImageToReferences(imageID: UUID, entryID: UUID) {
+        guard let entryIdx = document.entries.firstIndex(where: { $0.id == entryID }),
+              let imgIdx = document.entries[entryIdx].images.firstIndex(where: { $0.id == imageID })
+        else { return }
+
+        let filename = document.entries[entryIdx].images[imgIdx].filename
+        let sourceURL = bundleURL.appending(path: "images/\(filename)")
+        guard let data = try? Data(contentsOf: sourceURL) else { return }
+
+        // Deduplicate on content hash
+        let hash = SHA256.hash(data: data).compactMap { String(format: "%02x", $0) }.joined()
+        if document.referenceImages.contains(where: { $0.contentHash == hash }) {
+            return // silently skip duplicate
+        }
+
+        let refsDir = bundleURL.appending(path: "references")
+        try? FileManager.default.createDirectory(at: refsDir, withIntermediateDirectories: true)
+
+        let ext = (filename as NSString).pathExtension.isEmpty ? "png" : (filename as NSString).pathExtension
+        let newFilename = "\(UUID().uuidString).\(ext)"
+        let destURL = refsDir.appending(path: newFilename)
+
+        do {
+            try data.write(to: destURL)
+            let refDoc = ReferenceImageDocument(filename: newFilename, contentHash: hash)
+            document.referenceImages.append(refDoc)
+            onChanged()
+        } catch {
+            importError = "Failed to add to references: \(error.localizedDescription)"
+        }
+    }
+
     private func reindexPositions() {
         for i in document.entries.indices {
             document.entries[i].position = i + 1
@@ -633,6 +736,8 @@ private struct EntryRow: View {
     let onSetRank: (UUID, ImageRank) -> Void
     let onDeleteEntry: () -> Void
     let onDoubleTapImage: (UUID) -> Void
+    let onCloneToEntry: (UUID) -> Void
+    let onAddToReferences: (UUID) -> Void
 
     private var visibleImages: [ImageDocument] {
         entry.images.filter { visibleRanks.contains($0.rank) }
@@ -747,7 +852,9 @@ private struct EntryRow: View {
                         isSelected: selectedImageIDs.contains(image.id),
                         onTap: { multi in selectImage(image.id, multiSelect: multi) },
                         onDoubleTap: { onDoubleTapImage(image.id) },
-                        onSetRank: { rank in onSetRank(image.id, rank) }
+                        onSetRank: { rank in onSetRank(image.id, rank) },
+                        onCloneToEntry: { onCloneToEntry(image.id) },
+                        onAddToReferences: { onAddToReferences(image.id) }
                     )
                 }
             }
@@ -782,6 +889,8 @@ private struct ImageThumbnail: View {
     let onTap: (_ multiSelect: Bool) -> Void
     let onDoubleTap: () -> Void
     let onSetRank: (ImageRank) -> Void
+    let onCloneToEntry: () -> Void
+    let onAddToReferences: () -> Void
 
     @State private var lastTapTime = Date.distantPast
 
@@ -833,6 +942,11 @@ private struct ImageThumbnail: View {
                         }
                     }
                 }
+            }
+            if image.provenance != nil {
+                Divider()
+                Button("Clone to new entry", systemImage: "doc.on.doc") { onCloneToEntry() }
+                Button("Add to references", systemImage: "photo.on.rectangle") { onAddToReferences() }
             }
         }
         #else

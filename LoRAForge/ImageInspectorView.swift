@@ -7,6 +7,8 @@ struct ImageInspectorView: View {
     let entry: EntryDocument
     let referenceImages: [ReferenceImageDocument]
     let bundleURL: URL
+    var onCloneToEntry: (() -> Void)?
+    var onAddToReferences: (() -> Void)?
 
     private var imageURL: URL {
         bundleURL.appending(path: "images/\(image.filename)")
@@ -170,6 +172,20 @@ struct ImageInspectorView: View {
     private var fileActionSection: some View {
         VStack {
             Divider()
+            if let onCloneToEntry {
+                Button(action: onCloneToEntry) {
+                    Label("Clone to new entry", systemImage: "doc.on.doc")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+            if let onAddToReferences {
+                Button(action: onAddToReferences) {
+                    Label("Add to references", systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
             #if os(macOS)
             Button {
                 NSWorkspace.shared.activateFileViewerSelecting([imageURL])
