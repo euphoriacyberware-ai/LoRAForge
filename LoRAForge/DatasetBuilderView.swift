@@ -19,7 +19,6 @@ struct DatasetBuilderView: View {
     @State private var showingAudit = false
     @State private var showingSaveTemplate = false
     @State private var showingLoadTemplate = false
-    @AppStorage("generateUnfilledCount") private var generateUnfilledCount: Int = 1
     @State private var selectedImageIDs: Set<UUID> = []
     @State private var lightboxTarget: LightboxTarget?
     #if os(macOS)
@@ -155,16 +154,6 @@ struct DatasetBuilderView: View {
                     Label("Empty trash (\(document.discardedImageCount))", systemImage: "trash")
                 }
             }
-
-            GenerateUnfilledButton(
-                count: $generateUnfilledCount,
-                disabled: !generation.isConnected || entriesWithoutFinal.isEmpty
-            ) {
-                generateUnfilled()
-            }
-            .help(entriesWithoutFinal.isEmpty
-                  ? "All entries have a final image"
-                  : "Generate \(generateUnfilledCount)× for \(entriesWithoutFinal.count) entr\(entriesWithoutFinal.count == 1 ? "y" : "ies") without a final")
 
             Menu {
                 Button("Save entries as template...") {
@@ -400,19 +389,7 @@ struct DatasetBuilderView: View {
         .padding(.vertical, 6)
     }
 
-    private var entriesWithoutFinal: [EntryDocument] {
-        document.entries.filter { $0.finalImage == nil && !$0.generationPrompt.trimmingCharacters(in: .whitespaces).isEmpty }
-    }
-
     // MARK: - Actions
-
-    private func generateUnfilled() {
-        for entry in entriesWithoutFinal {
-            for _ in 0..<generateUnfilledCount {
-                generateForEntry(entry)
-            }
-        }
-    }
 
     private func generateForEntry(_ entry: EntryDocument) {
         let prompt = entry.generationPrompt
@@ -973,8 +950,9 @@ private struct ImageThumbnail: View {
 
 // MARK: - Generate Unfilled Button
 
-private struct GenerateUnfilledButton: View {
+struct GenerateUnfilledButton: View {
     @Binding var count: Int
+    var unfilledCount: Int
     var disabled: Bool
     let action: () -> Void
 
@@ -996,12 +974,7 @@ private struct GenerateUnfilledButton: View {
             Button(action: action) {
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
-                    if count == 1 {
-                        Text("Generate unfilled")
-                            .fontWeight(.medium)
-                    } else {
-                        Text("Generate unfilled")
-                            .fontWeight(.medium)
+                    if count > 1 {
                         Text("×\(count)")
                             .monospacedDigit()
                             .fontWeight(.bold)
@@ -1013,6 +986,9 @@ private struct GenerateUnfilledButton: View {
                                 showCountPopover = true
                             }
                     }
+                    Text("·")
+                    Text("\(unfilledCount)")
+                        .monospacedDigit()
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 5)

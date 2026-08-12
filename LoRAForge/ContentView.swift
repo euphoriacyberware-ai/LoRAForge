@@ -28,6 +28,7 @@ struct ContentView: View {
     @State private var renameText = ""
     @State private var showingQueuePopover = false
     @State private var showingProjectSettings = false
+    @AppStorage("generateUnfilledCount") private var generateUnfilledCount: Int = 1
 
     var body: some View {
         NavigationSplitView {
@@ -177,6 +178,46 @@ struct ContentView: View {
         library.updateDocument(doc)
     }
 
+    // MARK: - Generate Unfilled
+
+    private func entriesWithoutFinal(in doc: ProjectDocument) -> [EntryDocument] {
+        doc.entries.filter { $0.finalImage == nil && !$0.generationPrompt.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    private func generateUnfilled(in doc: ProjectDocument) {
+        guard case .project(let id) = sidebarSelection,
+              let bundleURL = library.bundleURL(for: id) else { return }
+        for entry in entriesWithoutFinal(in: doc) {
+            for _ in 0..<generateUnfilledCount {
+                generateForEntry(entry, in: doc, bundleURL: bundleURL)
+            }
+        }
+    }
+
+    private func generateForEntry(_ entry: EntryDocument, in doc: ProjectDocument, bundleURL: URL) {
+        let prompt = entry.generationPrompt
+        guard !prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let seed: Int64? = entry.useCustomSeed ? entry.generationSeed : nil
+
+        let refData: [Data] = entry.referenceImageIDs.compactMap { refID in
+            guard let ref = doc.referenceImages.first(where: { $0.id == refID }) else { return nil }
+            let url = bundleURL.appending(path: "references/\(ref.filename)")
+            return try? Data(contentsOf: url)
+        }
+
+        generation.generate(
+            prompt: prompt,
+            negativePrompt: entry.generationNegativePrompt,
+            seed: seed,
+            configJSON: entry.generationConfigJSON,
+            projectConfigJSON: doc.defaultGenerationConfigJSON,
+            projectID: doc.id,
+            entryID: entry.id,
+            referenceImageData: refData,
+            referenceImageIDs: entry.referenceImageIDs
+        )
+    }
+
     // MARK: - Detail
 
     @ViewBuilder
@@ -263,6 +304,24 @@ struct ContentView: View {
                     .popover(isPresented: $showingQueuePopover) {
                         QueueManagerView()
                     }
+                }
+
+                // Generate unfilled — visible on Dataset Builder when connected
+                if selectedTab == .datasetBuilder,
+                   generation.isConnected,
+                   case .project = sidebarSelection,
+                   let doc = currentDocument {
+                    let unfilled = entriesWithoutFinal(in: doc)
+                    GenerateUnfilledButton(
+                        count: $generateUnfilledCount,
+                        unfilledCount: unfilled.count,
+                        disabled: unfilled.isEmpty
+                    ) {
+                        generateUnfilled(in: doc)
+                    }
+                    .help(unfilled.isEmpty
+                          ? "All entries have a final image"
+                          : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final")
                 }
 
                 // Project settings — hidden on Tag Library
