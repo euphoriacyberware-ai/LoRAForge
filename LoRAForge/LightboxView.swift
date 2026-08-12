@@ -19,6 +19,11 @@ struct LightboxView: View {
     @State private var zoomLevel: Int = 0 // 0 = fit, 1..5 = zoom steps
     @State private var nativeImageSize: CGSize = .zero
     @State private var discardFinalAlert: LightboxDiscardAlert?
+    @State private var lastKnownSize: CGSize = .zero
+    #if os(macOS)
+    @AppStorage("lightboxWidth") private var savedWidth: Double = 1100
+    @AppStorage("lightboxHeight") private var savedHeight: Double = 800
+    #endif
     @Environment(\.dismiss) private var dismiss
 
     // zoomLevel 1 = 50%, 2 = 75%, 3 = 100%, 4 = 150%, 5 = 200%
@@ -75,7 +80,23 @@ struct LightboxView: View {
             Divider()
             bottomBar
         }
-        .frame(minWidth: 800, idealWidth: 1100, minHeight: 600, idealHeight: 800)
+        #if os(macOS)
+        .frame(minWidth: 800, idealWidth: savedWidth, maxWidth: .infinity,
+               minHeight: 600, idealHeight: savedHeight, maxHeight: .infinity)
+        .background(
+            GeometryReader { geo in
+                Color.clear.onChange(of: geo.size) { _, newSize in
+                    lastKnownSize = newSize
+                }
+            }
+        )
+        .onDisappear {
+            if lastKnownSize.width > 0 {
+                savedWidth = lastKnownSize.width
+                savedHeight = lastKnownSize.height
+            }
+        }
+        #endif
         .alert(item: $discardFinalAlert) { alert in
             Alert(
                 title: Text("Discard final image?"),

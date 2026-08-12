@@ -231,6 +231,18 @@ struct DatasetBuilderView: View {
                 selectionToolbar
             }
         }
+        #if os(iOS)
+        .fullScreenCover(item: $lightboxTarget) { target in
+            LightboxView(
+                document: $document,
+                bundleURL: bundleURL,
+                initialEntryID: target.entryID,
+                initialImageID: target.imageID,
+                visibleRanks: rankVisibility,
+                onChanged: onChanged
+            )
+        }
+        #else
         .sheet(item: $lightboxTarget) { target in
             LightboxView(
                 document: $document,
@@ -241,6 +253,7 @@ struct DatasetBuilderView: View {
                 onChanged: onChanged
             )
         }
+        #endif
     }
 
     private var selectionToolbar: some View {
