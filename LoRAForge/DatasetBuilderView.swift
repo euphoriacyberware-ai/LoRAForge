@@ -298,11 +298,20 @@ struct DatasetBuilderView: View {
                 }
             }
             .background(.background)
+            .onTapGesture {
+                selectedImageIDs.removeAll()
+            }
 
             // Bottom toolbar for selected images
             if !selectedImageIDs.isEmpty {
                 selectionToolbar
             }
+        }
+        .focusable()
+        .onKeyPress(.escape) {
+            guard !selectedImageIDs.isEmpty else { return .ignored }
+            selectedImageIDs.removeAll()
+            return .handled
         }
         #if os(iOS)
         .fullScreenCover(item: $lightboxTarget) { target in
