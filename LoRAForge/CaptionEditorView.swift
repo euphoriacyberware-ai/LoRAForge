@@ -170,10 +170,7 @@ struct CaptionEditorView: View {
 
     private var modeAndLockBar: some View {
         HStack {
-            Picker("Mode", selection: Binding(
-                get: { entry.captionMode },
-                set: { switchMode(to: $0) }
-            )) {
+            Picker("Mode", selection: $entry.captionMode) {
                 Text("Tagged").tag(CaptionMode.tagged)
                 Text("Manual").tag(CaptionMode.manual)
                 Text("Ollama").tag(CaptionMode.ollama)
@@ -181,6 +178,19 @@ struct CaptionEditorView: View {
             .pickerStyle(.segmented)
             .disabled(entry.isLocked)
             .frame(maxWidth: 300)
+            .onChange(of: entry.captionMode) { oldMode, newMode in
+                guard !entry.isLocked else { return }
+                if newMode == .tagged && oldMode != .tagged {
+                    previousCaptionText = entry.manualCaptionText
+                }
+                if oldMode == .tagged && newMode != .tagged {
+                    if entry.manualCaptionText.isEmpty {
+                        entry.manualCaptionText = renderedCaption
+                    }
+                }
+                updatePreview()
+                onChanged()
+            }
 
             Spacer()
 
@@ -342,24 +352,6 @@ struct CaptionEditorView: View {
         }
     }
 
-    private func switchMode(to newMode: CaptionMode) {
-        guard !entry.isLocked else { return }
-        let oldMode = entry.captionMode
-
-        if newMode == .tagged && oldMode != .tagged {
-            previousCaptionText = entry.manualCaptionText
-        }
-        if oldMode == .tagged && newMode != .tagged {
-            if entry.manualCaptionText.isEmpty {
-                entry.manualCaptionText = renderedCaption
-            }
-        }
-
-        entry.captionMode = newMode
-        updatePreview()
-        onChanged()
-    }
-
     private func updatePreview() {
         entry.captionPreviewText = currentCaptionText
     }
@@ -377,6 +369,49 @@ struct CaptionEditorView: View {
         entry.lockedCaptionText = nil
         updatePreview()
         onChanged()
+    }
+}
+
+// MARK: - Flow Layout
+
+private struct FlowLayout: Layout {
+    var spacing: CGFloat = 4
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        arrange(proposal: proposal, subviews: subviews).size
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        for (index, position) in arrange(proposal: ProposedViewSize(width: bounds.width, height: nil), subviews: subviews).positions.enumerated() {
+            subviews[index].place(
+                at: CGPoint(x: bounds.minX + position.x, y: bounds.minY + position.y),
+                proposal: .unspecified
+            )
+        }
+    }
+
+    private func arrange(proposal: ProposedViewSize, subviews: Subviews) -> (size: CGSize, positions: [CGPoint]) {
+        let maxWidth = proposal.width ?? .infinity
+        var positions: [CGPoint] = []
+        var x: CGFloat = 0
+        var y: CGFloat = 0
+        var rowHeight: CGFloat = 0
+        var maxX: CGFloat = 0
+
+        for subview in subviews {
+            let size = subview.sizeThatFits(.unspecified)
+            if x + size.width > maxWidth && x > 0 {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            positions.append(CGPoint(x: x, y: y))
+            rowHeight = max(rowHeight, size.height)
+            x += size.width + spacing
+            maxX = max(maxX, x - spacing)
+        }
+
+        return (CGSize(width: maxX, height: y + rowHeight), positions)
     }
 }
 
@@ -409,43 +444,47 @@ private struct TagRowView: View {
         }
     }
 
+    private var categoryLabel: String {
+        if let prefix = category.prefix, !prefix.isEmpty {
+            return "\(prefix) \(category.name)"
+        }
+        return category.name
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 4) {
-                if let prefix = category.prefix, !prefix.isEmpty {
-                    Text(prefix)
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                }
-                Text(category.name)
+            HStack(alignment: .top, spacing: 8) {
+                Text(categoryLabel)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .frame(width: 100, alignment: .leading)
+                    .frame(width: 120, alignment: .trailing)
 
-                // Assigned tag chips
-                ForEach(assignedTags) { tag in
-                    HStack(spacing: 2) {
-                        Text(tag.canonicalString)
-                            .font(.callout)
-                        Button {
-                            removeTag(tag.id)
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.caption2)
+                FlowLayout(spacing: 4) {
+                    // Assigned tag chips
+                    ForEach(assignedTags) { tag in
+                        HStack(spacing: 2) {
+                            Text(tag.canonicalString)
+                                .font(.callout)
+                            Button {
+                                removeTag(tag.id)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.caption2)
+                            }
+                            .buttonStyle(.plain)
+                            .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Color.accentColor.opacity(0.1), in: Capsule())
                     }
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(Color.accentColor.opacity(0.1), in: Capsule())
-                }
 
-                // Inline search field
-                TextField("", text: $searchText, prompt: Text("Add..."))
-                    .textFieldStyle(.plain)
-                    .frame(minWidth: 60, maxWidth: 120)
-                    .onSubmit { commitSearch() }
+                    // Inline search field
+                    TextField("", text: $searchText, prompt: Text("Add..."))
+                        .textFieldStyle(.plain)
+                        .frame(minWidth: 60, maxWidth: 120)
+                        .onSubmit { commitSearch() }
+                }
             }
 
             // Suggestions dropdown
@@ -467,7 +506,7 @@ private struct TagRowView: View {
                 .background(.background)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
                 .shadow(radius: 2)
-                .padding(.leading, 110)
+                .padding(.leading, 132)
             }
         }
         .padding(.horizontal, 8)

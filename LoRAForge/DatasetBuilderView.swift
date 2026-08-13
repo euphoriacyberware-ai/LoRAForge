@@ -144,23 +144,19 @@ struct DatasetBuilderView: View {
             }
 
             Spacer()
-
-            Button { showingAudit = true } label: {
-                Label("Audit", systemImage: "chart.bar")
-            }
-            
-            
-            
-            Button { showingExport = true } label: {
-                Label("Export", systemImage: "square.and.arrow.up")
-            }
-            
-            Spacer()
             
             if document.discardedImageCount > 0 {
                 Button { showingEmptyTrash = true } label: {
                     Label("Empty trash (\(document.discardedImageCount))", systemImage: "trash")
                 }
+            }
+
+            Button { showingAudit = true } label: {
+                Label("Audit", systemImage: "chart.bar")
+            }
+            
+            Button { showingExport = true } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
             }
             
             Menu {
@@ -177,11 +173,8 @@ struct DatasetBuilderView: View {
                 Label("Templates", systemImage: "doc.on.doc")
             }
 
-            Button {
-                addEntry()
-            } label: {
-                Label("New Entry", systemImage: "plus")
-                    .labelStyle(.iconOnly)
+            Button { addEntry() } label: {
+                Label("New", systemImage: "plus")
             }
             .help("New Entry")
         }
