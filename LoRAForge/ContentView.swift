@@ -1,5 +1,4 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 enum SidebarItem: Hashable {
     case project(id: UUID)
@@ -104,14 +103,12 @@ struct ContentView: View {
         .navigationSplitViewColumnWidth(min: 180, ideal: 220)
         #endif
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { showingNewProject = true } label: {
-                    Label("New project", systemImage: "plus")
-                }
-            }
-            ToolbarItem(placement: .secondaryAction) {
+            ToolbarItemGroup(placement: .primaryAction) {
                 Button { performLegacyImport() } label: {
                     Label("Import v1 project", systemImage: "square.and.arrow.down")
+                }
+                Button { showingNewProject = true } label: {
+                    Label("New project", systemImage: "plus")
                 }
             }
         }
@@ -202,11 +199,10 @@ struct ContentView: View {
     private func performLegacyImport() {
         #if os(macOS)
         let panel = NSOpenPanel()
-        panel.canChooseFiles = true
+        panel.canChooseFiles = false
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = [.folder, .init(filenameExtension: "lforge")!]
-        panel.message = "Select .lforge files or a folder containing them"
+        panel.message = "Select a folder containing .lforge projects"
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
         let selectedURLs = panel.urls
 
