@@ -473,3 +473,254 @@ private struct LightboxDiscardAlert: Identifiable {
     let imageID: UUID
     let entryID: UUID
 }
+
+// MARK: - Reference Lightbox View
+
+struct ReferenceLightboxView: View {
+    let referenceImages: [ReferenceImageDocument]
+    let bundleURL: URL
+    let initialRefID: UUID
+    var onDismiss: (() -> Void)?
+
+    @State private var currentRefID: UUID
+    @State private var zoomLevel: Int = 0
+    @State private var nativeImageSize: CGSize = .zero
+    @FocusState private var isFocused: Bool
+    @Environment(\.dismiss) private var dismiss
+
+    private static let zoomSteps: [CGFloat] = [0.5, 0.75, 1.0, 1.5, 2.0]
+
+    init(referenceImages: [ReferenceImageDocument], bundleURL: URL, initialRefID: UUID, onDismiss: (() -> Void)? = nil) {
+        self.referenceImages = referenceImages
+        self.bundleURL = bundleURL
+        self.initialRefID = initialRefID
+        self.onDismiss = onDismiss
+        self._currentRefID = State(initialValue: initialRefID)
+    }
+
+    private func closeLightbox() {
+        if let onDismiss {
+            onDismiss()
+        } else {
+            dismiss()
+        }
+    }
+
+    private var currentRef: ReferenceImageDocument? {
+        referenceImages.first { $0.id == currentRefID }
+    }
+
+    private var currentIndex: Int? {
+        referenceImages.firstIndex { $0.id == currentRefID }
+    }
+
+    private var positionLabel: String {
+        guard let idx = currentIndex else { return "" }
+        return "Image \(idx + 1) of \(referenceImages.count)"
+    }
+
+    private var currentImageURL: URL? {
+        guard let ref = currentRef else { return nil }
+        return bundleURL.appending(path: "references/\(ref.filename)")
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            imageArea
+            Divider()
+            bottomBar
+        }
+        .task(id: currentRefID) {
+            loadNativeSize()
+        }
+        .focusable()
+        .focusEffectDisabled()
+        .focused($isFocused)
+        .onAppear { isFocused = true }
+        #if os(macOS)
+        .onKeyPress(.leftArrow) { navigateLeft(); return .handled }
+        .onKeyPress(.rightArrow) { navigateRight(); return .handled }
+        .onKeyPress(.escape) { closeLightbox(); return .handled }
+        #endif
+    }
+
+    // MARK: - Header
+
+    private var header: some View {
+        HStack {
+            Text(positionLabel)
+                .font(.headline)
+            Spacer()
+            Button("Done") { closeLightbox() }
+                .keyboardShortcut(.cancelAction)
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Image Area
+
+    private var imageArea: some View {
+        HStack(spacing: 0) {
+            navButton(systemName: "chevron.left", action: navigateLeft, disabled: !canNavigateLeft)
+
+            mainImageView
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            navButton(systemName: "chevron.right", action: navigateRight, disabled: !canNavigateRight)
+        }
+    }
+
+    private func navButton(systemName: String, action: @escaping () -> Void, disabled: Bool) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.title2)
+                .frame(width: 44, height: 44)
+        }
+        .buttonStyle(.borderless)
+        .disabled(disabled)
+    }
+
+    @ViewBuilder
+    private var mainImageView: some View {
+        if let url = currentImageURL {
+            if zoomLevel == 0 {
+                loadImage(from: url)
+                    .aspectRatio(contentMode: .fit)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                let factor = Self.zoomSteps[zoomLevel - 1]
+                ScrollView([.horizontal, .vertical]) {
+                    loadImage(from: url)
+                        .frame(
+                            width: nativeImageSize.width * factor,
+                            height: nativeImageSize.height * factor
+                        )
+                }
+            }
+        } else {
+            imagePlaceholder
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+    }
+
+    @ViewBuilder
+    private func loadImage(from url: URL) -> some View {
+        #if os(macOS)
+        if let nsImage = NSImage(contentsOf: url) {
+            Image(nsImage: nsImage)
+                .resizable()
+        } else {
+            imagePlaceholder
+        }
+        #else
+        if let data = try? Data(contentsOf: url),
+           let uiImage = UIImage(data: data) {
+            Image(uiImage: uiImage)
+                .resizable()
+        } else {
+            imagePlaceholder
+        }
+        #endif
+    }
+
+    private var imagePlaceholder: some View {
+        Rectangle()
+            .fill(Color.gray.opacity(0.2))
+            .overlay {
+                Image(systemName: "photo")
+                    .font(.largeTitle)
+                    .foregroundStyle(.secondary)
+            }
+    }
+
+    // MARK: - Bottom Bar
+
+    private var bottomBar: some View {
+        HStack(spacing: 12) {
+            zoomControls
+            Spacer()
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    private var zoomControls: some View {
+        HStack(spacing: 4) {
+            Button("Fit") { zoomLevel = 0 }
+                .buttonStyle(.bordered)
+                .font(.caption)
+
+            Button { if zoomLevel > 1 { zoomLevel -= 1 } } label: {
+                Image(systemName: "minus")
+            }
+            .disabled(zoomLevel <= 1)
+
+            Text(zoomLevel == 0 ? "Fit" : "\(Int(Self.zoomSteps[zoomLevel - 1] * 100))%")
+                .font(.caption.monospacedDigit())
+                .frame(minWidth: 40)
+
+            Button {
+                if zoomLevel == 0 { zoomLevel = 1 }
+                else if zoomLevel < Self.zoomSteps.count { zoomLevel += 1 }
+            } label: {
+                Image(systemName: "plus")
+            }
+            .disabled(zoomLevel >= Self.zoomSteps.count)
+
+            Button("100%") { zoomLevel = 3 }
+                .buttonStyle(.bordered)
+                .font(.caption)
+        }
+    }
+
+    // MARK: - Navigation
+
+    private var canNavigateLeft: Bool {
+        guard let idx = currentIndex else { return false }
+        return idx > 0
+    }
+
+    private var canNavigateRight: Bool {
+        guard let idx = currentIndex else { return false }
+        return idx < referenceImages.count - 1
+    }
+
+    private func navigateLeft() {
+        guard let idx = currentIndex, idx > 0 else { return }
+        currentRefID = referenceImages[idx - 1].id
+        zoomLevel = 0
+    }
+
+    private func navigateRight() {
+        guard let idx = currentIndex, idx < referenceImages.count - 1 else { return }
+        currentRefID = referenceImages[idx + 1].id
+        zoomLevel = 0
+    }
+
+    // MARK: - Helpers
+
+    private func loadNativeSize() {
+        guard let url = currentImageURL else {
+            nativeImageSize = .zero
+            return
+        }
+        #if os(macOS)
+        guard let nsImage = NSImage(contentsOf: url),
+              let rep = nsImage.representations.first else {
+            nativeImageSize = .zero
+            return
+        }
+        nativeImageSize = CGSize(width: rep.pixelsWide, height: rep.pixelsHigh)
+        #else
+        guard let data = try? Data(contentsOf: url),
+              let uiImage = UIImage(data: data) else {
+            nativeImageSize = .zero
+            return
+        }
+        nativeImageSize = CGSize(width: uiImage.size.width * uiImage.scale, height: uiImage.size.height * uiImage.scale)
+        #endif
+    }
+}

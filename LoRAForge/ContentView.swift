@@ -184,6 +184,9 @@ struct ContentView: View {
         let name = renameText.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { renamingProjectID = nil; return }
         try? library.renameProject(id: id, to: name)
+        if case .project(let selectedID) = sidebarSelection, selectedID == id {
+            currentDocument?.name = name
+        }
         renamingProjectID = nil
     }
 
