@@ -24,10 +24,21 @@ final class LibraryManager {
     private var loadedDocuments: [UUID: ProjectDocument] = [:]
     private var saveTask: [UUID: Task<Void, Never>] = [:]
 
-    init() {
-        let appSupport = FileManager.default
+    private static let libraryURLKey = "customLibraryURL"
+
+    private static var defaultLibraryURL: URL {
+        FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        self.libraryURL = appSupport.appending(path: "LoRAForge Library")
+            .appending(path: "LoRAForge Library")
+    }
+
+    init() {
+        if let bookmark = UserDefaults.standard.data(forKey: Self.libraryURLKey),
+           let resolved = Self.resolveBookmark(bookmark) {
+            self.libraryURL = resolved
+        } else {
+            self.libraryURL = Self.defaultLibraryURL
+        }
         ensureLibraryExists()
         refresh()
     }
@@ -36,6 +47,61 @@ final class LibraryManager {
         self.libraryURL = libraryURL
         ensureLibraryExists()
         refresh()
+    }
+
+    // MARK: - Library migration
+
+    func migrateLibrary(to destination: URL) throws {
+        let fm = FileManager.default
+        let oldURL = libraryURL
+
+        // Ensure destination exists
+        try fm.createDirectory(at: destination, withIntermediateDirectories: true)
+
+        // Save all dirty documents before moving
+        saveAllDirty()
+
+        // Move each .loraforge bundle to the new location
+        let bundles = (try? fm.contentsOfDirectory(at: oldURL, includingPropertiesForKeys: nil))?
+            .filter { $0.pathExtension == "loraforge" } ?? []
+
+        for bundleURL in bundles {
+            let destURL = destination.appending(path: bundleURL.lastPathComponent)
+            if fm.fileExists(atPath: destURL.path) {
+                // Skip bundles that already exist at destination
+                continue
+            }
+            try fm.moveItem(at: bundleURL, to: destURL)
+        }
+
+        // Persist the new location as a security-scoped bookmark
+        if let bookmark = try? destination.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        ) {
+            UserDefaults.standard.set(bookmark, forKey: Self.libraryURLKey)
+        }
+
+        // Clear in-memory state that referenced old URLs
+        loadedDocuments.removeAll()
+        saveTask.values.forEach { $0.cancel() }
+        saveTask.removeAll()
+
+        libraryURL = destination
+        refresh()
+    }
+
+    private static func resolveBookmark(_ data: Data) -> URL? {
+        var isStale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: data,
+            options: .withSecurityScope,
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else { return nil }
+        guard url.startAccessingSecurityScopedResource() else { return nil }
+        return url
     }
 
     private func ensureLibraryExists() {
