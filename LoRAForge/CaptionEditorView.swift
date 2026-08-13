@@ -552,7 +552,7 @@ private struct OllamaProfilePickerSheet: View {
         NavigationStack {
             List {
                 if profiles.isEmpty {
-                    Text("No Ollama profiles configured. Add one in Settings > Ollama.")
+                    Text("No Ollama profiles configured. Add one in Connections.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(profiles) { profile in

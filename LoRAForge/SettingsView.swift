@@ -1,35 +1,6 @@
 import SwiftUI
-import DTConfigEditorKit
-import DTConfigBridge
-import DrawThingsClient
 
-struct SettingsView: View {
-    var body: some View {
-        TabView {
-            Tab("General", systemImage: "gear") {
-                GeneralSettingsTab()
-            }
-            Tab("Draw Things", systemImage: "paintbrush") {
-                DrawThingsSettingsTab()
-            }
-            Tab("Ollama", systemImage: "brain") {
-                OllamaSettingsTab()
-            }
-            Tab("Tagging", systemImage: "tag") {
-                Text("Tagging settings")
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            Tab("Generation", systemImage: "wand.and.stars") {
-                GenerationSettingsTab()
-            }
-        }
-        #if os(macOS)
-        .frame(minWidth: 450, minHeight: 300)
-        #endif
-    }
-}
-
-private struct GeneralSettingsTab: View {
+struct GeneralSettingsPanel: View {
     @Environment(LibraryManager.self) private var library
 
     var body: some View {
@@ -47,10 +18,38 @@ private struct GeneralSettingsTab: View {
         }
         .formStyle(.grouped)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle("General")
     }
 }
 
-private struct DrawThingsSettingsTab: View {
+struct ConnectionsSettingsPanel: View {
+    var body: some View {
+        HStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Draw Things")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal)
+                    .padding(.top, 12)
+                DrawThingsConnectionPane()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            Divider()
+            VStack(alignment: .leading, spacing: 0) {
+                Text("Ollama")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .padding(.horizontal)
+                    .padding(.top, 12)
+                OllamaConnectionPane()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .navigationTitle("Connections")
+    }
+}
+
+struct DrawThingsConnectionPane: View {
     @Environment(GenerationService.self) private var generation
 
     var body: some View {
@@ -94,11 +93,10 @@ private struct DrawThingsSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
-private struct OllamaSettingsTab: View {
+struct OllamaConnectionPane: View {
     @Environment(OllamaRepository.self) private var repo
     @State private var profiles: [SDOllamaProfile] = []
     @State private var editingProfile: SDOllamaProfile?
@@ -156,7 +154,6 @@ private struct OllamaSettingsTab: View {
             }
         }
         .formStyle(.grouped)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear(perform: refresh)
         .sheet(item: $editingProfile) { profile in
             OllamaProfileEditor(profile: profile, repo: repo, onSave: refresh)
@@ -168,7 +165,7 @@ private struct OllamaSettingsTab: View {
     }
 }
 
-private struct OllamaProfileEditor: View {
+struct OllamaProfileEditor: View {
     let profile: SDOllamaProfile
     let repo: OllamaRepository
     let onSave: () -> Void
@@ -221,74 +218,4 @@ private struct OllamaProfileEditor: View {
             }
         }
     }
-}
-
-private struct GenerationSettingsTab: View {
-    @Environment(GenerationPresetRepository.self) private var presetRepo
-    @State private var presets: [SDGenerationPreset] = []
-    @State private var configModel = ConfigEditorModel(
-        DrawThingsConfiguration(), style: .nonDefaultOnly
-    )
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("App default configuration")
-                .font(.headline)
-            Text("New projects inherit this. Manage presets in the Config Library sidebar.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            // Preset picker
-            if !presets.isEmpty {
-                HStack {
-                    Text("Load from preset:")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Menu("Presets") {
-                        ForEach(presets) { preset in
-                            Button(preset.name) {
-                                configModel = ConfigEditorModel(text: preset.configJSON)
-                            }
-                        }
-                    }
-                    .menuStyle(.borderlessButton)
-                    .fixedSize()
-                }
-            }
-
-            ConfigTextView(model: configModel)
-
-            HStack {
-                if configModel.isValid {
-                    Label("Valid", systemImage: "checkmark.circle")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                } else {
-                    Label("Invalid JSON", systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-                Spacer()
-                Text("Seed and batch size are overridden by the app.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onAppear {
-            presets = (try? presetRepo.allPresets()) ?? []
-            if let saved = UserDefaults.standard.string(forKey: "defaultGenerationConfig"),
-               !saved.isEmpty {
-                configModel = ConfigEditorModel(text: saved)
-            }
-        }
-        .onChange(of: configModel.text) {
-            UserDefaults.standard.set(configModel.text, forKey: "defaultGenerationConfig")
-        }
-    }
-}
-
-#Preview {
-    SettingsView()
 }

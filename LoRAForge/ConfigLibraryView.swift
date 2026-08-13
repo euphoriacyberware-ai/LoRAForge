@@ -5,6 +5,7 @@ import DrawThingsClient
 
 struct ConfigLibraryView: View {
     @Environment(GenerationPresetRepository.self) private var presetRepo
+    @AppStorage("defaultPresetID") private var defaultPresetID: String = ""
     @State private var presets: [SDGenerationPreset] = []
     @State private var selectedPresetID: UUID?
     @State private var configModel: ConfigEditorModel?
@@ -31,17 +32,32 @@ struct ConfigLibraryView: View {
         VStack(spacing: 0) {
             List(selection: $selectedPresetID) {
                 ForEach(presets) { preset in
-                    Text(preset.name)
-                        .tag(preset.id)
-                        .contextMenu {
-                            Button("Rename") {
-                                renameName = preset.name
-                                presetToRename = preset
-                            }
-                            Button("Duplicate") { duplicatePreset(preset) }
-                            Divider()
-                            Button("Delete", role: .destructive) { presetToDelete = preset }
+                    HStack {
+                        Text(preset.name)
+                        if defaultPresetID == preset.id.uuidString {
+                            Spacer()
+                            Image(systemName: "checkmark")
+                                .foregroundStyle(.secondary)
+                                .font(.caption)
                         }
+                    }
+                    .tag(preset.id)
+                    .contextMenu {
+                        Button("Set as default") { setAsDefault(preset) }
+                        if defaultPresetID == preset.id.uuidString {
+                            Button("Clear default") {
+                                defaultPresetID = ""
+                            }
+                        }
+                        Divider()
+                        Button("Rename") {
+                            renameName = preset.name
+                            presetToRename = preset
+                        }
+                        Button("Duplicate") { duplicatePreset(preset) }
+                        Divider()
+                        Button("Delete", role: .destructive) { presetToDelete = preset }
+                    }
                 }
             }
             .listStyle(.sidebar)
@@ -113,6 +129,9 @@ struct ConfigLibraryView: View {
                         if let idx = presets.firstIndex(where: { $0.id == selectedID }) {
                             presets[idx].configJSON = configModel.text
                             try? presetRepo.updatePreset(presets[idx])
+                            if defaultPresetID == selectedID.uuidString {
+                                UserDefaults.standard.set(configModel.text, forKey: "defaultGenerationConfig")
+                            }
                         }
                     }
             }
@@ -160,8 +179,16 @@ struct ConfigLibraryView: View {
         refresh()
     }
 
+    private func setAsDefault(_ preset: SDGenerationPreset) {
+        defaultPresetID = preset.id.uuidString
+        UserDefaults.standard.set(preset.configJSON, forKey: "defaultGenerationConfig")
+    }
+
     private func performDelete() {
         guard let preset = presetToDelete else { return }
+        if defaultPresetID == preset.id.uuidString {
+            defaultPresetID = ""
+        }
         if selectedPresetID == preset.id {
             selectedPresetID = nil
             configModel = nil

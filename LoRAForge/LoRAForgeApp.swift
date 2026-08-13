@@ -59,18 +59,5 @@ struct LoRAForgeApp: App {
                 .environment(generationService)
         }
         .modelContainer(modelContainer)
-
-        #if os(macOS)
-        Settings {
-            SettingsView()
-                .environment(tagRepository)
-                .environment(ollamaRepository)
-                .environment(presetRepository)
-                .environment(libraryManager)
-                .environment(templateManager)
-                .environment(generationService)
-        }
-        .modelContainer(modelContainer)
-        #endif
     }
 }

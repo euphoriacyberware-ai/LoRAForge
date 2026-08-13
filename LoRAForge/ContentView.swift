@@ -5,6 +5,8 @@ enum SidebarItem: Hashable {
     case tagLibrary
     case configLibrary
     case templateLibrary
+    case settingsGeneral
+    case settingsConnections
 }
 
 enum ProjectTab: String, CaseIterable {
@@ -19,7 +21,6 @@ struct ContentView: View {
     @State private var sidebarSelection: SidebarItem?
     @State private var lastProjectID: UUID?
     @State private var selectedTab: ProjectTab = .datasetBuilder
-    @State private var showingSettings = false
     @State private var showingNewProject = false
     @State private var newProjectName = ""
     @State private var projectToDelete: LibraryManager.ProjectInfo?
@@ -77,13 +78,20 @@ struct ContentView: View {
                 }
             }
 
-            Section("App Libraries") {
+            Section("Libraries") {
                 Label("Tag Library", systemImage: "tag")
                     .tag(SidebarItem.tagLibrary)
                 Label("Config Library", systemImage: "slider.horizontal.3")
                     .tag(SidebarItem.configLibrary)
                 Label("Templates Library", systemImage: "doc.on.doc")
                     .tag(SidebarItem.templateLibrary)
+            }
+
+            Section("Settings") {
+                Label("General", systemImage: "gear")
+                    .tag(SidebarItem.settingsGeneral)
+                Label("Connections", systemImage: "network")
+                    .tag(SidebarItem.settingsConnections)
             }
         }
         .navigationTitle("LoRAForge")
@@ -97,19 +105,6 @@ struct ContentView: View {
                 }
             }
         }
-        #if os(iOS)
-        .sheet(isPresented: $showingSettings) {
-            NavigationStack {
-                SettingsView()
-                    .navigationTitle("Settings")
-                    .toolbar {
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Done") { showingSettings = false }
-                        }
-                    }
-            }
-        }
-        #endif
         .alert("New project", isPresented: $showingNewProject) {
             TextField("Project name", text: $newProjectName)
             Button("Create") { createProject() }
@@ -228,6 +223,10 @@ struct ContentView: View {
             ConfigLibraryView()
         } else if sidebarSelection == .templateLibrary {
             TemplateLibraryView()
+        } else if sidebarSelection == .settingsGeneral {
+            GeneralSettingsPanel()
+        } else if sidebarSelection == .settingsConnections {
+            ConnectionsSettingsPanel()
         } else {
             projectContent
         }
@@ -331,16 +330,6 @@ struct ContentView: View {
                     }
                 }
 
-                // App settings
-                #if os(iOS)
-                Button { showingSettings = true } label: {
-                    Label("Settings", systemImage: "gear")
-                }
-                #else
-                SettingsLink {
-                    Label("Settings", systemImage: "gear")
-                }
-                #endif
             }
         }
         .sheet(isPresented: $showingProjectSettings) {
