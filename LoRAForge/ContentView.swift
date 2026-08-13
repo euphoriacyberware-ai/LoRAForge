@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum SidebarItem: Hashable {
     case project(id: UUID)
@@ -29,6 +30,10 @@ struct ContentView: View {
     @State private var renameText = ""
     @State private var showingQueuePopover = false
     @State private var showingProjectSettings = false
+    @State private var importResult: LegacyImporter.BatchImportResult?
+    @State private var showingImportResult = false
+    @State private var importError: String?
+    @State private var showingImportError = false
     @AppStorage("generateUnfilledCount") private var generateUnfilledCount: Int = 1
 
     var body: some View {
@@ -104,6 +109,11 @@ struct ContentView: View {
                     Label("New project", systemImage: "plus")
                 }
             }
+            ToolbarItem(placement: .secondaryAction) {
+                Button { performLegacyImport() } label: {
+                    Label("Import v1 project", systemImage: "square.and.arrow.down")
+                }
+            }
         }
         .alert("New project", isPresented: $showingNewProject) {
             TextField("Project name", text: $newProjectName)
@@ -127,6 +137,27 @@ struct ContentView: View {
         } message: {
             if let project = projectToDelete {
                 Text("'\(project.name)' and all its images will be permanently deleted.")
+            }
+        }
+        .alert("Import complete", isPresented: $showingImportResult) {
+            Button("OK") { importResult = nil }
+        } message: {
+            if let result = importResult {
+                let lines = result.results.map { r in
+                    if r.success {
+                        return "\(r.name): \(r.entryCount) entries, \(r.imageCount) images, \(r.referenceCount) references"
+                    } else {
+                        return "\(r.name): failed — \(r.error ?? "unknown error")"
+                    }
+                }
+                Text("\(result.successCount) succeeded, \(result.failureCount) failed\n\(lines.joined(separator: "\n"))")
+            }
+        }
+        .alert("Import error", isPresented: $showingImportError) {
+            Button("OK") { importError = nil }
+        } message: {
+            if let error = importError {
+                Text(error)
             }
         }
     }
@@ -166,6 +197,50 @@ struct ContentView: View {
         }
         try? library.deleteProject(id: project.id)
         projectToDelete = nil
+    }
+
+    private func performLegacyImport() {
+        #if os(macOS)
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.allowedContentTypes = [.folder, .init(filenameExtension: "lforge")!]
+        panel.message = "Select .lforge files or a folder containing them"
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        let selectedURLs = panel.urls
+
+        do {
+            let categories = try repo.allCategories()
+            let tags = try repo.allTags()
+            let existingNames = Set(library.projects.map(\.name))
+
+            var discovered: [URL] = []
+            for url in selectedURLs {
+                discovered.append(contentsOf: LegacyImporter.discoverLegacyBundles(at: url))
+            }
+
+            guard !discovered.isEmpty else {
+                importError = "No .lforge projects found in the selection."
+                showingImportError = true
+                return
+            }
+
+            let result = LegacyImporter.importLegacyProjects(
+                at: discovered,
+                libraryURL: library.libraryURL,
+                existingNames: existingNames,
+                categories: categories,
+                tags: tags
+            )
+            library.refresh()
+            importResult = result
+            showingImportResult = true
+        } catch {
+            importError = error.localizedDescription
+            showingImportError = true
+        }
+        #endif
     }
 
     private func saveCurrentProject() {

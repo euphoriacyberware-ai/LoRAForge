@@ -29,6 +29,10 @@ struct ProjectBundle {
             at: url.appending(path: "images"),
             withIntermediateDirectories: true
         )
+        try fm.createDirectory(
+            at: url.appending(path: "references"),
+            withIntermediateDirectories: true
+        )
 
         let bundle = ProjectBundle(url: url)
         try bundle.writeProjectAtomic(project)

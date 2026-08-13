@@ -23,6 +23,26 @@ struct ProjectDocument: Codable {
         self.defaultGenerationConfigJSON = UserDefaults.standard.string(forKey: "defaultGenerationConfig") ?? ""
     }
 
+    init(
+        id: UUID,
+        name: String,
+        createdAt: Date,
+        categoryOrder: [UUID],
+        categoryEnabled: [UUID: Bool],
+        entries: [EntryDocument],
+        referenceImages: [ReferenceImageDocument],
+        defaultGenerationConfigJSON: String
+    ) {
+        self.id = id
+        self.name = name
+        self.createdAt = createdAt
+        self.categoryOrder = categoryOrder
+        self.categoryEnabled = categoryEnabled
+        self.entries = entries
+        self.referenceImages = referenceImages
+        self.defaultGenerationConfigJSON = defaultGenerationConfigJSON
+    }
+
     var totalImageCount: Int {
         entries.reduce(0) { $0 + $1.activeImageCount }
     }
@@ -148,6 +168,14 @@ struct ImageDocument: Codable, Identifiable {
         self.addedAt = Date()
         self.provenance = provenance
     }
+
+    init(id: UUID, filename: String, rank: ImageRank, addedAt: Date, provenance: ImageProvenance?) {
+        self.id = id
+        self.filename = filename
+        self.rank = rank
+        self.addedAt = addedAt
+        self.provenance = provenance
+    }
 }
 
 struct ImageProvenance: Codable {
@@ -169,6 +197,13 @@ struct ReferenceImageDocument: Codable, Identifiable {
         self.filename = filename
         self.contentHash = contentHash
         self.addedAt = Date()
+    }
+
+    init(id: UUID, filename: String, contentHash: String, addedAt: Date) {
+        self.id = id
+        self.filename = filename
+        self.contentHash = contentHash
+        self.addedAt = addedAt
     }
 }
 
