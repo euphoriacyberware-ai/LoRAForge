@@ -6,13 +6,14 @@ struct LoRAForgeApp: App {
     let modelContainer: ModelContainer
     let tagRepository: TagRepository
     let ollamaRepository: OllamaRepository
+    let connectionProfileRepository: ConnectionProfileRepository
     let presetRepository: GenerationPresetRepository
     let libraryManager: LibraryManager
     let templateManager: TemplateManager
     let generationService: GenerationService
 
     init() {
-        let schema = Schema([SDCategory.self, SDTag.self, SDOllamaProfile.self, SDGenerationPreset.self])
+        let schema = Schema([SDCategory.self, SDTag.self, SDOllamaProfile.self, SDGenerationPreset.self, SDConnectionProfile.self])
 
         func makeContainer() throws -> ModelContainer {
             let config = ModelConfiguration(schema: schema)
@@ -36,6 +37,7 @@ struct LoRAForgeApp: App {
             self.tagRepository = TagRepository(modelContext: container.mainContext)
             try tagRepository.seedBuiltInCategoriesIfNeeded()
             self.ollamaRepository = OllamaRepository(modelContext: container.mainContext)
+            self.connectionProfileRepository = ConnectionProfileRepository(modelContext: container.mainContext)
             self.presetRepository = GenerationPresetRepository(modelContext: container.mainContext)
             self.libraryManager = LibraryManager()
             self.templateManager = TemplateManager()
@@ -43,6 +45,16 @@ struct LoRAForgeApp: App {
             #if DEBUG
             GenerationService.enableDebugLogging()
             #endif
+
+            // Auto-connect to default profile on launch
+            if UserDefaults.standard.bool(forKey: "autoConnectOnLaunch"),
+               let defaultID = UserDefaults.standard.string(forKey: "defaultConnectionProfileID"),
+               let uuid = UUID(uuidString: defaultID) {
+                if let profiles = try? connectionProfileRepository.allProfiles(),
+                   let profile = profiles.first(where: { $0.id == uuid }) {
+                    generationService.applyProfile(profile)
+                }
+            }
         } catch {
             fatalError("Could not initialize data store: \(error)")
         }
@@ -53,6 +65,7 @@ struct LoRAForgeApp: App {
             ContentView()
                 .environment(tagRepository)
                 .environment(ollamaRepository)
+                .environment(connectionProfileRepository)
                 .environment(presetRepository)
                 .environment(libraryManager)
                 .environment(templateManager)

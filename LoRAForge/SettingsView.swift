@@ -110,11 +110,79 @@ struct ConnectionsSettingsPanel: View {
 
 struct DrawThingsConnectionPane: View {
     @Environment(GenerationService.self) private var generation
+    @Environment(ConnectionProfileRepository.self) private var profileRepo
+    @State private var profiles: [SDConnectionProfile] = []
+    @AppStorage("defaultConnectionProfileID") private var defaultProfileID: String = ""
+    @AppStorage("autoConnectOnLaunch") private var autoConnectOnLaunch: Bool = false
+    @State private var editingProfile: SDConnectionProfile?
+    @State private var showingSaveSheet = false
+    @State private var saveProfileName = ""
+    @State private var showingSwitchAlert = false
+    @State private var pendingSwitchProfile: SDConnectionProfile?
+
+    private var defaultUUID: UUID? {
+        UUID(uuidString: defaultProfileID)
+    }
 
     var body: some View {
         @Bindable var generation = generation
         Form {
-            Section("Server") {
+            Section("Profiles") {
+                ForEach(profiles) { profile in
+                    HStack {
+                        VStack(alignment: .leading) {
+                            HStack(spacing: 4) {
+                                Text(profile.name).font(.headline)
+                                if profile.id == defaultUUID {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(.blue)
+                                        .font(.caption)
+                                }
+                            }
+                            Text(profile.address)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+                    .contextMenu {
+                        Button("Connect") {
+                            connectToProfile(profile)
+                        }
+                        Divider()
+                        if profile.id == defaultUUID {
+                            Button("Clear default") {
+                                defaultProfileID = ""
+                            }
+                        } else {
+                            Button("Set as default") {
+                                defaultProfileID = profile.id.uuidString
+                            }
+                        }
+                        Divider()
+                        Button("Edit\u{2026}") {
+                            editingProfile = profile
+                        }
+                        Button("Delete", role: .destructive) {
+                            if profile.id == defaultUUID {
+                                defaultProfileID = ""
+                            }
+                            try? profileRepo.deleteProfile(profile)
+                            refresh()
+                        }
+                    }
+                }
+                if profiles.isEmpty {
+                    Text("No profiles saved.")
+                        .foregroundStyle(.secondary)
+                }
+                Button("Save current as profile\u{2026}") {
+                    saveProfileName = ""
+                    showingSaveSheet = true
+                }
+            }
+
+            Section("Active connection") {
                 TextField("Address", text: $generation.serverAddress)
                 Toggle("Use TLS", isOn: $generation.useTLS)
                 TextField("Shared secret", text: $generation.sharedSecret)
@@ -142,6 +210,7 @@ struct DrawThingsConnectionPane: View {
                         .font(.caption)
                 }
             }
+
             Section("Queue") {
                 LabeledContent("Pending") { Text("\(generation.pendingCount)") }
                 LabeledContent("Processing") { Text(generation.isProcessing ? "Yes" : "No") }
@@ -150,8 +219,128 @@ struct DrawThingsConnectionPane: View {
                         .foregroundStyle(.orange)
                 }
             }
+
+            Section("Startup") {
+                Toggle("Auto-connect on launch", isOn: $autoConnectOnLaunch)
+                if autoConnectOnLaunch {
+                    if let uuid = defaultUUID,
+                       let profile = profiles.first(where: { $0.id == uuid }) {
+                        Text("Will connect to: \(profile.name)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("No default profile set. Auto-connect will not activate.")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+            }
         }
         .formStyle(.grouped)
+        .onAppear(perform: refresh)
+        .sheet(item: $editingProfile) { profile in
+            ConnectionProfileEditor(profile: profile, repo: profileRepo, onSave: refresh)
+        }
+        .alert("Save profile", isPresented: $showingSaveSheet) {
+            TextField("Profile name", text: $saveProfileName)
+            Button("Save") { saveCurrentAsProfile() }
+            Button("Cancel", role: .cancel) { }
+        }
+        .alert(
+            "Switch server?",
+            isPresented: $showingSwitchAlert,
+            presenting: pendingSwitchProfile
+        ) { profile in
+            Button("Switch", role: .destructive) {
+                generation.clearPending()
+                generation.applyProfile(profile)
+                pendingSwitchProfile = nil
+            }
+            Button("Cancel", role: .cancel) {
+                pendingSwitchProfile = nil
+            }
+        } message: { _ in
+            Text("You have \(generation.pendingCount) items queued. Switching servers will discard them.")
+        }
+    }
+
+    private func refresh() {
+        profiles = (try? profileRepo.allProfiles()) ?? []
+    }
+
+    private func connectToProfile(_ profile: SDConnectionProfile) {
+        if generation.pendingCount > 0 {
+            pendingSwitchProfile = profile
+            showingSwitchAlert = true
+        } else {
+            generation.applyProfile(profile)
+        }
+    }
+
+    private func saveCurrentAsProfile() {
+        let name = saveProfileName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        _ = try? profileRepo.addProfile(
+            name: name,
+            address: generation.serverAddress,
+            useTLS: generation.useTLS,
+            sharedSecret: generation.sharedSecret
+        )
+        refresh()
+    }
+}
+
+struct ConnectionProfileEditor: View {
+    let profile: SDConnectionProfile
+    let repo: ConnectionProfileRepository
+    let onSave: () -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var name: String
+    @State private var address: String
+    @State private var useTLS: Bool
+    @State private var sharedSecret: String
+
+    init(profile: SDConnectionProfile, repo: ConnectionProfileRepository, onSave: @escaping () -> Void) {
+        self.profile = profile
+        self.repo = repo
+        self.onSave = onSave
+        _name = State(initialValue: profile.name)
+        _address = State(initialValue: profile.address)
+        _useTLS = State(initialValue: profile.useTLS)
+        _sharedSecret = State(initialValue: profile.sharedSecret)
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                TextField("Name", text: $name)
+                TextField("Address", text: $address)
+                Toggle("Use TLS", isOn: $useTLS)
+                TextField("Shared secret", text: $sharedSecret)
+            }
+            .formStyle(.grouped)
+            .navigationTitle("Edit profile")
+            #if os(macOS)
+            .frame(minWidth: 380, minHeight: 280)
+            #endif
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        profile.name = name
+                        profile.address = address
+                        profile.useTLS = useTLS
+                        profile.sharedSecret = sharedSecret
+                        try? repo.updateProfile(profile)
+                        onSave()
+                        dismiss()
+                    }
+                }
+            }
+        }
     }
 }
 
