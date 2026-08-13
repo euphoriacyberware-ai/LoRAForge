@@ -1,616 +1,424 @@
 import SwiftUI
-import AppKit
-import UniformTypeIdentifiers
-import DrawThingsQueue
+
+enum SidebarItem: Hashable {
+    case project(id: UUID)
+    case tagLibrary
+    case configLibrary
+    case templateLibrary
+    case settingsGeneral
+    case settingsConnections
+}
+
+enum ProjectTab: String, CaseIterable {
+    case datasetBuilder = "Dataset Builder"
+    case referenceLibrary = "Reference Library"
+}
 
 struct ContentView: View {
-    @ObservedObject var document: LoRAForgeDocument
-    @ObservedObject var connectionManager = ConnectionManager.shared
-    @StateObject private var generationService = GenerationService()
-    @StateObject private var captionService = CaptionService()
-    @State private var selection: SidebarSelection?
-    @State private var visibleRanks: Set<ImageRank> = [.candidate, .shortlisted, .final_]
-    @State private var showingExport = false
-    @State private var showingBaseConfigEditor = false
-    @State private var showingQueue = false
-    @State private var editingLabelID: UUID?
-
-    enum SidebarSelection: Hashable {
-        case sourceImage(UUID)
-        case prompt(UUID)
-    }
-
-    private var selectedPromptID: UUID? {
-        if case .prompt(let id) = selection { return id }
-        return nil
-    }
-
-    private var hasValidConfiguration: Bool {
-        let trimmed = document.project.baseConfigurationJSON.trimmingCharacters(in: .whitespacesAndNewlines)
-        return !trimmed.isEmpty && trimmed != "{}" && trimmed != "{ }"
-    }
+    @Environment(TagRepository.self) private var repo
+    @Environment(LibraryManager.self) private var library
+    @Environment(GenerationService.self) private var generation
+    @State private var sidebarSelection: SidebarItem?
+    @State private var lastProjectID: UUID?
+    @State private var selectedTab: ProjectTab = .datasetBuilder
+    @State private var showingNewProject = false
+    @State private var newProjectName = ""
+    @State private var projectToDelete: LibraryManager.ProjectInfo?
+    @State private var currentDocument: ProjectDocument?
+    @State private var renamingProjectID: UUID?
+    @State private var renameText = ""
+    @State private var showingQueuePopover = false
+    @State private var showingProjectSettings = false
+    @State private var importResult: LegacyImporter.BatchImportResult?
+    @State private var showingImportResult = false
+    @State private var importError: String?
+    @State private var showingImportError = false
+    @AppStorage("generateUnfilledCount") private var generateUnfilledCount: Int = 1
 
     var body: some View {
-        VStack(spacing: 0) {
-            NavigationSplitView {
-                sidebar
-                    .navigationSplitViewColumnWidth(min: 200, ideal: 250)
-            } detail: {
-                detail
-            }
-
-            Divider()
-            statusBar
+        NavigationSplitView {
+            sidebar
+        } detail: {
+            detail
         }
-        .frame(minWidth: 700, minHeight: 400)
-        .toolbar(id: "main") {
-            ToolbarItem(id: "config", placement: .automatic) {
-                Button {
-                    showingBaseConfigEditor = true
-                } label: {
-                    Label("Configuration", systemImage: "gearshape")
+        .onChange(of: sidebarSelection) { oldValue, newValue in
+            // Save and unload previous project
+            if case .project(let id) = oldValue {
+                lastProjectID = id
+                if let doc = currentDocument {
+                    library.updateDocument(doc)
                 }
-                .help("Edit DrawThings configuration")
+                library.saveAndUnload(id: id)
+                try? library.saveSchema(id: id, repo: repo)
+                currentDocument = nil
             }
-            
-            ToolbarItem(id: "serverPicker", placement: .automatic) {
-                serverPicker
-            }
-            ToolbarItem(id: "captionPicker", placement: .automatic) {
-                captionServerPicker
-            }
-            
-            ToolbarItem(id: "runSelected", placement: .automatic) {
-                Button {
-                    guard hasValidConfiguration else {
-                        showingBaseConfigEditor = true
-                        return
-                    }
-                    if let promptID = selectedPromptID {
-                        document.ensureSaved {
-                            generationService.runSingle(document: document, promptID: promptID)
-                        }
-                    }
-                } label: {
-                    Label("Run Selected", systemImage: "play")
-                }
-                .disabled(document.project.generationConnectionID == nil || selectedPromptID == nil)
-                .help("Generate images for the selected prompt")
-            }
-            ToolbarItem(id: "run", placement: .automatic) {
-                Button {
-                    guard hasValidConfiguration else {
-                        showingBaseConfigEditor = true
-                        return
-                    }
-                    document.ensureSaved {
-                        generationService.run(document: document, runAll: false)
-                    }
-                } label: {
-                    Label("Run", systemImage: "play.fill")
-                }
-                .disabled(document.project.generationConnectionID == nil)
-                .help("Generate images for prompts without a final image")
-            }
-            ToolbarItem(id: "runAll", placement: .automatic) {
-                Button {
-                    guard hasValidConfiguration else {
-                        showingBaseConfigEditor = true
-                        return
-                    }
-                    document.ensureSaved {
-                        generationService.run(document: document, runAll: true)
-                    }
-                } label: {
-                    Label("Run All", systemImage: "arrow.clockwise")
-                }
-                .disabled(document.project.generationConnectionID == nil)
-                .help("Regenerate all prompts")
-            }
-            ToolbarItem(id: "stop", placement: .automatic) {
-                Button {
-                    generationService.stop()
-                } label: {
-                    Label("Stop", systemImage: "stop.fill")
-                }
-                .disabled(!generationService.isRunning)
-                .help("Stop generation")
-            }
-            ToolbarItem(id: "autoCaption", placement: .automatic) {
-                if captionService.isBulkCaptioning {
-                    Button {
-                        captionService.stopBulkCaption()
-                    } label: {
-                        Label("Stop Captioning", systemImage: "stop.fill")
-                    }
-                    .help("Stop auto-captioning")
-                } else {
-                    Button {
-                        document.ensureSaved {
-                            captionService.captionAll(document: document)
-                        }
-                    } label: {
-                        Label("Auto-caption", systemImage: "sparkles")
-                    }
-                    .disabled(document.project.captionConnectionID == nil)
-                    .help("Auto-caption all uncaptioned images")
-                }
-            }
-            ToolbarItem(id: "export", placement: .automatic) {
-                Button {
-                    showingExport = true
-                } label: {
-                    Label("Export", systemImage: "square.and.arrow.up")
-                }
-                .help("Export images and captions")
+            // Load new project
+            if case .project(let id) = newValue {
+                currentDocument = try? library.loadDocument(id: id)
             }
         }
-        .sheet(isPresented: $showingExport) {
-            ExportView(document: document, isPresented: $showingExport)
-        }
-        .sheet(isPresented: $showingBaseConfigEditor) {
-            ConfigurationEditorSheet(
-                isPresented: $showingBaseConfigEditor,
-                configurationJSON: Binding(
-                    get: { document.project.baseConfigurationJSON },
-                    set: {
-                        document.project.baseConfigurationJSON = $0
-                        document.updateChangeCount(.changeDone)
-                    }
-                ),
-                title: "DrawThings Configuration"
-            )
-        }
-    }
-
-    // MARK: - Status Bar
-
-    private var statusBar: some View {
-        HStack(spacing: 8) {
-            // Generation preview + progress
-            if generationService.isRunning {
-                if let preview = generationService.previewImage {
-                    Image(nsImage: preview)
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: 40, height: 40)
-                        .clipped()
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
-
-                if let queue = generationService.queue, queue.isPaused {
-                    Image(systemName: queue.lastError != nil ? "wifi.exclamationmark" : "pause.fill")
-                        .foregroundStyle(queue.lastError != nil ? .orange : .yellow)
-                        .font(.caption)
-                }
-
-                ProgressView(value: generationService.progressFraction)
-                    .progressViewStyle(.linear)
-                    .frame(width: 120)
-            }
-
-            // Generation status
-            if !generationService.statusMessage.isEmpty {
-                Text(generationService.statusMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-
-                if let stage = generationService.generationStage {
-                    Text("— \(stage)")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                }
-            }
-
-            // Caption progress
-            if captionService.isBulkCaptioning {
-                if !generationService.statusMessage.isEmpty {
-                    Text("│")
-                        .font(.caption)
-                        .foregroundStyle(.quaternary)
-                }
-                ProgressView(value: Double(captionService.bulkProgress), total: Double(max(captionService.bulkTotal, 1)))
-                    .progressViewStyle(.linear)
-                    .frame(width: 100)
-            }
-
-            if !captionService.bulkStatusMessage.isEmpty {
-                Text(captionService.bulkStatusMessage)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-
-            // Idle state
-            if !generationService.isRunning && generationService.statusMessage.isEmpty
-                && !captionService.isBulkCaptioning && captionService.bulkStatusMessage.isEmpty {
-                Text("Ready")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-
-            Spacer(minLength: 0)
-
-            // Queue button — always visible when queue exists
-            if generationService.queue != nil {
-                Button {
-                    showingQueue.toggle()
-                } label: {
-                    Image(systemName: "list.bullet.rectangle")
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.plain)
-                .help("Show generation queue")
-                .popover(isPresented: $showingQueue) {
-                    if let queue = generationService.queue {
-                        QueuePopoverView(generationService: generationService, queue: queue)
-                    }
-                }
+        .onChange(of: library.lastExternalUpdate) { _, update in
+            guard let update else { return }
+            if case .project(let id) = sidebarSelection, id == update.projectID {
+                currentDocument = try? library.loadDocument(id: id)
             }
         }
-        .padding(.horizontal)
-        .padding(.vertical, 6)
-        .frame(height: 52)
-        .background(.bar)
-    }
-
-    // MARK: - Server Picker
-
-    private var serverPicker: some View {
-        Menu {
-            Button {
-                document.project.generationConnectionID = nil
-            } label: {
-                if document.project.generationConnectionID == nil {
-                    Label("No Server", systemImage: "checkmark")
-                } else {
-                    Text("No Server")
-                }
-            }
-            ForEach(connectionManager.connections(ofType: .drawThings)) { conn in
-                Button {
-                    document.project.generationConnectionID = conn.id
-                } label: {
-                    if document.project.generationConnectionID == conn.id {
-                        Label(conn.name, systemImage: "checkmark")
-                    } else {
-                        Text(conn.name)
-                    }
-                }
-            }
-            Divider()
-            Button("Address Book…") {
-                NSApp.sendAction(#selector(AppDelegate.showAddressBook), to: nil, from: nil)
-            }
-        } label: {
-            Label(serverPickerLabel, systemImage: "server.rack")
-                .labelStyle(.titleAndIcon)
+        #if os(macOS)
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+            library.saveAllDirty()
         }
-        .frame(width: 170)
-    }
-
-    private var serverPickerLabel: String {
-        if let id = document.project.generationConnectionID,
-           let conn = connectionManager.connection(for: id) {
-            return conn.name
-        }
-        return "No Server"
-    }
-
-    private var captionServerPicker: some View {
-        Menu {
-            Button {
-                document.project.captionConnectionID = nil
-            } label: {
-                if document.project.captionConnectionID == nil {
-                    Label("No Caption Server", systemImage: "checkmark")
-                } else {
-                    Text("No Caption Server")
-                }
-            }
-            ForEach(connectionManager.connections(ofType: .ollama)) { conn in
-                Button {
-                    document.project.captionConnectionID = conn.id
-                } label: {
-                    if document.project.captionConnectionID == conn.id {
-                        Label(conn.name, systemImage: "checkmark")
-                    } else {
-                        Text(conn.name)
-                    }
-                }
-            }
-            Divider()
-            Button("Address Book…") {
-                NSApp.sendAction(#selector(AppDelegate.showAddressBook), to: nil, from: nil)
-            }
-        } label: {
-            Label(captionPickerLabel, systemImage: "text.bubble")
-                .labelStyle(.titleAndIcon)
-        }
-        .frame(width: 170)
-    }
-
-    private var captionPickerLabel: String {
-        if let id = document.project.captionConnectionID,
-           let conn = connectionManager.connection(for: id) {
-            return conn.name
-        }
-        return "No Caption Server"
+        #endif
     }
 
     // MARK: - Sidebar
 
     private var sidebar: some View {
-        List(selection: $selection) {
-            Section("Source Images") {
-                ForEach(document.project.sourceImages) { source in
-                    sourceImageRow(source)
-                        .tag(SidebarSelection.sourceImage(source.id))
+        List(selection: $sidebarSelection) {
+            Section("Projects") {
+                ForEach(library.projects) { project in
+                    Label(project.name, systemImage: "doc.fill")
+                        .tag(SidebarItem.project(id: project.id))
+                        .contextMenu { projectContextMenu(for: project) }
                 }
-
-                Button {
-                    importSourceImages()
-                } label: {
-                    Label("Import Images…", systemImage: "plus")
-                }
-                .buttonStyle(.borderless)
             }
 
-            Section("Prompts") {
-                ForEach(document.project.prompts) { prompt in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text(prompt.text.isEmpty ? "Empty prompt" : prompt.text)
-                                .lineLimit(1)
-                                .foregroundStyle(prompt.text.isEmpty ? .secondary : .primary)
-                            Text("\(prompt.generatedImages.count) image(s)")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        if generationService.isRunning && generationService.currentPromptID == prompt.id {
-                            ProgressView()
-                                .controlSize(.small)
-                        } else if prompt.generatedImages.contains(where: { $0.rank == .final_ }) {
-                            Image(systemName: "checkmark.seal.fill")
-                                .foregroundStyle(.green)
-                                .font(.caption)
-                        }
-                    }
-                    .tag(SidebarSelection.prompt(prompt.id))
-                    .contextMenu {
-                        Button("Duplicate") {
-                            if let newID = document.duplicatePrompt(id: prompt.id) {
-                                selection = .prompt(newID)
-                            }
-                        }
-                        Button("Delete Prompt") {
-                            deletePrompt(id: prompt.id)
-                        }
-                    }
-                }
-                .onMove { from, to in
-                    document.project.prompts.move(fromOffsets: from, toOffset: to)
-                    reorderPrompts()
-                }
-                .onDelete { offsets in
-                    for index in offsets.sorted().reversed() {
-                        let id = document.project.prompts[index].id
-                        deletePrompt(id: id)
-                    }
-                }
+            Section("Libraries") {
+                Label("Tags", systemImage: "tag")
+                    .tag(SidebarItem.tagLibrary)
+                Label("Configurations", systemImage: "slider.horizontal.3")
+                    .tag(SidebarItem.configLibrary)
+                Label("Templates", systemImage: "doc.on.doc")
+                    .tag(SidebarItem.templateLibrary)
+            }
 
-                Button {
-                    addPrompt()
-                } label: {
-                    Label("Add Prompt", systemImage: "plus")
+            Section("Settings") {
+                Label("General", systemImage: "gear")
+                    .tag(SidebarItem.settingsGeneral)
+                Label("Connections", systemImage: "network")
+                    .tag(SidebarItem.settingsConnections)
+            }
+        }
+        .navigationTitle("LoRAForge")
+        #if os(macOS)
+        .navigationSplitViewColumnWidth(min: 200, ideal: 220)
+        #endif
+        .toolbar {
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { performLegacyImport() } label: {
+                    Label("Import v1 project", systemImage: "square.and.arrow.down")
                 }
-                .buttonStyle(.borderless)
+                Button { showingNewProject = true } label: {
+                    Label("New project", systemImage: "plus")
+                }
+            }
+        }
+        .alert("New project", isPresented: $showingNewProject) {
+            TextField("Project name", text: $newProjectName)
+            Button("Create") { createProject() }
+            Button("Cancel", role: .cancel) { newProjectName = "" }
+        }
+        .alert("Rename project", isPresented: .init(
+            get: { renamingProjectID != nil },
+            set: { if !$0 { renamingProjectID = nil } }
+        )) {
+            TextField("Name", text: $renameText)
+            Button("Rename") { performRename() }
+            Button("Cancel", role: .cancel) { renamingProjectID = nil }
+        }
+        .alert("Delete project?", isPresented: .init(
+            get: { projectToDelete != nil },
+            set: { if !$0 { projectToDelete = nil } }
+        )) {
+            Button("Delete", role: .destructive) { performDelete() }
+            Button("Cancel", role: .cancel) { projectToDelete = nil }
+        } message: {
+            if let project = projectToDelete {
+                Text("'\(project.name)' and all its images will be permanently deleted.")
+            }
+        }
+        .alert("Import complete", isPresented: $showingImportResult) {
+            Button("OK") { importResult = nil }
+        } message: {
+            if let result = importResult {
+                let lines = result.results.map { r in
+                    if r.success {
+                        return "\(r.name): \(r.entryCount) entries, \(r.imageCount) images, \(r.referenceCount) references"
+                    } else {
+                        return "\(r.name): failed — \(r.error ?? "unknown error")"
+                    }
+                }
+                Text("\(result.successCount) succeeded, \(result.failureCount) failed\n\(lines.joined(separator: "\n"))")
+            }
+        }
+        .alert("Import error", isPresented: $showingImportError) {
+            Button("OK") { importError = nil }
+        } message: {
+            if let error = importError {
+                Text(error)
             }
         }
     }
 
-    // MARK: - Source Image Row
-
-    private func sourceImageRow(_ source: SourceImage) -> some View {
-        HStack(spacing: 8) {
-            // Thumbnail
-            if let url = document.sourceImageURL(for: source),
-               let nsImage = NSImage(contentsOf: url) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: 32, height: 32)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-            } else {
-                Image(systemName: "photo")
-                    .frame(width: 32, height: 32)
-                    .foregroundStyle(.secondary)
-            }
-
-            // Label (inline editable)
-            if editingLabelID == source.id {
-                let labelBinding = Binding<String>(
-                    get: {
-                        document.project.sourceImages.first(where: { $0.id == source.id })?.label ?? ""
-                    },
-                    set: { newValue in
-                        if let idx = document.project.sourceImages.firstIndex(where: { $0.id == source.id }) {
-                            document.project.sourceImages[idx].label = newValue.isEmpty ? nil : newValue
-                        }
-                    }
-                )
-                TextField("Label", text: labelBinding)
-                    .textFieldStyle(.roundedBorder)
-                    .onSubmit {
-                        editingLabelID = nil
-                        document.updateChangeCount(.changeDone)
-                    }
-            } else {
-                Text(source.label ?? source.filename)
-                    .lineLimit(1)
-                    .onTapGesture(count: 2) {
-                        editingLabelID = source.id
-                    }
-            }
+    @ViewBuilder
+    private func projectContextMenu(for project: LibraryManager.ProjectInfo) -> some View {
+        Button("Rename...") {
+            renameText = project.name
+            renamingProjectID = project.id
         }
-        .contextMenu {
-            Button("Rename…") {
-                editingLabelID = source.id
-            }
-            Divider()
-            Button("Append to All Prompts") {
-                appendSourceToAllPrompts(source.id)
-            }
-            .disabled(document.project.prompts.isEmpty)
-            Button("Replace on All Prompts") {
-                replaceSourceOnAllPrompts(source.id)
-            }
-            .disabled(document.project.prompts.isEmpty)
-            Divider()
-            Button("Remove") {
-                document.removeSourceImage(id: source.id)
-            }
-            .disabled(document.isSourceImageReferenced(source.id))
+        Button("Delete...", role: .destructive) {
+            projectToDelete = project
         }
     }
 
-    // MARK: - Import
-
-    private func importSourceImages() {
-        document.ensureSaved {
-            showImageOpenPanel()
+    private func createProject() {
+        let name = newProjectName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { newProjectName = ""; return }
+        if let info = try? library.createProject(name: name, repo: repo) {
+            sidebarSelection = .project(id: info.id)
         }
+        newProjectName = ""
     }
 
-    private func showImageOpenPanel() {
+    private func performRename() {
+        guard let id = renamingProjectID else { return }
+        let name = renameText.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { renamingProjectID = nil; return }
+        try? library.renameProject(id: id, to: name)
+        renamingProjectID = nil
+    }
+
+    private func performDelete() {
+        guard let project = projectToDelete else { return }
+        if case .project(let id) = sidebarSelection, id == project.id {
+            sidebarSelection = nil
+        }
+        try? library.deleteProject(id: project.id)
+        projectToDelete = nil
+    }
+
+    private func performLegacyImport() {
+        #if os(macOS)
         let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = true
-        panel.canChooseDirectories = false
         panel.canChooseFiles = true
-        panel.allowedContentTypes = [.png, .jpeg, .tiff, .bmp, .heic]
-        panel.message = "Select images to import as source images"
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = true
+        panel.treatsFilePackagesAsDirectories = false
+        panel.message = "Select .lforge projects or a folder containing them"
+        panel.delegate = LegacyImportPanelDelegate.shared
+        guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
+        let selectedURLs = panel.urls
 
-        guard panel.runModal() == .OK else { return }
-        document.importSourceImages(from: panel.urls)
-    }
+        do {
+            let categories = try repo.allCategories()
+            let tags = try repo.allTags()
+            let existingNames = Set(library.projects.map(\.name))
 
-    // MARK: - Prompt Management
+            var discovered: [URL] = []
+            for url in selectedURLs {
+                discovered.append(contentsOf: LegacyImporter.discoverLegacyBundles(at: url))
+            }
 
-    private func addPrompt() {
-        let newPrompt = Prompt(
-            id: UUID(),
-            order: document.project.prompts.count,
-            text: "",
-            sourceImageIDs: [],
-            generateCount: 4,
-            configurationOverrideJSON: nil,
-            generatedImages: []
-        )
-        document.project.prompts.append(newPrompt)
-        selection = .prompt(newPrompt.id)
-        document.updateChangeCount(.changeDone)
-    }
+            guard !discovered.isEmpty else {
+                importError = "No .lforge projects found in the selection."
+                showingImportError = true
+                return
+            }
 
-    private func deletePrompt(id: UUID) {
-        document.trashPrompt(id: id)
-        if selection == .prompt(id) {
-            selection = nil
+            let result = LegacyImporter.importLegacyProjects(
+                at: discovered,
+                libraryURL: library.libraryURL,
+                existingNames: existingNames,
+                categories: categories,
+                tags: tags
+            )
+            library.refresh()
+            importResult = result
+            showingImportResult = true
+        } catch {
+            importError = error.localizedDescription
+            showingImportError = true
         }
+        #endif
     }
 
-    private func appendSourceToAllPrompts(_ sourceID: UUID) {
-        for i in document.project.prompts.indices {
-            if !document.project.prompts[i].sourceImageIDs.contains(sourceID) {
-                document.project.prompts[i].sourceImageIDs.append(sourceID)
+    private func saveCurrentProject() {
+        guard let doc = currentDocument else { return }
+        library.updateDocument(doc)
+    }
+
+    // MARK: - Generate Unfilled
+
+    private func entriesWithoutFinal(in doc: ProjectDocument) -> [EntryDocument] {
+        doc.entries.filter { $0.finalImage == nil && !$0.generationPrompt.trimmingCharacters(in: .whitespaces).isEmpty }
+    }
+
+    private func generateUnfilled(in doc: ProjectDocument) {
+        guard case .project(let id) = sidebarSelection,
+              let bundleURL = library.bundleURL(for: id) else { return }
+        for entry in entriesWithoutFinal(in: doc) {
+            for _ in 0..<generateUnfilledCount {
+                generateForEntry(entry, in: doc, bundleURL: bundleURL)
             }
         }
-        document.updateChangeCount(.changeDone)
     }
 
-    private func replaceSourceOnAllPrompts(_ sourceID: UUID) {
-        for i in document.project.prompts.indices {
-            document.project.prompts[i].sourceImageIDs = [sourceID]
-        }
-        document.updateChangeCount(.changeDone)
-    }
+    private func generateForEntry(_ entry: EntryDocument, in doc: ProjectDocument, bundleURL: URL) {
+        let prompt = entry.generationPrompt
+        guard !prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let seed: Int64? = entry.useCustomSeed ? entry.generationSeed : nil
 
-    private func reorderPrompts() {
-        for i in document.project.prompts.indices {
-            document.project.prompts[i].order = i
+        let refData: [Data] = entry.referenceImageIDs.compactMap { refID in
+            guard let ref = doc.referenceImages.first(where: { $0.id == refID }) else { return nil }
+            let url = bundleURL.appending(path: "references/\(ref.filename)")
+            return try? Data(contentsOf: url)
         }
-        document.updateChangeCount(.changeDone)
+
+        generation.generate(
+            prompt: prompt,
+            negativePrompt: entry.generationNegativePrompt,
+            seed: seed,
+            configJSON: entry.generationConfigJSON,
+            projectConfigJSON: doc.defaultGenerationConfigJSON,
+            projectID: doc.id,
+            entryID: entry.id,
+            referenceImageData: refData,
+            referenceImageIDs: entry.referenceImageIDs
+        )
     }
 
     // MARK: - Detail
 
+    @ViewBuilder
     private var detail: some View {
+        if sidebarSelection == .tagLibrary {
+            TagLibraryView()
+        } else if sidebarSelection == .configLibrary {
+            ConfigLibraryView()
+        } else if sidebarSelection == .templateLibrary {
+            TemplateLibraryView()
+        } else if sidebarSelection == .settingsGeneral {
+            GeneralSettingsPanel()
+        } else if sidebarSelection == .settingsConnections {
+            ConnectionsSettingsPanel()
+        } else {
+            projectContent
+        }
+    }
+
+    @ViewBuilder
+    private var projectContent: some View {
         Group {
-            switch selection {
-            case .prompt(let promptID) where document.project.prompts.contains(where: { $0.id == promptID }):
-                PromptDetailView(
-                    document: document,
-                    promptID: promptID,
-                    generationService: generationService,
-                    captionService: captionService,
-                    visibleRanks: $visibleRanks,
-                    onDuplicatePrompt: { newID in
-                        selection = .prompt(newID)
-                    }
-                )
-            case .sourceImage(let sourceID):
-                if let source = document.project.sourceImages.first(where: { $0.id == sourceID }) {
-                    sourceImageDetail(source)
-                } else {
-                    Text("Select a prompt to get started")
-                        .foregroundStyle(.secondary)
+            if case .project(let id) = sidebarSelection, currentDocument != nil {
+                switch selectedTab {
+                case .datasetBuilder:
+                    DatasetBuilderView(
+                        document: Binding(
+                            get: { currentDocument! },
+                            set: { currentDocument = $0 }
+                        ),
+                        bundleURL: library.bundleURL(for: id) ?? URL(filePath: "/"),
+                        onChanged: { saveCurrentProject() }
+                    )
+                case .referenceLibrary:
+                    ReferenceLibraryView(
+                        document: Binding(
+                            get: { currentDocument! },
+                            set: { currentDocument = $0 }
+                        ),
+                        bundleURL: library.bundleURL(for: id) ?? URL(filePath: "/"),
+                        onChanged: { saveCurrentProject() }
+                    )
                 }
-            default:
-                Text("Select a prompt to get started")
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    // MARK: - Source Image Detail
-
-    private func sourceImageDetail(_ source: SourceImage) -> some View {
-        VStack {
-            if let url = document.sourceImageURL(for: source),
-               let nsImage = NSImage(contentsOf: url) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .padding()
             } else {
-                Image(systemName: "photo")
-                    .font(.system(size: 48))
-                    .foregroundStyle(.secondary)
+                ContentUnavailableView(
+                    "No project selected",
+                    systemImage: "photo.on.rectangle.angled",
+                    description: Text("Select a project from the sidebar or create a new one.")
+                )
             }
+        }
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Picker("View", selection: $selectedTab) {
+                    ForEach(ProjectTab.allCases, id: \.self) { tab in
+                        Text(tab.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .fixedSize()
+            }
+            ToolbarItemGroup(placement: .automatic) {
+                // Generate unfilled — visible on Dataset Builder when connected
+                if selectedTab == .datasetBuilder,
+                   generation.isConnected,
+                   case .project = sidebarSelection,
+                   let doc = currentDocument {
+                    let unfilled = entriesWithoutFinal(in: doc)
+                    GenerateUnfilledButton(
+                        count: $generateUnfilledCount,
+                        unfilledCount: unfilled.count,
+                        disabled: unfilled.isEmpty
+                    ) {
+                        generateUnfilled(in: doc)
+                    }
+                    .help(unfilled.isEmpty
+                          ? "All entries have a final image"
+                          : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final — \(generateUnfilledCount * unfilled.count) total")
+                }
 
-            Text(source.label ?? source.filename)
-                .font(.headline)
-                .padding(.bottom)
+                // Draw Things connection toggle
+                Button {
+                    if generation.isConnected {
+                        generation.disconnect()
+                    } else {
+                        generation.connect()
+                    }
+                } label: {
+                    Label(
+                        generation.isConnected ? "Connected" : "Connect",
+                        systemImage: generation.isConnected ? "bolt.fill" : "bolt.slash"
+                    )
+                }
+                .labelStyle(.iconOnly)
+                .help(generation.isConnected
+                      ? "Connected to Draw Things — click to disconnect"
+                      : "Connect to Draw Things at \(generation.serverAddress)")
+                .foregroundStyle(generation.isConnected ? .green : .secondary)
+
+                // Queue manager — visible when items are queued or processing
+                if generation.pendingCount > 0 || generation.isProcessing {
+                    Button { showingQueuePopover.toggle() } label: {
+                        Label("Queue", systemImage: "hourglass")
+                    }
+                    .badge(generation.pendingCount + (generation.isProcessing ? 1 : 0))
+                    .popover(isPresented: $showingQueuePopover) {
+                        QueueManagerView()
+                    }
+                }
+
+                // Project settings — hidden on Tag Library
+                if case .project = sidebarSelection, currentDocument != nil {
+                    Button { showingProjectSettings = true } label: {
+                        Label("Project settings", systemImage: "folder.badge.gearshape")
+                    }
+                }
+
+            }
+        }
+        .sheet(isPresented: $showingProjectSettings) {
+            if currentDocument != nil {
+                ProjectSettingsView(
+                    document: Binding(
+                        get: { currentDocument! },
+                        set: { currentDocument = $0 }
+                    ),
+                    onChanged: { saveCurrentProject() }
+                )
+            }
         }
     }
 }
 
-// MARK: - Preview
-
-#if DEBUG
-#Preview("Content View") {
-    ContentView(document: PreviewData.sampleDocument)
-        .frame(width: 900, height: 600)
+#Preview {
+    ContentView()
 }
-
-#Preview("Content View — Empty") {
-    ContentView(document: LoRAForgeDocument())
-        .frame(width: 900, height: 600)
-}
-#endif

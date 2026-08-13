@@ -1,5 +1,5 @@
 {
-  "originHash" : "ee21dfeddf40ccc2e3aec5806f3849da8c84c46bd7dfd588a87906c11c8e0fbb",
+  "originHash" : "394a0c05d046ec0fbaa20dc923cf13e8d64cc4fc55fc82cad8437d8579d59e9b",
   "pins" : [
     {
       "identity" : "drawthingsqueue",
@@ -17,6 +17,15 @@
       "state" : {
         "branch" : "main",
         "revision" : "840f35cc7a949c551bd24385c0938e425b122482"
+      }
+    },
+    {
+      "identity" : "dtconfigeditorkit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/euphoriacyberware-ai/DTConfigEditorKit",
+      "state" : {
+        "branch" : "main",
+        "revision" : "cb38da5d6f60d63445887fbdadef416b492b2ea5"
       }
     },
     {
@@ -44,6 +53,15 @@
       "state" : {
         "revision" : "87e50f483c54e6efd60e885f7f5aa946cee68023",
         "version" : "1.2.1"
+      }
+    },
+    {
+      "identity" : "swift-argument-parser",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-argument-parser.git",
+      "state" : {
+        "revision" : "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+        "version" : "1.8.2"
       }
     },
     {

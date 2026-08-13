@@ -7,58 +7,50 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A450AE932F62170E00B896EF /* DrawThingsClient in Frameworks */ = {isa = PBXBuildFile; productRef = A450AE312F62200000B896EF /* DrawThingsClient */; };
-		A450AE942F66100000B896EF /* DrawThingsQueue in Frameworks */ = {isa = PBXBuildFile; productRef = A450AE952F66100000B896EF /* DrawThingsQueue */; };
+		A4B5152030280A470049F8D7 /* DrawThingsQueue in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5151F30280A470049F8D7 /* DrawThingsQueue */; };
+		A4B5152330280BCE0049F8D7 /* DTConfigBridge in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152230280BCE0049F8D7 /* DTConfigBridge */; };
+		A4B5152530280BCE0049F8D7 /* DTConfigEditorKit in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */; };
+		A4B5152730280BCE0049F8D7 /* configlint in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152630280BCE0049F8D7 /* configlint */; };
+		A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152930280BD00049F8D7 /* TaggingCore */; };
+		A4B5152B30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152C30280BD00049F8D7 /* TaggingCore */; };
+		A4B5152D30280BD00049F8D7 /* DrawThingsClient in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152E30280BD00049F8D7 /* DrawThingsClient */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		A450AE0F2F62139800B896EF /* PBXContainerItemProxy */ = {
+		A4B514F4302809AB0049F8D7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = A450ADF72F62139600B896EF /* Project object */;
+			containerPortal = A4B514DC302809A90049F8D7 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = A450ADFE2F62139600B896EF;
+			remoteGlobalIDString = A4B514E3302809A90049F8D7;
 			remoteInfo = LoRAForge;
 		};
-		A450AE192F62139800B896EF /* PBXContainerItemProxy */ = {
+		A4B514FE302809AB0049F8D7 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = A450ADF72F62139600B896EF /* Project object */;
+			containerPortal = A4B514DC302809A90049F8D7 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = A450ADFE2F62139600B896EF;
+			remoteGlobalIDString = A4B514E3302809A90049F8D7;
 			remoteInfo = LoRAForge;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A450ADFF2F62139600B896EF /* LoRAForge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LoRAForge.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A450AE0E2F62139800B896EF /* LoRAForgeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoRAForgeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		A450AE182F62139800B896EF /* LoRAForgeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoRAForgeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4B514E4302809A90049F8D7 /* LoRAForge.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LoRAForge.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4B514F3302809AB0049F8D7 /* LoRAForgeTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoRAForgeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A4B514FD302809AB0049F8D7 /* LoRAForgeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoRAForgeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		A450AE352F62200000B896EF /* Exceptions for "LoRAForge" folder in "LoRAForge" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = A450ADFE2F62139600B896EF /* LoRAForge */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A450AE012F62139600B896EF /* LoRAForge */ = {
+		A4B514E6302809A90049F8D7 /* LoRAForge */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				A450AE352F62200000B896EF /* Exceptions for "LoRAForge" folder in "LoRAForge" target */,
-			);
 			path = LoRAForge;
 			sourceTree = "<group>";
 		};
-		A450AE112F62139800B896EF /* LoRAForgeTests */ = {
+		A4B514F6302809AB0049F8D7 /* LoRAForgeTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = LoRAForgeTests;
 			sourceTree = "<group>";
 		};
-		A450AE1B2F62139800B896EF /* LoRAForgeUITests */ = {
+		A4B51500302809AB0049F8D7 /* LoRAForgeUITests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = LoRAForgeUITests;
 			sourceTree = "<group>";
@@ -66,23 +58,28 @@
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		A450ADFC2F62139600B896EF /* Frameworks */ = {
+		A4B514E1302809A90049F8D7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A450AE932F62170E00B896EF /* DrawThingsClient in Frameworks */,
-				A450AE942F66100000B896EF /* DrawThingsQueue in Frameworks */,
+				A4B5152030280A470049F8D7 /* DrawThingsQueue in Frameworks */,
+				A4B5152530280BCE0049F8D7 /* DTConfigEditorKit in Frameworks */,
+				A4B5152330280BCE0049F8D7 /* DTConfigBridge in Frameworks */,
+				A4B5152730280BCE0049F8D7 /* configlint in Frameworks */,
+				A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */,
+				A4B5152D30280BD00049F8D7 /* DrawThingsClient in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A450AE0B2F62139800B896EF /* Frameworks */ = {
+		A4B514F0302809AB0049F8D7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A4B5152B30280BD00049F8D7 /* TaggingCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A450AE152F62139800B896EF /* Frameworks */ = {
+		A4B514FA302809AB0049F8D7 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -92,22 +89,22 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		A450ADF62F62139600B896EF = {
+		A4B514DB302809A90049F8D7 = {
 			isa = PBXGroup;
 			children = (
-				A450AE012F62139600B896EF /* LoRAForge */,
-				A450AE112F62139800B896EF /* LoRAForgeTests */,
-				A450AE1B2F62139800B896EF /* LoRAForgeUITests */,
-				A450AE002F62139600B896EF /* Products */,
+				A4B514E6302809A90049F8D7 /* LoRAForge */,
+				A4B514F6302809AB0049F8D7 /* LoRAForgeTests */,
+				A4B51500302809AB0049F8D7 /* LoRAForgeUITests */,
+				A4B514E5302809A90049F8D7 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		A450AE002F62139600B896EF /* Products */ = {
+		A4B514E5302809A90049F8D7 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A450ADFF2F62139600B896EF /* LoRAForge.app */,
-				A450AE0E2F62139800B896EF /* LoRAForgeTests.xctest */,
-				A450AE182F62139800B896EF /* LoRAForgeUITests.xctest */,
+				A4B514E4302809A90049F8D7 /* LoRAForge.app */,
+				A4B514F3302809AB0049F8D7 /* LoRAForgeTests.xctest */,
+				A4B514FD302809AB0049F8D7 /* LoRAForgeUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -115,140 +112,146 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A450ADFE2F62139600B896EF /* LoRAForge */ = {
+		A4B514E3302809A90049F8D7 /* LoRAForge */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A450AE222F62139800B896EF /* Build configuration list for PBXNativeTarget "LoRAForge" */;
+			buildConfigurationList = A4B51507302809AB0049F8D7 /* Build configuration list for PBXNativeTarget "LoRAForge" */;
 			buildPhases = (
-				A450ADFB2F62139600B896EF /* Sources */,
-				A450ADFC2F62139600B896EF /* Frameworks */,
-				A450ADFD2F62139600B896EF /* Resources */,
+				A4B514E0302809A90049F8D7 /* Sources */,
+				A4B514E1302809A90049F8D7 /* Frameworks */,
+				A4B514E2302809A90049F8D7 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				A450AE012F62139600B896EF /* LoRAForge */,
+				A4B514E6302809A90049F8D7 /* LoRAForge */,
 			);
 			name = LoRAForge;
 			packageProductDependencies = (
-				A450AE312F62200000B896EF /* DrawThingsClient */,
-				A450AE952F66100000B896EF /* DrawThingsQueue */,
+				A4B5151F30280A470049F8D7 /* DrawThingsQueue */,
+				A4B5152230280BCE0049F8D7 /* DTConfigBridge */,
+				A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */,
+				A4B5152630280BCE0049F8D7 /* configlint */,
+				A4B5152930280BD00049F8D7 /* TaggingCore */,
+				A4B5152E30280BD00049F8D7 /* DrawThingsClient */,
 			);
 			productName = LoRAForge;
-			productReference = A450ADFF2F62139600B896EF /* LoRAForge.app */;
+			productReference = A4B514E4302809A90049F8D7 /* LoRAForge.app */;
 			productType = "com.apple.product-type.application";
 		};
-		A450AE0D2F62139800B896EF /* LoRAForgeTests */ = {
+		A4B514F2302809AB0049F8D7 /* LoRAForgeTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A450AE252F62139800B896EF /* Build configuration list for PBXNativeTarget "LoRAForgeTests" */;
+			buildConfigurationList = A4B5150A302809AB0049F8D7 /* Build configuration list for PBXNativeTarget "LoRAForgeTests" */;
 			buildPhases = (
-				A450AE0A2F62139800B896EF /* Sources */,
-				A450AE0B2F62139800B896EF /* Frameworks */,
-				A450AE0C2F62139800B896EF /* Resources */,
+				A4B514EF302809AB0049F8D7 /* Sources */,
+				A4B514F0302809AB0049F8D7 /* Frameworks */,
+				A4B514F1302809AB0049F8D7 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				A450AE102F62139800B896EF /* PBXTargetDependency */,
+				A4B514F5302809AB0049F8D7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				A450AE112F62139800B896EF /* LoRAForgeTests */,
+				A4B514F6302809AB0049F8D7 /* LoRAForgeTests */,
 			);
 			name = LoRAForgeTests;
 			packageProductDependencies = (
+				A4B5152C30280BD00049F8D7 /* TaggingCore */,
 			);
 			productName = LoRAForgeTests;
-			productReference = A450AE0E2F62139800B896EF /* LoRAForgeTests.xctest */;
+			productReference = A4B514F3302809AB0049F8D7 /* LoRAForgeTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
-		A450AE172F62139800B896EF /* LoRAForgeUITests */ = {
+		A4B514FC302809AB0049F8D7 /* LoRAForgeUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A450AE282F62139800B896EF /* Build configuration list for PBXNativeTarget "LoRAForgeUITests" */;
+			buildConfigurationList = A4B5150D302809AB0049F8D7 /* Build configuration list for PBXNativeTarget "LoRAForgeUITests" */;
 			buildPhases = (
-				A450AE142F62139800B896EF /* Sources */,
-				A450AE152F62139800B896EF /* Frameworks */,
-				A450AE162F62139800B896EF /* Resources */,
+				A4B514F9302809AB0049F8D7 /* Sources */,
+				A4B514FA302809AB0049F8D7 /* Frameworks */,
+				A4B514FB302809AB0049F8D7 /* Resources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				A450AE1A2F62139800B896EF /* PBXTargetDependency */,
+				A4B514FF302809AB0049F8D7 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				A450AE1B2F62139800B896EF /* LoRAForgeUITests */,
+				A4B51500302809AB0049F8D7 /* LoRAForgeUITests */,
 			);
 			name = LoRAForgeUITests;
 			packageProductDependencies = (
 			);
 			productName = LoRAForgeUITests;
-			productReference = A450AE182F62139800B896EF /* LoRAForgeUITests.xctest */;
+			productReference = A4B514FD302809AB0049F8D7 /* LoRAForgeUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		A450ADF72F62139600B896EF /* Project object */ = {
+		A4B514DC302809A90049F8D7 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2630;
-				LastUpgradeCheck = 2630;
+				LastSwiftUpdateCheck = 2660;
+				LastUpgradeCheck = 2660;
 				TargetAttributes = {
-					A450ADFE2F62139600B896EF = {
-						CreatedOnToolsVersion = 26.3;
+					A4B514E3302809A90049F8D7 = {
+						CreatedOnToolsVersion = 26.6;
 					};
-					A450AE0D2F62139800B896EF = {
-						CreatedOnToolsVersion = 26.3;
-						TestTargetID = A450ADFE2F62139600B896EF;
+					A4B514F2302809AB0049F8D7 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = A4B514E3302809A90049F8D7;
 					};
-					A450AE172F62139800B896EF = {
-						CreatedOnToolsVersion = 26.3;
-						TestTargetID = A450ADFE2F62139600B896EF;
+					A4B514FC302809AB0049F8D7 = {
+						CreatedOnToolsVersion = 26.6;
+						TestTargetID = A4B514E3302809A90049F8D7;
 					};
 				};
 			};
-			buildConfigurationList = A450ADFA2F62139600B896EF /* Build configuration list for PBXProject "LoRAForge" */;
+			buildConfigurationList = A4B514DF302809A90049F8D7 /* Build configuration list for PBXProject "LoRAForge" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
 			);
-			mainGroup = A450ADF62F62139600B896EF;
+			mainGroup = A4B514DB302809A90049F8D7;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				A450AE302F62200000B896EF /* XCRemoteSwiftPackageReference "DT-gRPC-Swift-Client" */,
-				A450AE962F66100000B896EF /* XCRemoteSwiftPackageReference "DrawThingsQueue" */,
+				A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */,
+				A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */,
+				A4B5152830280BD00049F8D7 /* XCLocalSwiftPackageReference "Packages/TaggingCore" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = A450AE002F62139600B896EF /* Products */;
+			productRefGroup = A4B514E5302809A90049F8D7 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A450ADFE2F62139600B896EF /* LoRAForge */,
-				A450AE0D2F62139800B896EF /* LoRAForgeTests */,
-				A450AE172F62139800B896EF /* LoRAForgeUITests */,
+				A4B514E3302809A90049F8D7 /* LoRAForge */,
+				A4B514F2302809AB0049F8D7 /* LoRAForgeTests */,
+				A4B514FC302809AB0049F8D7 /* LoRAForgeUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		A450ADFD2F62139600B896EF /* Resources */ = {
+		A4B514E2302809A90049F8D7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A450AE0C2F62139800B896EF /* Resources */ = {
+		A4B514F1302809AB0049F8D7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A450AE162F62139800B896EF /* Resources */ = {
+		A4B514FB302809AB0049F8D7 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -258,21 +261,21 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		A450ADFB2F62139600B896EF /* Sources */ = {
+		A4B514E0302809A90049F8D7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A450AE0A2F62139800B896EF /* Sources */ = {
+		A4B514EF302809AB0049F8D7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A450AE142F62139800B896EF /* Sources */ = {
+		A4B514F9302809AB0049F8D7 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -282,20 +285,20 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		A450AE102F62139800B896EF /* PBXTargetDependency */ = {
+		A4B514F5302809AB0049F8D7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = A450ADFE2F62139600B896EF /* LoRAForge */;
-			targetProxy = A450AE0F2F62139800B896EF /* PBXContainerItemProxy */;
+			target = A4B514E3302809A90049F8D7 /* LoRAForge */;
+			targetProxy = A4B514F4302809AB0049F8D7 /* PBXContainerItemProxy */;
 		};
-		A450AE1A2F62139800B896EF /* PBXTargetDependency */ = {
+		A4B514FF302809AB0049F8D7 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = A450ADFE2F62139600B896EF /* LoRAForge */;
-			targetProxy = A450AE192F62139800B896EF /* PBXContainerItemProxy */;
+			target = A4B514E3302809A90049F8D7 /* LoRAForge */;
+			targetProxy = A4B514FE302809AB0049F8D7 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		A450AE202F62139800B896EF /* Debug */ = {
+		A4B51505302809AB0049F8D7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -349,17 +352,15 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
 		};
-		A450AE212F62139800B896EF /* Release */ = {
+		A4B51506302809AB0049F8D7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -407,91 +408,129 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
-				SDKROOT = macosx;
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
 		};
-		A450AE232F62139800B896EF /* Debug */ = {
+		A4B51508302809AB0049F8D7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = LoRAForge/LoRAForge.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 3CC4EX7YW2;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = LoRAForge/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LoRAForge;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 0.1.5;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForge";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Debug;
 		};
-		A450AE242F62139800B896EF /* Release */ = {
+		A4B51509302809AB0049F8D7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CODE_SIGN_ENTITLEMENTS = LoRAForge/LoRAForge.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 3CC4EX7YW2;
-				ENABLE_APP_SANDBOX = NO;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_INCOMING_NETWORK_CONNECTIONS = NO;
+				ENABLE_OUTGOING_NETWORK_CONNECTIONS = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_AUDIO_INPUT = NO;
+				ENABLE_RESOURCE_ACCESS_BLUETOOTH = NO;
+				ENABLE_RESOURCE_ACCESS_CALENDARS = NO;
+				ENABLE_RESOURCE_ACCESS_CAMERA = NO;
+				ENABLE_RESOURCE_ACCESS_CONTACTS = NO;
+				ENABLE_RESOURCE_ACCESS_LOCATION = NO;
+				ENABLE_RESOURCE_ACCESS_PRINTING = NO;
+				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = LoRAForge/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LoRAForge;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 14.6;
-				MARKETING_VERSION = 0.1.5;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphoneos*]" = UIStatusBarStyleDefault;
+				"INFOPLIST_KEY_UIStatusBarStyle[sdk=iphonesimulator*]" = UIStatusBarStyleDefault;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.6;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForge";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 2;
+				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
 		};
-		A450AE262F62139800B896EF /* Debug */ = {
+		A4B5150B302809AB0049F8D7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -499,20 +538,25 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3CC4EX7YW2;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForgeTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LoRAForge.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LoRAForge";
+				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Debug;
 		};
-		A450AE272F62139800B896EF /* Release */ = {
+		A4B5150C302809AB0049F8D7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				BUNDLE_LOADER = "$(TEST_HOST)";
@@ -520,110 +564,134 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3CC4EX7YW2;
 				GENERATE_INFOPLIST_FILE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.2;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForgeTests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LoRAForge.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/LoRAForge";
+				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
 		};
-		A450AE292F62139800B896EF /* Debug */ = {
+		A4B5150E302809AB0049F8D7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3CC4EX7YW2;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForgeUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_TARGET_NAME = LoRAForge;
+				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Debug;
 		};
-		A450AE2A2F62139800B896EF /* Release */ = {
+		A4B5150F302809AB0049F8D7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 3CC4EX7YW2;
 				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.5;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForgeUITests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
 				TEST_TARGET_NAME = LoRAForge;
+				XROS_DEPLOYMENT_TARGET = 26.5;
 			};
 			name = Release;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A450ADFA2F62139600B896EF /* Build configuration list for PBXProject "LoRAForge" */ = {
+		A4B514DF302809A90049F8D7 /* Build configuration list for PBXProject "LoRAForge" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A450AE202F62139800B896EF /* Debug */,
-				A450AE212F62139800B896EF /* Release */,
+				A4B51505302809AB0049F8D7 /* Debug */,
+				A4B51506302809AB0049F8D7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A450AE222F62139800B896EF /* Build configuration list for PBXNativeTarget "LoRAForge" */ = {
+		A4B51507302809AB0049F8D7 /* Build configuration list for PBXNativeTarget "LoRAForge" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A450AE232F62139800B896EF /* Debug */,
-				A450AE242F62139800B896EF /* Release */,
+				A4B51508302809AB0049F8D7 /* Debug */,
+				A4B51509302809AB0049F8D7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A450AE252F62139800B896EF /* Build configuration list for PBXNativeTarget "LoRAForgeTests" */ = {
+		A4B5150A302809AB0049F8D7 /* Build configuration list for PBXNativeTarget "LoRAForgeTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A450AE262F62139800B896EF /* Debug */,
-				A450AE272F62139800B896EF /* Release */,
+				A4B5150B302809AB0049F8D7 /* Debug */,
+				A4B5150C302809AB0049F8D7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A450AE282F62139800B896EF /* Build configuration list for PBXNativeTarget "LoRAForgeUITests" */ = {
+		A4B5150D302809AB0049F8D7 /* Build configuration list for PBXNativeTarget "LoRAForgeUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A450AE292F62139800B896EF /* Debug */,
-				A450AE2A2F62139800B896EF /* Release */,
+				A4B5150E302809AB0049F8D7 /* Debug */,
+				A4B5150F302809AB0049F8D7 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 
+/* Begin XCLocalSwiftPackageReference section */
+		A4B5152830280BD00049F8D7 /* XCLocalSwiftPackageReference "Packages/TaggingCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/TaggingCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
 /* Begin XCRemoteSwiftPackageReference section */
-		A450AE302F62200000B896EF /* XCRemoteSwiftPackageReference "DT-gRPC-Swift-Client" */ = {
+		A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client";
+			repositoryURL = "https://github.com/euphoriacyberware-ai/DrawThingsQueue";
 			requirement = {
 				branch = main;
 				kind = branch;
 			};
 		};
-		A450AE962F66100000B896EF /* XCRemoteSwiftPackageReference "DrawThingsQueue" */ = {
+		A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/euphoriacyberware-ai/DrawThingsQueue";
+			repositoryURL = "https://github.com/euphoriacyberware-ai/DTConfigEditorKit";
 			requirement = {
 				branch = main;
 				kind = branch;
@@ -632,17 +700,40 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		A450AE312F62200000B896EF /* DrawThingsClient */ = {
+		A4B5151F30280A470049F8D7 /* DrawThingsQueue */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A450AE302F62200000B896EF /* XCRemoteSwiftPackageReference "DT-gRPC-Swift-Client" */;
-			productName = DrawThingsClient;
-		};
-		A450AE952F66100000B896EF /* DrawThingsQueue */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A450AE962F66100000B896EF /* XCRemoteSwiftPackageReference "DrawThingsQueue" */;
+			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */;
 			productName = DrawThingsQueue;
+		};
+		A4B5152230280BCE0049F8D7 /* DTConfigBridge */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */;
+			productName = DTConfigBridge;
+		};
+		A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */;
+			productName = DTConfigEditorKit;
+		};
+		A4B5152630280BCE0049F8D7 /* configlint */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */;
+			productName = configlint;
+		};
+		A4B5152930280BD00049F8D7 /* TaggingCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaggingCore;
+		};
+		A4B5152C30280BD00049F8D7 /* TaggingCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = TaggingCore;
+		};
+		A4B5152E30280BD00049F8D7 /* DrawThingsClient */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */;
+			productName = DrawThingsClient;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = A450ADF72F62139600B896EF /* Project object */;
+	rootObject = A4B514DC302809A90049F8D7 /* Project object */;
 }

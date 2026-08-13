@@ -1,254 +1,63 @@
-import AppKit
 import SwiftUI
+import SwiftData
 
-class AppDelegate: NSObject, NSApplicationDelegate {
+@main
+struct LoRAForgeApp: App {
+    let modelContainer: ModelContainer
+    let tagRepository: TagRepository
+    let ollamaRepository: OllamaRepository
+    let presetRepository: GenerationPresetRepository
+    let libraryManager: LibraryManager
+    let templateManager: TemplateManager
+    let generationService: GenerationService
 
-    nonisolated func applicationDidFinishLaunching(_ notification: Notification) {
-        MainActor.assumeIsolated {
-            NSApp.activate(ignoringOtherApps: true)
-            // Pre-warm Network.framework to avoid a recursive os_unfair_lock
-            // crash in networkd_settings on macOS 26.4.x when URLSession and
-            // SwiftNIO/gRPC perform first-time setup concurrently.
-            URLSession.shared.dataTask(with: URL(string: "http://127.0.0.1:0/_warmup")!) { _, _, _ in }.resume()
+    init() {
+        let schema = Schema([SDCategory.self, SDTag.self, SDOllamaProfile.self, SDGenerationPreset.self])
+
+        func makeContainer() throws -> ModelContainer {
+            let config = ModelConfiguration(schema: schema)
+            return try ModelContainer(for: schema, configurations: [config])
         }
-    }
 
-    nonisolated func applicationShouldOpenUntitledFile(_ sender: NSApplication) -> Bool {
-        true
-    }
-
-    // MARK: - About
-
-    @objc func showAboutPanel() {
-        let options: [NSApplication.AboutPanelOptionKey: Any] = [
-            .applicationIcon: NSApp.applicationIconImage as Any,
-            .init(rawValue: "Copyright"): "\u{00A9} 2025-2026 Euphoria Cyberware AI. All rights reserved."
-        ]
-        NSApp.orderFrontStandardAboutPanel(options: options)
-    }
-
-    // MARK: - Address Book
-
-    private var addressBookWindow: NSWindow?
-
-    @objc func showAddressBook() {
-        if let existing = addressBookWindow, existing.isVisible {
-            existing.makeKeyAndOrderFront(nil)
-            return
-        }
-        let view = AddressBookView()
-        let hostingController = NSHostingController(rootView: view)
-        let window = NSPanel(contentViewController: hostingController)
-        window.title = "Address Book"
-        window.styleMask = [.titled, .closable, .resizable]
-        window.setContentSize(NSSize(width: 450, height: 400))
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        addressBookWindow = window
-    }
-
-    // MARK: - Template Library
-
-    private var templateLibraryWindow: NSWindow?
-
-    @objc func showTemplateLibrary() {
-        guard let document = NSDocumentController.shared.currentDocument as? LoRAForgeDocument else { return }
-
-        if let existing = templateLibraryWindow, existing.isVisible {
-            existing.makeKeyAndOrderFront(nil)
-            return
-        }
-        let isPresented = Binding<Bool>(
-            get: { true },
-            set: { [weak self] newValue in
-                if !newValue { self?.templateLibraryWindow?.close() }
+        do {
+            let container: ModelContainer
+            do {
+                container = try makeContainer()
+            } catch {
+                let storeURL = ModelConfiguration(schema: schema).url
+                try? FileManager.default.removeItem(at: storeURL)
+                try? FileManager.default.removeItem(
+                    at: storeURL.deletingPathExtension().appendingPathExtension("store-wal"))
+                try? FileManager.default.removeItem(
+                    at: storeURL.deletingPathExtension().appendingPathExtension("store-shm"))
+                container = try makeContainer()
             }
-        )
-        let view = TemplateLibraryView(document: document, isPresented: isPresented)
-        let hostingController = NSHostingController(rootView: view)
-        let window = NSPanel(contentViewController: hostingController)
-        window.title = "Template Library"
-        window.styleMask = [.titled, .closable, .resizable]
-        window.setContentSize(NSSize(width: 600, height: 500))
-        window.contentMinSize = NSSize(width: 520, height: 400)
-        window.center()
-        window.makeKeyAndOrderFront(nil)
-        templateLibraryWindow = window
-    }
-
-    // MARK: - Empty Trash
-
-    @objc func emptyTrash() {
-        guard let document = NSDocumentController.shared.currentDocument as? LoRAForgeDocument else { return }
-
-        let discardedCount = document.project.prompts.reduce(0) { total, prompt in
-            total + prompt.generatedImages.filter { $0.rank == .discarded }.count
+            self.modelContainer = container
+            self.tagRepository = TagRepository(modelContext: container.mainContext)
+            try tagRepository.seedBuiltInCategoriesIfNeeded()
+            self.ollamaRepository = OllamaRepository(modelContext: container.mainContext)
+            self.presetRepository = GenerationPresetRepository(modelContext: container.mainContext)
+            self.libraryManager = LibraryManager()
+            self.templateManager = TemplateManager()
+            self.generationService = GenerationService(library: libraryManager)
+            #if DEBUG
+            GenerationService.enableDebugLogging()
+            #endif
+        } catch {
+            fatalError("Could not initialize data store: \(error)")
         }
-
-        guard discardedCount > 0 else { return }
-
-        let alert = NSAlert()
-        alert.messageText = "Empty Trash?"
-        alert.informativeText = "This will permanently delete \(discardedCount) discarded image(s). This cannot be undone."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Empty Trash")
-        alert.addButton(withTitle: "Cancel")
-
-        guard alert.runModal() == .alertFirstButtonReturn else { return }
-
-        document.emptyTrash()
     }
 
-    // MARK: - Main Menu
-
-    func buildMainMenu() {
-        let mainMenu = NSMenu()
-
-        // App menu
-        let appMenuItem = NSMenuItem()
-        mainMenu.addItem(appMenuItem)
-        let appMenu = NSMenu()
-        appMenuItem.submenu = appMenu
-        appMenu.addItem(withTitle: "About LoRAForge",
-                        action: #selector(showAboutPanel),
-                        keyEquivalent: "")
-        appMenu.addItem(.separator())
-        let servicesItem = NSMenuItem(title: "Services", action: nil, keyEquivalent: "")
-        let servicesMenu = NSMenu(title: "Services")
-        servicesItem.submenu = servicesMenu
-        NSApp.servicesMenu = servicesMenu
-        appMenu.addItem(servicesItem)
-        appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Hide LoRAForge",
-                        action: #selector(NSApplication.hide(_:)),
-                        keyEquivalent: "h")
-        let hideOthersItem = appMenu.addItem(withTitle: "Hide Others",
-                                             action: #selector(NSApplication.hideOtherApplications(_:)),
-                                             keyEquivalent: "h")
-        hideOthersItem.keyEquivalentModifierMask = [.command, .option]
-        appMenu.addItem(withTitle: "Show All",
-                        action: #selector(NSApplication.unhideAllApplications(_:)),
-                        keyEquivalent: "")
-        appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit LoRAForge",
-                        action: #selector(NSApplication.terminate(_:)),
-                        keyEquivalent: "q")
-
-        // File menu
-        let fileMenuItem = NSMenuItem()
-        mainMenu.addItem(fileMenuItem)
-        let fileMenu = NSMenu(title: "File")
-        fileMenuItem.submenu = fileMenu
-        fileMenu.addItem(withTitle: "New",
-                         action: #selector(NSDocumentController.newDocument(_:)),
-                         keyEquivalent: "n")
-        fileMenu.addItem(withTitle: "Open…",
-                         action: #selector(NSDocumentController.openDocument(_:)),
-                         keyEquivalent: "o")
-        fileMenu.addItem(.separator())
-        fileMenu.addItem(withTitle: "Close",
-                         action: #selector(NSWindow.performClose(_:)),
-                         keyEquivalent: "w")
-        fileMenu.addItem(withTitle: "Save…",
-                         action: #selector(NSDocument.save(_:)),
-                         keyEquivalent: "s")
-        fileMenu.addItem(withTitle: "Duplicate",
-                         action: #selector(NSDocument.duplicate(_:)),
-                         keyEquivalent: "")
-        fileMenu.addItem(withTitle: "Revert to Saved",
-                         action: #selector(NSDocument.revertToSaved(_:)),
-                         keyEquivalent: "")
-
-        // Edit menu
-        let editMenuItem = NSMenuItem()
-        mainMenu.addItem(editMenuItem)
-        let editMenu = NSMenu(title: "Edit")
-        editMenuItem.submenu = editMenu
-        editMenu.addItem(withTitle: "Undo",
-                         action: Selector(("undo:")),
-                         keyEquivalent: "z")
-        editMenu.addItem(withTitle: "Redo",
-                         action: Selector(("redo:")),
-                         keyEquivalent: "Z")
-        editMenu.addItem(.separator())
-        editMenu.addItem(withTitle: "Cut",
-                         action: #selector(NSText.cut(_:)),
-                         keyEquivalent: "x")
-        editMenu.addItem(withTitle: "Copy",
-                         action: #selector(NSText.copy(_:)),
-                         keyEquivalent: "c")
-        editMenu.addItem(withTitle: "Paste",
-                         action: #selector(NSText.paste(_:)),
-                         keyEquivalent: "v")
-        editMenu.addItem(withTitle: "Select All",
-                         action: #selector(NSText.selectAll(_:)),
-                         keyEquivalent: "a")
-
-        editMenu.addItem(.separator())
-        let spellingItem = NSMenuItem(title: "Spelling and Grammar", action: nil, keyEquivalent: "")
-        let spellingMenu = NSMenu(title: "Spelling and Grammar")
-        spellingMenu.addItem(withTitle: "Show Spelling and Grammar",
-                             action: #selector(NSText.showGuessPanel(_:)),
-                             keyEquivalent: ":")
-        spellingMenu.addItem(withTitle: "Check Document Now",
-                             action: #selector(NSText.checkSpelling(_:)),
-                             keyEquivalent: ";")
-        spellingMenu.addItem(.separator())
-        spellingMenu.addItem(withTitle: "Check Spelling While Typing",
-                             action: #selector(NSTextView.toggleContinuousSpellChecking(_:)),
-                             keyEquivalent: "")
-        spellingMenu.addItem(withTitle: "Check Grammar With Spelling",
-                             action: #selector(NSTextView.toggleGrammarChecking(_:)),
-                             keyEquivalent: "")
-        spellingMenu.addItem(withTitle: "Correct Spelling Automatically",
-                             action: #selector(NSTextView.toggleAutomaticSpellingCorrection(_:)),
-                             keyEquivalent: "")
-        spellingItem.submenu = spellingMenu
-        editMenu.addItem(spellingItem)
-
-        // Project menu
-        let projectMenuItem = NSMenuItem()
-        mainMenu.addItem(projectMenuItem)
-        let projectMenu = NSMenu(title: "Project")
-        projectMenuItem.submenu = projectMenu
-        projectMenu.addItem(withTitle: "Address Book…",
-                            action: #selector(showAddressBook),
-                            keyEquivalent: "")
-        projectMenu.addItem(withTitle: "Template Library…",
-                            action: #selector(showTemplateLibrary),
-                            keyEquivalent: "")
-        projectMenu.addItem(.separator())
-        projectMenu.addItem(withTitle: "Empty Trash…",
-                            action: #selector(emptyTrash),
-                            keyEquivalent: "")
-
-        // Window menu
-        let windowMenuItem = NSMenuItem()
-        mainMenu.addItem(windowMenuItem)
-        let windowMenu = NSMenu(title: "Window")
-        windowMenuItem.submenu = windowMenu
-        windowMenu.addItem(withTitle: "Minimize",
-                           action: #selector(NSWindow.performMiniaturize(_:)),
-                           keyEquivalent: "m")
-        windowMenu.addItem(withTitle: "Zoom",
-                           action: #selector(NSWindow.performZoom(_:)),
-                           keyEquivalent: "")
-        windowMenu.addItem(.separator())
-        windowMenu.addItem(withTitle: "Bring All to Front",
-                           action: #selector(NSApplication.arrangeInFront(_:)),
-                           keyEquivalent: "")
-        NSApp.windowsMenu = windowMenu
-
-        // Help menu
-        let helpMenuItem = NSMenuItem()
-        mainMenu.addItem(helpMenuItem)
-        let helpMenu = NSMenu(title: "Help")
-        helpMenuItem.submenu = helpMenu
-        helpMenu.addItem(withTitle: "LoRAForge Help",
-                         action: #selector(NSApplication.showHelp(_:)),
-                         keyEquivalent: "?")
-        NSApp.helpMenu = helpMenu
-
-        NSApp.mainMenu = mainMenu
+    var body: some Scene {
+        WindowGroup {
+            ContentView()
+                .environment(tagRepository)
+                .environment(ollamaRepository)
+                .environment(presetRepository)
+                .environment(libraryManager)
+                .environment(templateManager)
+                .environment(generationService)
+        }
+        .modelContainer(modelContainer)
     }
 }

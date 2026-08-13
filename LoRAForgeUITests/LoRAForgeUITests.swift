@@ -2,7 +2,7 @@
 //  LoRAForgeUITests.swift
 //  LoRAForgeUITests
 //
-//  Created by Brian Cantin on 2026-03-11.
+//  Created by Brian Cantin on 2026-08-08.
 //
 
 import XCTest
@@ -29,6 +29,8 @@ final class LoRAForgeUITests: XCTestCase {
         app.launch()
 
         // Use XCTAssert and related functions to verify your tests produce the correct results.
+        // XCUIAutomation Documentation
+        // https://developer.apple.com/documentation/xcuiautomation
     }
 
     @MainActor
