@@ -730,9 +730,9 @@ private struct EntryRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             entryHeader
-                .frame(width: 240)
+                .frame(width: 320)
                 .padding(8)
                 .draggable(entry.id.uuidString) {
                     Text(entry.name)
@@ -747,17 +747,17 @@ private struct EntryRow: View {
     }
 
     private var entryHeader: some View {
-        HStack(alignment: .top, spacing: 6) {
+        HStack(alignment: .top, spacing: 8) {
             // Final image thumbnail
             finalThumbnail
-                .frame(width: 44, height: 44)
+                .frame(width: 64, height: 64)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
 
             // Center: name, caption, count
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 4) {
                     Text(String(format: "%03d", entry.position))
-                        .font(.system(.caption2, design: .monospaced))
+                        .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.tertiary)
                     Text(entry.name)
                         .font(.subheadline.weight(.medium))
@@ -765,12 +765,12 @@ private struct EntryRow: View {
                 }
 
                 Text(captionPreview)
-                    .font(.caption)
+                    .font(.callout)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(4)
 
                 Label("\(entry.activeImageCount)", systemImage: "photo")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundStyle(.tertiary)
             }
 
@@ -795,7 +795,7 @@ private struct EntryRow: View {
             }
             .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
-            .font(.caption)
+            .font(.headline)
         }
         .contentShape(Rectangle())
         .contextMenu {
