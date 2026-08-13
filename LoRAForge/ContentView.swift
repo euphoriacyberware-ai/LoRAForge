@@ -79,11 +79,11 @@ struct ContentView: View {
             }
 
             Section("Libraries") {
-                Label("Tag Library", systemImage: "tag")
+                Label("Tags", systemImage: "tag")
                     .tag(SidebarItem.tagLibrary)
-                Label("Config Library", systemImage: "slider.horizontal.3")
+                Label("Configurations", systemImage: "slider.horizontal.3")
                     .tag(SidebarItem.configLibrary)
-                Label("Templates Library", systemImage: "doc.on.doc")
+                Label("Templates", systemImage: "doc.on.doc")
                     .tag(SidebarItem.templateLibrary)
             }
 

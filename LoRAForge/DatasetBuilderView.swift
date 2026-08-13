@@ -148,13 +148,21 @@ struct DatasetBuilderView: View {
             Button { showingAudit = true } label: {
                 Label("Audit", systemImage: "chart.bar")
             }
-
+            
+            
+            
+            Button { showingExport = true } label: {
+                Label("Export", systemImage: "square.and.arrow.up")
+            }
+            
+            Spacer()
+            
             if document.discardedImageCount > 0 {
                 Button { showingEmptyTrash = true } label: {
                     Label("Empty trash (\(document.discardedImageCount))", systemImage: "trash")
                 }
             }
-
+            
             Menu {
                 Button("Save entries as template...") {
                     showingSaveTemplate = true
@@ -169,13 +177,13 @@ struct DatasetBuilderView: View {
                 Label("Templates", systemImage: "doc.on.doc")
             }
 
-            Button { showingExport = true } label: {
-                Label("Export", systemImage: "square.and.arrow.up")
+            Button {
+                addEntry()
+            } label: {
+                Label("New Entry", systemImage: "plus")
+                    .labelStyle(.iconOnly)
             }
-
-            Button { addEntry() } label: {
-                Label("New entry", systemImage: "plus")
-            }
+            .help("New Entry")
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
@@ -350,7 +358,7 @@ struct DatasetBuilderView: View {
                 Button {
                     cloneImageToEntry(imageID: info.image.id, entryID: info.entry.id)
                 } label: {
-                    Label("Clone to new entry", systemImage: "doc.on.doc")
+                    Label("Clone", systemImage: "doc.on.doc")
                 }
                 .help("Clone to new entry")
                 Button {
