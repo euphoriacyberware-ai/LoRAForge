@@ -52,6 +52,11 @@ final class ThumbnailStore {
     private let maxConcurrent = 4
     private let maxCached = 600
 
+    func clearAll() {
+        items.removeAll()
+        pending.removeAll()
+    }
+
     func item(for url: URL, size: CGFloat) -> ThumbnailItem {
         if let existing = items[url] { return existing }
         let item = ThumbnailItem()
@@ -110,7 +115,8 @@ final class ThumbnailStore {
         #endif
         let pixelSize = pointSize * scale
 
-        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        guard FileManager.default.fileExists(atPath: url.path),
+              let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
 
         let options: [CFString: Any] = [
             kCGImageSourceThumbnailMaxPixelSize: pixelSize,

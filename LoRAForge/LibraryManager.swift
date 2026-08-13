@@ -88,6 +88,7 @@ final class LibraryManager {
         saveTask.values.forEach { $0.cancel() }
         saveTask.removeAll()
 
+        ThumbnailStore.shared.clearAll()
         libraryURL = destination
         refresh()
     }
@@ -165,9 +166,28 @@ final class LibraryManager {
 
     func renameProject(id: UUID, to newName: String) throws {
         guard var doc = try loadDocument(id: id) else { return }
+        guard let info = projects.first(where: { $0.id == id }) else { return }
+
         doc.name = newName
         loadedDocuments[id] = doc
         try saveImmediately(id: id)
+
+        // Attempt to rename bundle directory to match
+        let sanitized = sanitizeFilename(newName)
+        let currentFilename = info.url.deletingPathExtension().lastPathComponent
+        if sanitized != currentFilename {
+            var newURL = libraryURL.appending(path: "\(sanitized).loraforge")
+            if FileManager.default.fileExists(atPath: newURL.path) {
+                var counter = 2
+                while FileManager.default.fileExists(atPath: newURL.path) {
+                    newURL = libraryURL.appending(path: "\(sanitized) \(counter).loraforge")
+                    counter += 1
+                }
+            }
+            try? FileManager.default.moveItem(at: info.url, to: newURL)
+        }
+
+        ThumbnailStore.shared.clearAll()
         refresh()
     }
 
@@ -177,7 +197,10 @@ final class LibraryManager {
         if let cached = loadedDocuments[id] { return cached }
         guard let info = projects.first(where: { $0.id == id }) else { return nil }
         let bundle = ProjectBundle(url: info.url)
-        let doc = try bundle.readProject()
+        var doc = try bundle.readProject()
+        if stripOrphanedImages(&doc, bundleURL: info.url) {
+            try? bundle.writeProjectAtomic(doc)
+        }
         loadedDocuments[id] = doc
         return doc
     }
@@ -235,6 +258,21 @@ final class LibraryManager {
     }
 
     // MARK: - Helpers
+
+    /// Removes image records whose files no longer exist on disk. Returns true if any were removed.
+    private func stripOrphanedImages(_ doc: inout ProjectDocument, bundleURL: URL) -> Bool {
+        let fm = FileManager.default
+        let imagesDir = bundleURL.appending(path: "images")
+        var changed = false
+        for i in doc.entries.indices {
+            let before = doc.entries[i].images.count
+            doc.entries[i].images.removeAll { image in
+                !fm.fileExists(atPath: imagesDir.appending(path: image.filename).path)
+            }
+            if doc.entries[i].images.count != before { changed = true }
+        }
+        return changed
+    }
 
     private func sanitizeFilename(_ name: String) -> String {
         let illegal = CharacterSet(charactersIn: "/:\\")
