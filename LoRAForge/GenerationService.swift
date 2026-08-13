@@ -71,6 +71,13 @@ final class GenerationService {
 
     // MARK: - Connection
 
+    func applyProfile(_ profile: SDConnectionProfile) {
+        serverAddress = profile.address
+        useTLS = profile.useTLS
+        sharedSecret = profile.sharedSecret
+        connect()
+    }
+
     func connect() {
         disconnect()
         let secret = sharedSecret.isEmpty ? nil : sharedSecret
