@@ -103,12 +103,18 @@ struct ContentView: View {
         .navigationSplitViewColumnWidth(min: 180, ideal: 220)
         #endif
         .toolbar {
-            ToolbarItemGroup(placement: .primaryAction) {
-                Button { performLegacyImport() } label: {
-                    Label("Import v1 project", systemImage: "square.and.arrow.down")
-                }
-                Button { showingNewProject = true } label: {
-                    Label("New project", systemImage: "plus")
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Button { showingNewProject = true } label: {
+                        Label("New project", systemImage: "doc.badge.plus")
+                    }
+                    Button { performLegacyImport() } label: {
+                        Label("Import v1 project", systemImage: "square.and.arrow.down")
+                    }
+                } label: {
+                    Label("Add", systemImage: "plus")
+                } primaryAction: {
+                    showingNewProject = true
                 }
             }
         }
@@ -199,10 +205,12 @@ struct ContentView: View {
     private func performLegacyImport() {
         #if os(macOS)
         let panel = NSOpenPanel()
-        panel.canChooseFiles = false
+        panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        panel.message = "Select a folder containing .lforge projects"
+        panel.treatsFilePackagesAsDirectories = false
+        panel.message = "Select .lforge projects or a folder containing them"
+        panel.delegate = LegacyImportPanelDelegate.shared
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
         let selectedURLs = panel.urls
 

@@ -326,3 +326,18 @@ enum LegacyImporter {
         return result.isEmpty ? "Untitled" : result
     }
 }
+
+#if os(macOS)
+import AppKit
+
+final class LegacyImportPanelDelegate: NSObject, NSOpenSavePanelDelegate {
+    static let shared = LegacyImportPanelDelegate()
+
+    func panel(_ sender: Any, shouldEnable url: URL) -> Bool {
+        if url.pathExtension == "lforge" { return true }
+        var isDir: ObjCBool = false
+        FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
+        return isDir.boolValue
+    }
+}
+#endif
