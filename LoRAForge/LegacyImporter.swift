@@ -251,6 +251,7 @@ enum LegacyImporter {
             entry.images = images
             entry.captionMode = captionMode
             entry.manualCaptionText = manualCaptionText
+            entry.captionPreviewText = manualCaptionText
             entry.generationPrompt = prompt.text
             entry.referenceImageIDs = mappedRefIDs
 
