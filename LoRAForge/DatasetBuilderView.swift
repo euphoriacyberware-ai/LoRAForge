@@ -229,7 +229,13 @@ struct DatasetBuilderView: View {
                     } : nil,
                     onAddToReferences: info.image.provenance != nil ? {
                         addImageToReferences(imageID: info.image.id, entryID: info.entry.id)
-                    } : nil
+                    } : nil,
+                    onRecallSettings: info.image.provenance != nil ? {
+                        recallSettings(imageID: info.image.id, entryID: info.entry.id)
+                    } : nil,
+                    onExport: {
+                        exportImages(Set([info.image.id]), fromEntryID: info.entry.id)
+                    }
                 )
                 .frame(width: 280)
             }
@@ -268,6 +274,12 @@ struct DatasetBuilderView: View {
                             },
                             onAddToReferences: { imageID in
                                 addImageToReferences(imageID: imageID, entryID: entry.id)
+                            },
+                            onRecallSettings: { imageID in
+                                recallSettings(imageID: imageID, entryID: entry.id)
+                            },
+                            onExport: { imageID in
+                                exportImages(Set([imageID]), fromEntryID: entry.id)
                             }
                         )
                         .dropDestination(for: String.self) { items, _ in
@@ -349,6 +361,12 @@ struct DatasetBuilderView: View {
             if let info = selectedImageInfo, info.image.provenance != nil {
                 Divider().frame(height: 20)
                 Button {
+                    recallSettings(imageID: info.image.id, entryID: info.entry.id)
+                } label: {
+                    Label("Recall settings", systemImage: "arrow.counterclockwise")
+                }
+                .help("Recall generation settings")
+                Button {
                     cloneImageToEntry(imageID: info.image.id, entryID: info.entry.id)
                 } label: {
                     Label("Clone", systemImage: "doc.on.doc")
@@ -361,6 +379,17 @@ struct DatasetBuilderView: View {
                 }
                 .help("Add to references")
             }
+
+            Divider().frame(height: 20)
+            Button {
+                exportImages(selectedImageIDs)
+            } label: {
+                Label(
+                    selectedImageIDs.count == 1 ? "Export" : "Export \(selectedImageIDs.count) images",
+                    systemImage: "square.and.arrow.up"
+                )
+            }
+            .help("Export selected images")
 
             Spacer()
 
@@ -687,6 +716,59 @@ struct DatasetBuilderView: View {
         }
     }
 
+    private func recallSettings(imageID: UUID, entryID: UUID) {
+        guard let entryIdx = document.entries.firstIndex(where: { $0.id == entryID }),
+              let imgIdx = document.entries[entryIdx].images.firstIndex(where: { $0.id == imageID }),
+              let provenance = document.entries[entryIdx].images[imgIdx].provenance
+        else { return }
+
+        document.entries[entryIdx].generationPrompt = provenance.prompt
+        document.entries[entryIdx].generationNegativePrompt = provenance.negativePrompt
+        document.entries[entryIdx].generationSeed = provenance.seed
+        document.entries[entryIdx].useCustomSeed = true
+        if let configJSON = provenance.configJSON {
+            document.entries[entryIdx].generationConfigJSON = configJSON
+        }
+        if let refIDs = provenance.referenceImageIDs {
+            document.entries[entryIdx].referenceImageIDs = refIDs
+        }
+        onChanged()
+    }
+
+    private func exportImages(_ imageIDs: Set<UUID>, fromEntryID: UUID? = nil) {
+        // Resolve file URLs for all requested images
+        var fileURLs: [URL] = []
+        for entry in document.entries {
+            for image in entry.images where imageIDs.contains(image.id) {
+                fileURLs.append(bundleURL.appending(path: "images/\(image.filename)"))
+            }
+        }
+        guard !fileURLs.isEmpty else { return }
+
+        #if os(macOS)
+        let panel = NSOpenPanel()
+        panel.title = "Choose export folder"
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.begin { response in
+            guard response == .OK, let folder = panel.url else { return }
+            for fileURL in fileURLs {
+                let dest = folder.appending(path: fileURL.lastPathComponent)
+                try? FileManager.default.copyItem(at: fileURL, to: dest)
+            }
+        }
+        #else
+        // iOS: use share sheet via UIActivityViewController
+        let controller = UIActivityViewController(activityItems: fileURLs, applicationActivities: nil)
+        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let root = scene.keyWindow?.rootViewController {
+            root.present(controller, animated: true)
+        }
+        #endif
+    }
+
     private func reindexPositions() {
         for i in document.entries.indices {
             document.entries[i].position = i + 1
@@ -717,6 +799,8 @@ private struct EntryRow: View {
     let onDoubleTapImage: (UUID) -> Void
     let onCloneToEntry: (UUID) -> Void
     let onAddToReferences: (UUID) -> Void
+    let onRecallSettings: (UUID) -> Void
+    let onExport: (UUID) -> Void
 
     private var visibleImages: [ImageDocument] {
         entry.images.filter { visibleRanks.contains($0.rank) }
@@ -834,7 +918,9 @@ private struct EntryRow: View {
                         onDoubleTap: { onDoubleTapImage(image.id) },
                         onSetRank: { rank in onSetRank(image.id, rank) },
                         onCloneToEntry: { onCloneToEntry(image.id) },
-                        onAddToReferences: { onAddToReferences(image.id) }
+                        onAddToReferences: { onAddToReferences(image.id) },
+                        onRecallSettings: { onRecallSettings(image.id) },
+                        onExport: { onExport(image.id) }
                     )
                 }
             }
@@ -871,6 +957,8 @@ private struct ImageThumbnail: View {
     let onSetRank: (ImageRank) -> Void
     let onCloneToEntry: () -> Void
     let onAddToReferences: () -> Void
+    let onRecallSettings: () -> Void
+    let onExport: () -> Void
 
     @State private var lastTapTime = Date.distantPast
 
@@ -925,9 +1013,12 @@ private struct ImageThumbnail: View {
             }
             if image.provenance != nil {
                 Divider()
+                Button("Recall settings", systemImage: "arrow.counterclockwise") { onRecallSettings() }
                 Button("Clone to new entry", systemImage: "doc.on.doc") { onCloneToEntry() }
                 Button("Add to references", systemImage: "photo.on.rectangle") { onAddToReferences() }
             }
+            Divider()
+            Button("Export image", systemImage: "square.and.arrow.up") { onExport() }
         }
         #else
         .onTapGesture {
