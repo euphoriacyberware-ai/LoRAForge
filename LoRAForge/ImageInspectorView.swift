@@ -9,6 +9,8 @@ struct ImageInspectorView: View {
     let bundleURL: URL
     var onCloneToEntry: (() -> Void)?
     var onAddToReferences: (() -> Void)?
+    var onRecallSettings: (() -> Void)?
+    var onExport: (() -> Void)?
 
     private var imageURL: URL {
         bundleURL.appending(path: "images/\(image.filename)")
@@ -172,6 +174,13 @@ struct ImageInspectorView: View {
     private var fileActionSection: some View {
         VStack {
             Divider()
+            if let onRecallSettings {
+                Button(action: onRecallSettings) {
+                    Label("Recall settings", systemImage: "arrow.counterclockwise")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
             if let onCloneToEntry {
                 Button(action: onCloneToEntry) {
                     Label("Clone to new entry", systemImage: "doc.on.doc")
@@ -182,6 +191,13 @@ struct ImageInspectorView: View {
             if let onAddToReferences {
                 Button(action: onAddToReferences) {
                     Label("Add to references", systemImage: "photo.on.rectangle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+            }
+            if let onExport {
+                Button(action: onExport) {
+                    Label("Export image", systemImage: "square.and.arrow.up")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)

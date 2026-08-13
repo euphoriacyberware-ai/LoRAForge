@@ -1,7 +1,11 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct GeneralSettingsPanel: View {
     @Environment(LibraryManager.self) private var library
+    @State private var showingFolderPicker = false
+    @State private var isMigrating = false
+    @State private var migrationError: String?
 
     var body: some View {
         Form {
@@ -14,11 +18,66 @@ struct GeneralSettingsPanel: View {
                 LabeledContent("Projects") {
                     Text("\(library.projects.count)")
                 }
+                HStack {
+                    Button("Reveal in Finder") {
+                        NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: library.libraryURL.path(percentEncoded: false))
+                    }
+                    Button("Change location\u{2026}") {
+                        showingFolderPicker = true
+                    }
+                    .disabled(isMigrating)
+                    if isMigrating {
+                        ProgressView()
+                            .controlSize(.small)
+                        Text("Moving projects\u{2026}")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                if let migrationError {
+                    Text(migrationError)
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
             }
         }
         .formStyle(.grouped)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .navigationTitle("General")
+        .fileImporter(
+            isPresented: $showingFolderPicker,
+            allowedContentTypes: [.folder]
+        ) { result in
+            switch result {
+            case .success(let url):
+                guard url.startAccessingSecurityScopedResource() else {
+                    migrationError = "Could not access the selected folder."
+                    return
+                }
+                migrateToFolder(url)
+            case .failure(let error):
+                migrationError = error.localizedDescription
+            }
+        }
+    }
+
+    private func migrateToFolder(_ destination: URL) {
+        migrationError = nil
+        isMigrating = true
+        Task.detached {
+            do {
+                try await MainActor.run {
+                    try library.migrateLibrary(to: destination)
+                }
+                await MainActor.run {
+                    isMigrating = false
+                }
+            } catch {
+                await MainActor.run {
+                    migrationError = error.localizedDescription
+                    isMigrating = false
+                }
+            }
+        }
     }
 }
 

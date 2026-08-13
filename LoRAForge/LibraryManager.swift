@@ -24,10 +24,21 @@ final class LibraryManager {
     private var loadedDocuments: [UUID: ProjectDocument] = [:]
     private var saveTask: [UUID: Task<Void, Never>] = [:]
 
-    init() {
-        let appSupport = FileManager.default
+    private static let libraryURLKey = "customLibraryURL"
+
+    private static var defaultLibraryURL: URL {
+        FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
-        self.libraryURL = appSupport.appending(path: "LoRAForge Library")
+            .appending(path: "LoRAForge Library")
+    }
+
+    init() {
+        if let bookmark = UserDefaults.standard.data(forKey: Self.libraryURLKey),
+           let resolved = Self.resolveBookmark(bookmark) {
+            self.libraryURL = resolved
+        } else {
+            self.libraryURL = Self.defaultLibraryURL
+        }
         ensureLibraryExists()
         refresh()
     }
@@ -36,6 +47,62 @@ final class LibraryManager {
         self.libraryURL = libraryURL
         ensureLibraryExists()
         refresh()
+    }
+
+    // MARK: - Library migration
+
+    func migrateLibrary(to destination: URL) throws {
+        let fm = FileManager.default
+        let oldURL = libraryURL
+
+        // Ensure destination exists
+        try fm.createDirectory(at: destination, withIntermediateDirectories: true)
+
+        // Save all dirty documents before moving
+        saveAllDirty()
+
+        // Move each .loraforge bundle to the new location
+        let bundles = (try? fm.contentsOfDirectory(at: oldURL, includingPropertiesForKeys: nil))?
+            .filter { $0.pathExtension == "loraforge" } ?? []
+
+        for bundleURL in bundles {
+            let destURL = destination.appending(path: bundleURL.lastPathComponent)
+            if fm.fileExists(atPath: destURL.path) {
+                // Skip bundles that already exist at destination
+                continue
+            }
+            try fm.moveItem(at: bundleURL, to: destURL)
+        }
+
+        // Persist the new location as a security-scoped bookmark
+        if let bookmark = try? destination.bookmarkData(
+            options: .withSecurityScope,
+            includingResourceValuesForKeys: nil,
+            relativeTo: nil
+        ) {
+            UserDefaults.standard.set(bookmark, forKey: Self.libraryURLKey)
+        }
+
+        // Clear in-memory state that referenced old URLs
+        loadedDocuments.removeAll()
+        saveTask.values.forEach { $0.cancel() }
+        saveTask.removeAll()
+
+        ThumbnailStore.shared.clearAll()
+        libraryURL = destination
+        refresh()
+    }
+
+    private static func resolveBookmark(_ data: Data) -> URL? {
+        var isStale = false
+        guard let url = try? URL(
+            resolvingBookmarkData: data,
+            options: .withSecurityScope,
+            relativeTo: nil,
+            bookmarkDataIsStale: &isStale
+        ) else { return nil }
+        guard url.startAccessingSecurityScopedResource() else { return nil }
+        return url
     }
 
     private func ensureLibraryExists() {
@@ -99,9 +166,28 @@ final class LibraryManager {
 
     func renameProject(id: UUID, to newName: String) throws {
         guard var doc = try loadDocument(id: id) else { return }
+        guard let info = projects.first(where: { $0.id == id }) else { return }
+
         doc.name = newName
         loadedDocuments[id] = doc
         try saveImmediately(id: id)
+
+        // Attempt to rename bundle directory to match
+        let sanitized = sanitizeFilename(newName)
+        let currentFilename = info.url.deletingPathExtension().lastPathComponent
+        if sanitized != currentFilename {
+            var newURL = libraryURL.appending(path: "\(sanitized).loraforge")
+            if FileManager.default.fileExists(atPath: newURL.path) {
+                var counter = 2
+                while FileManager.default.fileExists(atPath: newURL.path) {
+                    newURL = libraryURL.appending(path: "\(sanitized) \(counter).loraforge")
+                    counter += 1
+                }
+            }
+            try? FileManager.default.moveItem(at: info.url, to: newURL)
+        }
+
+        ThumbnailStore.shared.clearAll()
         refresh()
     }
 
@@ -111,7 +197,10 @@ final class LibraryManager {
         if let cached = loadedDocuments[id] { return cached }
         guard let info = projects.first(where: { $0.id == id }) else { return nil }
         let bundle = ProjectBundle(url: info.url)
-        let doc = try bundle.readProject()
+        var doc = try bundle.readProject()
+        if stripOrphanedImages(&doc, bundleURL: info.url) {
+            try? bundle.writeProjectAtomic(doc)
+        }
         loadedDocuments[id] = doc
         return doc
     }
@@ -169,6 +258,21 @@ final class LibraryManager {
     }
 
     // MARK: - Helpers
+
+    /// Removes image records whose files no longer exist on disk. Returns true if any were removed.
+    private func stripOrphanedImages(_ doc: inout ProjectDocument, bundleURL: URL) -> Bool {
+        let fm = FileManager.default
+        let imagesDir = bundleURL.appending(path: "images")
+        var changed = false
+        for i in doc.entries.indices {
+            let before = doc.entries[i].images.count
+            doc.entries[i].images.removeAll { image in
+                !fm.fileExists(atPath: imagesDir.appending(path: image.filename).path)
+            }
+            if doc.entries[i].images.count != before { changed = true }
+        }
+        return changed
+    }
 
     private func sanitizeFilename(_ name: String) -> String {
         let illegal = CharacterSet(charactersIn: "/:\\")
