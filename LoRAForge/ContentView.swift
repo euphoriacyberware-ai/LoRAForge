@@ -100,21 +100,15 @@ struct ContentView: View {
         }
         .navigationTitle("LoRAForge")
         #if os(macOS)
-        .navigationSplitViewColumnWidth(min: 180, ideal: 220)
+        .navigationSplitViewColumnWidth(min: 200, ideal: 220)
         #endif
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Menu {
-                    Button { showingNewProject = true } label: {
-                        Label("New project", systemImage: "doc.badge.plus")
-                    }
-                    Button { performLegacyImport() } label: {
-                        Label("Import v1 project", systemImage: "square.and.arrow.down")
-                    }
-                } label: {
-                    Label("Add", systemImage: "plus")
-                } primaryAction: {
-                    showingNewProject = true
+            ToolbarItemGroup(placement: .primaryAction) {
+                Button { performLegacyImport() } label: {
+                    Label("Import v1 project", systemImage: "square.and.arrow.down")
+                }
+                Button { showingNewProject = true } label: {
+                    Label("New project", systemImage: "plus")
                 }
             }
         }

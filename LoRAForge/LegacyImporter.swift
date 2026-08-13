@@ -135,9 +135,15 @@ enum LegacyImporter {
             return ImportResult(name: url.lastPathComponent, success: false, error: "Failed to decode: \(error.localizedDescription)", entryCount: 0, imageCount: 0, referenceCount: 0)
         }
 
-        // 2. Check duplicate name
-        if existingNames.contains(legacyProject.name) {
-            return ImportResult(name: legacyProject.name, success: false, error: "A project named '\(legacyProject.name)' already exists", entryCount: 0, imageCount: 0, referenceCount: 0)
+        // 2. Derive name: prefer filename over stored name when stored name is generic
+        let filenameBase = url.deletingPathExtension().lastPathComponent
+        let projectName = (legacyProject.name == "Untitled" || legacyProject.name.isEmpty)
+            ? filenameBase
+            : legacyProject.name
+
+        // 3. Check duplicate name
+        if existingNames.contains(projectName) {
+            return ImportResult(name: projectName, success: false, error: "A project named '\(projectName)' already exists", entryCount: 0, imageCount: 0, referenceCount: 0)
         }
 
         // 3. Build source image ID map and ReferenceImageDocuments
@@ -262,7 +268,7 @@ enum LegacyImporter {
 
         let newDoc = ProjectDocument(
             id: UUID(),
-            name: legacyProject.name,
+            name: projectName,
             createdAt: legacyProject.createdAt,
             categoryOrder: categoryOrder,
             categoryEnabled: categoryEnabled,
@@ -274,7 +280,7 @@ enum LegacyImporter {
         let schema = SchemaSnapshot(categories: categories, tags: tags)
 
         // 6. Create bundle
-        let sanitized = sanitizeFilename(legacyProject.name)
+        let sanitized = sanitizeFilename(projectName)
         var bundleURL = libraryURL.appending(path: "\(sanitized).loraforge")
         var counter = 2
         while fm.fileExists(atPath: bundleURL.path) {
@@ -303,11 +309,11 @@ enum LegacyImporter {
         } catch {
             // Clean up partial bundle on failure
             try? fm.removeItem(at: bundleURL)
-            return ImportResult(name: legacyProject.name, success: false, error: "Failed to create project: \(error.localizedDescription)", entryCount: 0, imageCount: 0, referenceCount: 0)
+            return ImportResult(name: projectName, success: false, error: "Failed to create project: \(error.localizedDescription)", entryCount: 0, imageCount: 0, referenceCount: 0)
         }
 
         return ImportResult(
-            name: legacyProject.name,
+            name: projectName,
             success: true,
             error: nil,
             entryCount: entries.count,
