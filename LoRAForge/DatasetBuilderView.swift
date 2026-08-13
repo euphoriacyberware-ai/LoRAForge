@@ -308,6 +308,7 @@ struct DatasetBuilderView: View {
             }
         }
         .focusable()
+        .focusEffectDisabled()
         .onKeyPress(.escape) {
             guard !selectedImageIDs.isEmpty else { return .ignored }
             selectedImageIDs.removeAll()
