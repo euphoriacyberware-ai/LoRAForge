@@ -158,7 +158,7 @@ struct GenerationEditorView: View {
                 if let nsImage = NSImage(contentsOf: imageURL) {
                     Image(nsImage: nsImage)
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .aspectRatio(contentMode: .fit)
                         .frame(minHeight: 80)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 } else {
@@ -169,7 +169,7 @@ struct GenerationEditorView: View {
                    let uiImage = UIImage(data: data) {
                     Image(uiImage: uiImage)
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .aspectRatio(contentMode: .fit)
                         .frame(minHeight: 80)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                 } else {

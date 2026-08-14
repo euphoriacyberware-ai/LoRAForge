@@ -20,7 +20,7 @@ struct ThumbnailView: View {
         if let image = item.image {
             image
                 .resizable()
-                .aspectRatio(contentMode: .fill)
+                .aspectRatio(contentMode: .fit)
         } else {
             Rectangle()
                 .fill(Color.gray.opacity(0.15))
@@ -129,7 +129,10 @@ final class ThumbnailStore {
         }
 
         #if os(macOS)
-        let nsImage = NSImage(cgImage: cgImage, size: NSSize(width: pointSize, height: pointSize))
+        let cgW = CGFloat(cgImage.width)
+        let cgH = CGFloat(cgImage.height)
+        let nsSize = NSSize(width: cgW / scale, height: cgH / scale)
+        let nsImage = NSImage(cgImage: cgImage, size: nsSize)
         return Image(nsImage: nsImage)
         #else
         let uiImage = UIImage(cgImage: cgImage)
