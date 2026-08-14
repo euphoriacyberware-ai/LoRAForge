@@ -135,7 +135,7 @@ struct ImageInspectorView: View {
             if let nsImage = NSImage(contentsOf: url) {
                 Image(nsImage: nsImage)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .aspectRatio(contentMode: .fit)
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             } else {
@@ -146,7 +146,7 @@ struct ImageInspectorView: View {
                let uiImage = UIImage(data: data) {
                 Image(uiImage: uiImage)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .aspectRatio(contentMode: .fit)
                     .frame(width: 60, height: 60)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
             } else {
