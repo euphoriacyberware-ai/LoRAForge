@@ -864,9 +864,16 @@ private struct EntryRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(4)
 
-                Label("\(entry.activeImageCount)", systemImage: "photo")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
+                HStack(spacing: 6) {
+                    Label("\(entry.activeImageCount)", systemImage: "photo")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                    if entry.isLocked {
+                        Label("Locked", systemImage: "lock.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
             }
 
             Spacer(minLength: 4)
