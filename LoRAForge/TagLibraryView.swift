@@ -385,6 +385,7 @@ private struct TagListPane: View {
     let repo: TagRepository
     let onError: (String) -> Void
 
+    @Environment(LibraryManager.self) private var library
     @State private var tags: [Tag] = []
     @State private var searchText = ""
     @State private var newTagText = ""
@@ -414,7 +415,12 @@ private struct TagListPane: View {
             Button("Cancel", role: .cancel) { tagToDelete = nil }
         } message: {
             if let tag = tagToDelete {
-                Text("Delete '\(tag.canonicalString)'? No projects in the library yet.")
+                let count = projectsUsing(tagID: tag.id)
+                if count == 0 {
+                    Text("Delete '\(tag.canonicalString)'? It is not used by any projects.")
+                } else {
+                    Text("Delete '\(tag.canonicalString)'? It is used by \(count) project\(count == 1 ? "" : "s").")
+                }
             }
         }
         .alert("Similar tag exists", isPresented: $showingDuplicateAlert) {
@@ -509,6 +515,15 @@ private struct TagListPane: View {
         } catch {
             onError(error.localizedDescription)
         }
+    }
+
+    private func projectsUsing(tagID: UUID) -> Int {
+        library.projects.filter { info in
+            guard let doc = try? library.loadDocument(id: info.id) else { return false }
+            return doc.entries.contains { entry in
+                entry.assignments.contains { $0.tagID == tagID }
+            }
+        }.count
     }
 
     private func performDeleteTag() {
