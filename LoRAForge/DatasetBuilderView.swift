@@ -381,21 +381,21 @@ struct DatasetBuilderView: View {
                 Button {
                     recallSettings(imageID: info.image.id, entryID: info.entry.id)
                 } label: {
-                    Label("Recall settings", systemImage: "arrow.counterclockwise")
+                    Label("Recall", systemImage: "arrow.counterclockwise")
                 }
-                .help("Recall generation settings")
+                .help("Recall generation settings to this Entry")
                 Button {
                     cloneImageToEntry(imageID: info.image.id, entryID: info.entry.id)
                 } label: {
                     Label("Clone", systemImage: "doc.on.doc")
                 }
-                .help("Clone to new entry")
+                .help("Clone to new Entry")
                 Button {
                     addImageToReferences(imageID: info.image.id, entryID: info.entry.id)
                 } label: {
-                    Label("Add to references", systemImage: "photo.on.rectangle")
+                    Label("Add", systemImage: "photo.on.rectangle")
                 }
-                .help("Add to references")
+                .help("Add to Reference Library")
             }
 
             Divider().frame(height: 20)
