@@ -61,7 +61,7 @@ final class ThumbnailStore {
         if let existing = items[url] { return existing }
         let item = ThumbnailItem()
         items[url] = item
-        enqueue(item: item, url: url, size: size)
+        enqueue(item: item, url: url, size: 200)
         return item
     }
 
