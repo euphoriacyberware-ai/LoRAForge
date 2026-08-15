@@ -323,6 +323,205 @@ enum LegacyImporter {
         )
     }
 
+    // MARK: - .loraforge Discovery
+
+    static func discoverLoRAForgeBundles(at url: URL) -> [URL] {
+        if url.pathExtension == "loraforge" {
+            return [url]
+        }
+        let fm = FileManager.default
+        guard let contents = try? fm.contentsOfDirectory(
+            at: url, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
+        ) else {
+            return []
+        }
+        return contents.filter { $0.pathExtension == "loraforge" }
+    }
+
+    // MARK: - .loraforge Import
+
+    static func importLoRAForgeProject(
+        at url: URL,
+        libraryURL: URL,
+        existingNames: Set<String>,
+        repo: TagRepository
+    ) -> ImportResult {
+        let fm = FileManager.default
+        let bundle = ProjectBundle(url: url)
+
+        // 1. Read schema.json
+        let schema: SchemaSnapshot
+        do {
+            schema = try bundle.readSchema()
+        } catch {
+            return ImportResult(name: url.deletingPathExtension().lastPathComponent, success: false,
+                                error: "Failed to read schema.json: \(error.localizedDescription)",
+                                entryCount: 0, imageCount: 0, referenceCount: 0)
+        }
+
+        // 2. Read project.json
+        var project: ProjectDocument
+        do {
+            project = try bundle.readProject()
+        } catch {
+            return ImportResult(name: url.deletingPathExtension().lastPathComponent, success: false,
+                                error: "Failed to read project.json: \(error.localizedDescription)",
+                                entryCount: 0, imageCount: 0, referenceCount: 0)
+        }
+
+        // 3. Check duplicate name
+        let projectName = project.name
+        if existingNames.contains(projectName) {
+            return ImportResult(name: projectName, success: false,
+                                error: "A project named '\(projectName)' already exists",
+                                entryCount: 0, imageCount: 0, referenceCount: 0)
+        }
+
+        // 4. Reconcile categories
+        var categoryRemap: [UUID: UUID] = [:]  // source UUID → local UUID
+        do {
+            for cat in schema.categories {
+                // Already exists by UUID?
+                if try repo.category(id: cat.id) != nil {
+                    continue
+                }
+                // Exists by name?
+                if let local = try repo.category(name: cat.name) {
+                    categoryRemap[cat.id] = local.id
+                    continue
+                }
+                // Insert with original UUID
+                let maxPosition = (try repo.allCategories().map(\.position).max() ?? -1) + 1
+                let newCat = TagCategory(
+                    id: cat.id,
+                    name: cat.name,
+                    selectMode: TagCategory.SelectMode(rawValue: cat.selectMode) ?? .single,
+                    prefix: cat.prefix,
+                    position: maxPosition,
+                    isEnabled: true,
+                    highThreshold: cat.highThreshold,
+                    lowThreshold: cat.lowThreshold,
+                    isBuiltIn: false
+                )
+                try repo.insertCategory(newCat)
+            }
+        } catch {
+            return ImportResult(name: projectName, success: false,
+                                error: "Failed to reconcile categories: \(error.localizedDescription)",
+                                entryCount: 0, imageCount: 0, referenceCount: 0)
+        }
+
+        // 5. Reconcile tags
+        var tagRemap: [UUID: UUID] = [:]  // source UUID → local UUID
+        do {
+            for tag in schema.tags {
+                let resolvedCategoryID = categoryRemap[tag.categoryID] ?? tag.categoryID
+
+                // Already exists by UUID?
+                let tagID = tag.id
+                let existingByID = try repo.allTags().first { $0.id == tagID }
+                if existingByID != nil {
+                    continue
+                }
+                // Exists by normalized string in resolved category?
+                let normalized = DuplicateDetector.normalize(tag.canonicalString)
+                if let local = try repo.tag(normalizedString: normalized, inCategoryID: resolvedCategoryID) {
+                    tagRemap[tag.id] = local.id
+                    continue
+                }
+                // Insert with original UUID
+                _ = try repo.insertTag(id: tag.id, canonicalString: tag.canonicalString, categoryID: resolvedCategoryID)
+            }
+        } catch {
+            return ImportResult(name: projectName, success: false,
+                                error: "Failed to reconcile tags: \(error.localizedDescription)",
+                                entryCount: 0, imageCount: 0, referenceCount: 0)
+        }
+
+        // 6. Apply remaps to project document (only if any occurred)
+        let hasRemaps = !categoryRemap.isEmpty || !tagRemap.isEmpty
+        if hasRemaps {
+            // Remap categoryOrder
+            project.categoryOrder = project.categoryOrder.map { categoryRemap[$0] ?? $0 }
+
+            // Remap categoryEnabled
+            var newEnabled: [UUID: Bool] = [:]
+            for (key, value) in project.categoryEnabled {
+                newEnabled[categoryRemap[key] ?? key] = value
+            }
+            project.categoryEnabled = newEnabled
+
+            // Remap entry assignments
+            for i in project.entries.indices {
+                project.entries[i].assignments = project.entries[i].assignments.map { assignment in
+                    AssignmentDocument(
+                        tagID: tagRemap[assignment.tagID] ?? assignment.tagID,
+                        selectionOrder: assignment.selectionOrder
+                    )
+                }
+            }
+        }
+
+        // 7. Copy the bundle into the library
+        let sanitized = sanitizeFilename(projectName)
+        var destURL = libraryURL.appending(path: "\(sanitized).loraforge")
+        var counter = 2
+        while fm.fileExists(atPath: destURL.path) {
+            destURL = libraryURL.appending(path: "\(sanitized) \(counter).loraforge")
+            counter += 1
+        }
+
+        do {
+            try fm.copyItem(at: url, to: destURL)
+
+            // Write remapped project.json and updated schema into the copy
+            let destBundle = ProjectBundle(url: destURL)
+            try destBundle.writeProjectAtomic(project)
+
+            let allCategories = try repo.allCategories()
+            let allTags = try repo.allTags()
+            let updatedSchema = SchemaSnapshot(categories: allCategories, tags: allTags)
+            try destBundle.writeSchemaAtomic(updatedSchema)
+        } catch {
+            try? fm.removeItem(at: destURL)
+            return ImportResult(name: projectName, success: false,
+                                error: "Failed to copy project: \(error.localizedDescription)",
+                                entryCount: 0, imageCount: 0, referenceCount: 0)
+        }
+
+        return ImportResult(
+            name: projectName,
+            success: true,
+            error: nil,
+            entryCount: project.entries.count,
+            imageCount: project.entries.reduce(0) { $0 + $1.images.count },
+            referenceCount: project.referenceImages.count
+        )
+    }
+
+    static func importLoRAForgeProjects(
+        at urls: [URL],
+        libraryURL: URL,
+        existingNames: Set<String>,
+        repo: TagRepository
+    ) -> BatchImportResult {
+        var results: [ImportResult] = []
+        var usedNames = existingNames
+        for url in urls {
+            let result = importLoRAForgeProject(
+                at: url,
+                libraryURL: libraryURL,
+                existingNames: usedNames,
+                repo: repo
+            )
+            if result.success {
+                usedNames.insert(result.name)
+            }
+            results.append(result)
+        }
+        return BatchImportResult(results: results)
+    }
+
     // MARK: - Helpers
 
     private static func sanitizeFilename(_ name: String) -> String {
@@ -337,11 +536,12 @@ enum LegacyImporter {
 #if os(macOS)
 import AppKit
 
-final class LegacyImportPanelDelegate: NSObject, NSOpenSavePanelDelegate {
-    static let shared = LegacyImportPanelDelegate()
+final class ImportPanelDelegate: NSObject, NSOpenSavePanelDelegate {
+    static let shared = ImportPanelDelegate()
 
     func panel(_ sender: Any, shouldEnable url: URL) -> Bool {
-        if url.pathExtension == "lforge" { return true }
+        let ext = url.pathExtension
+        if ext == "lforge" || ext == "loraforge" { return true }
         var isDir: ObjCBool = false
         FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir)
         return isDir.boolValue
