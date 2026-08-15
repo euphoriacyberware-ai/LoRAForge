@@ -27,6 +27,7 @@ struct DatasetBuilderView: View {
     @AppStorage("thumbnailSize") private var thumbnailSize: Double = 100
     @Environment(GenerationService.self) private var generation
     @Environment(TemplateManager.self) private var templateManager
+    @Environment(LibraryManager.self) private var library
 
     private var filteredEntries: [EntryDocument] {
         if entryFilter.isEmpty { return document.entries }
@@ -114,11 +115,18 @@ struct DatasetBuilderView: View {
         }
         .sheet(item: $captioningEntryID) { entryID in
             if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
+                let localFrequency = document.entries
+                    .flatMap(\.assignments)
+                    .reduce(into: [UUID: Int]()) { $0[$1.tagID, default: 0] += 1 }
+                // Current project counts 2x: once in global, once more as local boost
+                let tagFrequency = library.tagFrequencyAcrossProjects()
+                    .merging(localFrequency) { global, local in global + local }
                 CaptionEditorView(
                     entry: $document.entries[idx],
                     bundleURL: bundleURL,
                     projectCategoryOrder: document.categoryOrder,
                     projectCategoryEnabled: document.categoryEnabled,
+                    tagFrequency: tagFrequency,
                     onChanged: onChanged
                 )
             }

@@ -257,6 +257,27 @@ final class LibraryManager {
         projects.first { $0.id == id }?.url
     }
 
+    // MARK: - Cross-project frequency
+
+    func tagFrequencyAcrossProjects() -> [UUID: Int] {
+        let fm = FileManager.default
+        guard let contents = try? fm.contentsOfDirectory(
+            at: libraryURL, includingPropertiesForKeys: nil
+        ) else { return [:] }
+
+        var frequency: [UUID: Int] = [:]
+        for url in contents where url.pathExtension == "loraforge" {
+            let bundle = ProjectBundle(url: url)
+            guard let doc = try? bundle.readProject() else { continue }
+            for entry in doc.entries {
+                for assignment in entry.assignments {
+                    frequency[assignment.tagID, default: 0] += 1
+                }
+            }
+        }
+        return frequency
+    }
+
     // MARK: - Helpers
 
     /// Removes image records whose files no longer exist on disk. Returns true if any were removed.

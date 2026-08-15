@@ -6,6 +6,7 @@ struct CaptionEditorView: View {
     let bundleURL: URL
     let projectCategoryOrder: [UUID]
     let projectCategoryEnabled: [UUID: Bool]
+    let tagFrequency: [UUID: Int]
     let onChanged: () -> Void
 
     @Environment(TagRepository.self) private var repo
@@ -284,6 +285,7 @@ struct CaptionEditorView: View {
                             category: category,
                             assignments: $entry.assignments,
                             availableTags: allTags[category.id] ?? [],
+                            tagFrequency: tagFrequency,
                             repo: repo,
                             onChanged: {
                                 updatePreview()
@@ -421,6 +423,7 @@ private struct TagRowView: View {
     let category: TagCategory
     @Binding var assignments: [AssignmentDocument]
     let availableTags: [Tag]
+    let tagFrequency: [UUID: Int]
     let repo: TagRepository
     let onChanged: () -> Void
 
@@ -442,6 +445,14 @@ private struct TagRowView: View {
         return availableTags.filter {
             !assignedIDs.contains($0.id) && $0.canonicalString.lowercased().contains(query)
         }
+    }
+
+    private var quickTags: [Tag] {
+        let assignedIDs = Set(assignedTags.map(\.id))
+        return Array(availableTags
+            .filter { !assignedIDs.contains($0.id) && (tagFrequency[$0.id] ?? 0) > 0 }
+            .sorted { (tagFrequency[$0.id] ?? 0) > (tagFrequency[$1.id] ?? 0) }
+            .prefix(5))
     }
 
     private var categoryLabel: String {
@@ -485,6 +496,26 @@ private struct TagRowView: View {
                         .frame(minWidth: 60, maxWidth: 120)
                         .onSubmit { commitSearch() }
                 }
+            }
+
+            // Quick-tag chips
+            if !quickTags.isEmpty {
+                FlowLayout(spacing: 4) {
+                    ForEach(quickTags) { tag in
+                        Button {
+                            selectTag(tag)
+                        } label: {
+                            Text(tag.canonicalString)
+                                .font(.caption)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Color.secondary.opacity(0.1), in: Capsule())
+                                .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.3)))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.leading, 128)
             }
 
             // Suggestions dropdown
