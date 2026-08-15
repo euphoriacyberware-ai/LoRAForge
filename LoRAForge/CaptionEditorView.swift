@@ -288,6 +288,7 @@ struct CaptionEditorView: View {
                             tagFrequency: tagFrequency,
                             repo: repo,
                             onChanged: {
+                                reloadTags()
                                 updatePreview()
                                 onChanged()
                             }
@@ -319,10 +320,14 @@ struct CaptionEditorView: View {
 
     private func loadData() {
         categories = (try? repo.allCategories()) ?? []
+        reloadTags()
+        ollamaProfiles = (try? ollamaRepo.allProfiles()) ?? []
+    }
+
+    private func reloadTags() {
         for cat in categories {
             allTags[cat.id] = (try? repo.tags(in: cat.id)) ?? []
         }
-        ollamaProfiles = (try? ollamaRepo.allProfiles()) ?? []
     }
 
     private func runOllama(profile: SDOllamaProfile) {
