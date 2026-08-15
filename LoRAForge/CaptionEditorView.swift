@@ -91,7 +91,7 @@ struct CaptionEditorView: View {
         #if os(macOS)
         HStack(spacing: 0) {
             imageWell
-                .frame(minWidth: 200, maxWidth: 400)
+                .frame(minWidth: 300, maxWidth: 500)
             Divider()
             editorPanel
                 .frame(minWidth: 400)
@@ -279,7 +279,7 @@ struct CaptionEditorView: View {
             .padding(.vertical, 4)
 
             ScrollView {
-                LazyVStack(spacing: 2) {
+                LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(enabledCategories) { category in
                         TagRowView(
                             category: category,
