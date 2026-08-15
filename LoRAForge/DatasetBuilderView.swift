@@ -114,11 +114,15 @@ struct DatasetBuilderView: View {
         }
         .sheet(item: $captioningEntryID) { entryID in
             if let idx = document.entries.firstIndex(where: { $0.id == entryID }) {
+                let tagFrequency = document.entries
+                    .flatMap(\.assignments)
+                    .reduce(into: [UUID: Int]()) { $0[$1.tagID, default: 0] += 1 }
                 CaptionEditorView(
                     entry: $document.entries[idx],
                     bundleURL: bundleURL,
                     projectCategoryOrder: document.categoryOrder,
                     projectCategoryEnabled: document.categoryEnabled,
+                    tagFrequency: tagFrequency,
                     onChanged: onChanged
                 )
             }
