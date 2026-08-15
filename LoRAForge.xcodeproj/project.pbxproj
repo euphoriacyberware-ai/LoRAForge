@@ -39,9 +39,22 @@
 		A4B514FD302809AB0049F8D7 /* LoRAForgeUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LoRAForgeUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A4B514E7302809A90049F8D7 /* Exceptions for "LoRAForge" folder in "LoRAForge" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A4B514E3302809A90049F8D7 /* LoRAForge */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		A4B514E6302809A90049F8D7 /* LoRAForge */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A4B514E7302809A90049F8D7 /* Exceptions for "LoRAForge" folder in "LoRAForge" target */,
+			);
 			path = LoRAForge;
 			sourceTree = "<group>";
 		};
@@ -438,6 +451,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LoRAForge/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LoRAForge;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -454,7 +468,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 0.2.7;
+				MARKETING_VERSION = 0.2.8;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForge";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -496,6 +510,7 @@
 				ENABLE_RESOURCE_ACCESS_USB = NO;
 				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LoRAForge/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = LoRAForge;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.graphics-design";
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
@@ -512,7 +527,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 0.2.7;
+				MARKETING_VERSION = 0.2.8;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForge";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;

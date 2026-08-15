@@ -93,6 +93,20 @@ final class TagRepository {
         try modelContext.save()
     }
 
+    func category(name: String) throws -> TagCategory? {
+        let catName = name
+        var descriptor = FetchDescriptor<SDCategory>(
+            predicate: #Predicate<SDCategory> { $0.name == catName }
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first?.toDomain()
+    }
+
+    func insertCategory(_ category: TagCategory) throws {
+        modelContext.insert(SDCategory(from: category))
+        try modelContext.save()
+    }
+
     func tagCount(in categoryID: UUID) throws -> Int {
         let catID = categoryID
         let descriptor = FetchDescriptor<SDTag>(
@@ -137,6 +151,31 @@ final class TagRepository {
         }
 
         let tag = SDTag(canonicalString: canonicalString, category: categoryModel)
+        modelContext.insert(tag)
+        try modelContext.save()
+        return tag.toDomain()
+    }
+
+    func tag(normalizedString: String, inCategoryID categoryID: UUID) throws -> Tag? {
+        let norm = normalizedString
+        let catID = categoryID
+        var descriptor = FetchDescriptor<SDTag>(
+            predicate: #Predicate<SDTag> { $0.normalizedString == norm && $0.categoryID == catID }
+        )
+        descriptor.fetchLimit = 1
+        return try modelContext.fetch(descriptor).first?.toDomain()
+    }
+
+    func insertTag(id: UUID, canonicalString: String, categoryID: UUID) throws -> Tag {
+        let catID = categoryID
+        var catDescriptor = FetchDescriptor<SDCategory>(
+            predicate: #Predicate<SDCategory> { $0.id == catID }
+        )
+        catDescriptor.fetchLimit = 1
+        guard let categoryModel = try modelContext.fetch(catDescriptor).first else {
+            throw TagRepositoryError.categoryNotFound(categoryID)
+        }
+        let tag = SDTag(id: id, canonicalString: canonicalString, category: categoryModel)
         modelContext.insert(tag)
         try modelContext.save()
         return tag.toDomain()

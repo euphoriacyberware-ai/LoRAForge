@@ -104,8 +104,8 @@ struct ContentView: View {
         #endif
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
-                Button { performLegacyImport() } label: {
-                    Label("Import v1 project", systemImage: "square.and.arrow.down")
+                Button { performImport() } label: {
+                    Label("Import project", systemImage: "square.and.arrow.down")
                 }
                 Button { showingNewProject = true } label: {
                     Label("New project", systemImage: "plus")
@@ -199,43 +199,67 @@ struct ContentView: View {
         projectToDelete = nil
     }
 
-    private func performLegacyImport() {
+    private func performImport() {
         #if os(macOS)
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
         panel.treatsFilePackagesAsDirectories = false
-        panel.message = "Select .lforge projects or a folder containing them"
-        panel.delegate = LegacyImportPanelDelegate.shared
+        panel.message = "Select .lforge or .loraforge projects, or a folder containing them"
+        panel.delegate = ImportPanelDelegate.shared
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
         let selectedURLs = panel.urls
 
         do {
             let categories = try repo.allCategories()
             let tags = try repo.allTags()
-            let existingNames = Set(library.projects.map(\.name))
+            var existingNames = Set(library.projects.map(\.name))
 
-            var discovered: [URL] = []
+            // Discover both formats
+            var legacyBundles: [URL] = []
+            var loraforgeBundles: [URL] = []
             for url in selectedURLs {
-                discovered.append(contentsOf: LegacyImporter.discoverLegacyBundles(at: url))
+                legacyBundles.append(contentsOf: LegacyImporter.discoverLegacyBundles(at: url))
+                loraforgeBundles.append(contentsOf: LegacyImporter.discoverLoRAForgeBundles(at: url))
             }
 
-            guard !discovered.isEmpty else {
-                importError = "No .lforge projects found in the selection."
+            guard !legacyBundles.isEmpty || !loraforgeBundles.isEmpty else {
+                importError = "No .lforge or .loraforge projects found in the selection."
                 showingImportError = true
                 return
             }
 
-            let result = LegacyImporter.importLegacyProjects(
-                at: discovered,
-                libraryURL: library.libraryURL,
-                existingNames: existingNames,
-                categories: categories,
-                tags: tags
-            )
+            var allResults: [LegacyImporter.ImportResult] = []
+
+            // Import legacy .lforge projects
+            if !legacyBundles.isEmpty {
+                let legacyResult = LegacyImporter.importLegacyProjects(
+                    at: legacyBundles,
+                    libraryURL: library.libraryURL,
+                    existingNames: existingNames,
+                    categories: categories,
+                    tags: tags
+                )
+                for r in legacyResult.results {
+                    if r.success { existingNames.insert(r.name) }
+                }
+                allResults.append(contentsOf: legacyResult.results)
+            }
+
+            // Import .loraforge projects
+            if !loraforgeBundles.isEmpty {
+                let loraforgeResult = LegacyImporter.importLoRAForgeProjects(
+                    at: loraforgeBundles,
+                    libraryURL: library.libraryURL,
+                    existingNames: existingNames,
+                    repo: repo
+                )
+                allResults.append(contentsOf: loraforgeResult.results)
+            }
+
             library.refresh()
-            importResult = result
+            importResult = LegacyImporter.BatchImportResult(results: allResults)
             showingImportResult = true
         } catch {
             importError = error.localizedDescription
