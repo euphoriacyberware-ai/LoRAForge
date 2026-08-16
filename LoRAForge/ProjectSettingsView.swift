@@ -16,6 +16,7 @@ struct ProjectSettingsView: View {
     @State private var categories: [TagCategory] = []
     @State private var presets: [SDGenerationPreset] = []
     @State private var configModel: ConfigEditorModel?
+    @State private var showingApplyAllAlert = false
 
     init(document: Binding<ProjectDocument>, onChanged: @escaping () -> Void) {
         self._document = document
@@ -140,9 +141,22 @@ struct ProjectSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
+
+            Divider()
+
+            Button("Apply to all entries", role: .destructive) {
+                showingApplyAllAlert = true
+            }
+            .help("Overwrite the generation configuration of every entry in this project with the current default.")
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .alert("Apply default configuration to all entries?", isPresented: $showingApplyAllAlert) {
+            Button("Apply to all", role: .destructive) { applyConfigToAllEntries() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will overwrite the generation configuration for all \(document.entries.count) entries in this project. This cannot be undone.")
+        }
     }
 
     // MARK: - Helpers
@@ -176,6 +190,14 @@ struct ProjectSettingsView: View {
     private func loadPreset(_ preset: SDGenerationPreset) {
         configModel = ConfigEditorModel(text: preset.configJSON)
         document.defaultGenerationConfigJSON = preset.configJSON
+        onChanged()
+    }
+
+    private func applyConfigToAllEntries() {
+        let config = document.defaultGenerationConfigJSON
+        for index in document.entries.indices {
+            document.entries[index].generationConfigJSON = config
+        }
         onChanged()
     }
 }
