@@ -250,6 +250,7 @@ struct ImageInspectorView: View {
             Text(value)
                 .font(.caption)
                 .lineLimit(1)
+                .textSelection(.enabled)
         }
     }
 
