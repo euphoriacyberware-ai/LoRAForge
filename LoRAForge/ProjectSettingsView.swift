@@ -12,17 +12,11 @@ struct ProjectSettingsView: View {
     @Environment(GenerationPresetRepository.self) private var presetRepo
     @Environment(\.dismiss) private var dismiss
 
-    @State private var projectName: String
     @State private var categories: [TagCategory] = []
     @State private var presets: [SDGenerationPreset] = []
     @State private var configModel: ConfigEditorModel?
     @State private var showingApplyAllAlert = false
-
-    init(document: Binding<ProjectDocument>, onChanged: @escaping () -> Void) {
-        self._document = document
-        self.onChanged = onChanged
-        self._projectName = State(initialValue: document.wrappedValue.name)
-    }
+    @State private var showingApplyOrderAlert = false
 
     var body: some View {
         NavigationStack {
@@ -53,15 +47,7 @@ struct ProjectSettingsView: View {
     // MARK: - Left Pane
 
     private var leftPane: some View {
-        Form {
-            Section("Project") {
-                TextField("Name", text: $projectName)
-                    .onChange(of: projectName) {
-                        document.name = projectName
-                        onChanged()
-                    }
-            }
-
+        List {
             Section("Category order and enabled state") {
                 Text("These settings are independent of the app defaults.")
                     .font(.caption)
@@ -87,9 +73,22 @@ struct ProjectSettingsView: View {
                 }
                 .onMove(perform: moveCategories)
             }
+
+            Section {
+                Button("Re-render all captions", role: .destructive) {
+                    showingApplyOrderAlert = true
+                }
+                .help("Re-render caption previews for all unlocked tagged entries using the current category order.")
+            }
         }
-        .formStyle(.grouped)
+        .listStyle(.sidebar)
         .frame(minWidth: 300)
+        .alert("Re-render all captions?", isPresented: $showingApplyOrderAlert) {
+            Button("Re-render", role: .destructive) { reRenderAllCaptions() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This will re-render caption previews for all unlocked tagged entries using the current category order and enabled state. Locked and manual captions are not affected.")
+        }
     }
 
     // MARK: - Right Pane
@@ -197,6 +196,30 @@ struct ProjectSettingsView: View {
         let config = document.defaultGenerationConfigJSON
         for index in document.entries.indices {
             document.entries[index].generationConfigJSON = config
+        }
+        onChanged()
+    }
+
+    private func reRenderAllCaptions() {
+        let enabledCats: [TagCategory] = document.categoryOrder.compactMap { catID in
+            guard document.categoryEnabled[catID] != false else { return nil }
+            return categories.first { $0.id == catID }
+        }
+        let allTags: [UUID: Tag] = categories.compactMap { cat in
+            (try? repo.tags(in: cat.id))?.map { (cat.id, $0) }
+        }
+        .flatMap { $0 }
+        .reduce(into: [UUID: Tag]()) { $0[$1.1.id] = $1.1 }
+
+        for index in document.entries.indices {
+            let entry = document.entries[index]
+            guard !entry.isLocked, entry.captionMode == .tagged else { continue }
+            let domainAssignments = entry.assignments.map {
+                TagAssignment(tagID: $0.tagID, selectionOrder: $0.selectionOrder)
+            }
+            document.entries[index].captionPreviewText = CaptionRenderer.render(
+                assignments: domainAssignments, tags: allTags, categories: enabledCats
+            )
         }
         onChanged()
     }
