@@ -110,6 +110,29 @@ Each project has its own settings, accessible from the toolbar. Project settings
 - **Default generation configuration** — Set the generation config that new entries inherit. You can load a saved preset from the Config Library or edit the JSON directly. The editor validates the JSON and shows whether the current configuration is valid.
 - **Apply to all entries** — Push the current default configuration to every existing entry in the project at once. This is useful when you change models or settings mid-project and want all entries to match.
 
+## Generation controls
+
+When connected to a Draw Things server with a project open, the generation controls appear in the toolbar.
+
+![Generation Controls](screenshots/generation-controls.png)
+
+From left to right:
+
+- **−** / **+** — Decrease or increase the multiplier (how many images to generate per entry, up to 50).
+- **Generate** button — Queues generation for all entries that do not yet have a final image. The number shows how many entries will be generated, and the multiplier (e.g. ×2) shows how many images each will receive.
+
+## Entry header
+
+Each entry in the Dataset Builder has a header with icon buttons on the right side for quick actions.
+
+![Entry Header Buttons](screenshots/entry-header-buttons.png)
+
+- **Generation settings** (sliders icon) — Open the generation configuration editor for this entry.
+- **Caption** (speech bubble icon) — Open the Caption Editor for this entry.
+- **Import images** (photo+ icon) — Import image files directly into this entry.
+
+Right-click on the entry header for additional options: generate for this entry, sweep candidates, insert entries before or after, add images, or delete the entry.
+
 ## Demo project
 
 A complete example project is included in the [`Example Project`](Example%20Project/) folder. Download **Demo Character - Tina.loraforge.zip** and import it into LoRAForge to see a fully built-out project — this is the project shown in the screenshots above.
