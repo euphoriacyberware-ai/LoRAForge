@@ -48,12 +48,23 @@ Projects are stored as `.loraforge` bundles in a managed library. The app autosa
 
 ## Getting started
 
+### Install from DMG
+
+1. Download **LoRAForge.dmg** from the [latest release](../../releases/latest).
+2. Open the DMG and drag LoRAForge into the Applications folder.
+3. Launch LoRAForge from Applications.
+
+### Build from source
+
 1. Clone this repository and open `LoRAForge.xcodeproj` in Xcode.
 2. Let Swift Package Manager resolve dependencies.
 3. Build and run.
-4. Enable the API Server in Draw Things (see below).
-5. Connect to the server from the Connections settings in LoRAForge.
-6. Create a project from the sidebar and start adding prompts.
+
+### First launch
+
+1. Enable the API Server in Draw Things (see below).
+2. Connect to the server from the Connections settings in LoRAForge.
+3. Create a project from the sidebar and start adding prompts.
 
 ## Connecting to Draw Things
 
