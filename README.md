@@ -51,8 +51,31 @@ Projects are stored as `.loraforge` bundles in a managed library. The app autosa
 1. Clone this repository and open `LoRAForge.xcodeproj` in Xcode.
 2. Let Swift Package Manager resolve dependencies.
 3. Build and run.
-4. Connect to a Draw Things server running with gRPC enabled.
-5. Create a project from the sidebar and start adding prompts.
+4. Enable the API Server in Draw Things (see below).
+5. Connect to the server from the Connections settings in LoRAForge.
+6. Create a project from the sidebar and start adding prompts.
+
+## Connecting to Draw Things
+
+LoRAForge communicates with Draw Things over its gRPC API server. In Draw Things, open the API Server panel and toggle it to **Server Online**.
+
+![Draw Things API Server](screenshots/drawthings-api-server.png)
+
+LoRAForge supports all of the optional server settings — **Transport Layer Security**, **Response Compression**, and **Shared Secret** — as long as the same options are enabled in both apps. To use DT+ features, set **Bridge Mode** to Enable.
+
+### Connection settings
+
+In LoRAForge, open **Connections** from the sidebar to configure your Draw Things and Ollama connections. You can save multiple server profiles and switch between them. The active connection shows its status and queue depth. Enable **Auto-connect on launch** to reconnect automatically when the app starts.
+
+Ollama profiles specify an endpoint, model, and instruction prompt for AI-powered captioning.
+
+![Connection Settings](screenshots/connection-settings.png)
+
+### General settings
+
+The General settings show your library folder location and project count. You can reveal the library in Finder or change its location.
+
+![General Settings](screenshots/general-settings.png)
 
 ## Configuring generation settings
 
