@@ -57,7 +57,7 @@ Projects are stored as `.loraforge` bundles in a managed library. The app autosa
 
 ## Connecting to Draw Things
 
-LoRAForge communicates with Draw Things over its gRPC API server. In Draw Things, open the API Server panel and toggle it to **Server Online**.
+LoRAForge communicates with Draw Things over its gRPC API server. In Draw Things, open the Advanced panel and toggle it to **Server Online**.
 
 ![Draw Things API Server](screenshots/drawthings-api-server.png)
 
