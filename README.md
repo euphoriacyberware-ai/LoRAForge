@@ -31,11 +31,11 @@ Projects are stored as `.loraforge` bundles in a managed library. The app autosa
 
 | Dataset Builder | Caption Editor |
 |:---:|:---:|
-| <!-- ![Dataset Builder](screenshots/dataset-builder.png) --> *Dataset Builder — generate, rank, and curate images* | <!-- ![Caption Editor](screenshots/caption-editor.png) --> *Caption Editor — structured tagging with live preview* |
+| ![Dataset Builder](screenshots/dataset-builder.png) *Dataset Builder — generate, rank, and curate images* | ![Caption Editor](screenshots/caption-editor.png) *Caption Editor — structured tagging with live preview* |
 
 | Tag Library | Reference Library |
 |:---:|:---:|
-| <!-- ![Tag Library](screenshots/tag-library.png) --> *Tag Library — manage categories and tags across all projects* | <!-- ![Reference Library](screenshots/reference-library.png) --> *Reference Library — organize source images for generation* |
+|  ![Tag Library](screenshots/tag-library.png) *Tag Library — manage categories and tags across all projects* | ![Reference Library](screenshots/reference-library.png) *Reference Library — organize source images for generation* |
 
 ## Requirements
 
