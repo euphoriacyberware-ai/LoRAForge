@@ -2,7 +2,7 @@
 
 A native macOS and iPadOS application for generating, curating, and captioning character-LoRA training datasets.
 
-<!-- ![LoRAForge hero screenshot](screenshots/hero.png) -->
+![LoRAForge hero screenshot](screenshots/loraforge_v0.2.png)
 
 ## Overview
 
@@ -51,6 +51,18 @@ Projects are stored as `.loraforge` bundles in a managed library. The app autosa
 3. Build and run.
 4. Connect to a Draw Things server running with gRPC enabled.
 5. Create a project from the sidebar and start adding prompts.
+
+## Configuring generation settings
+
+LoRAForge uses Draw Things generation configurations to control how images are generated. To set up a configuration:
+
+1. **Copy from Draw Things** — Open your model settings in Draw Things, tap the `···` menu, and choose **Copy Configuration**.
+
+   ![Copy Configuration in Draw Things](screenshots/drawthings-configurations.png)
+
+2. **Create a preset in LoRAForge** — Open the Config Library from the sidebar, create a new preset, and paste the configuration into the JSON editor. Presets can be loaded into any project's default configuration or applied per-prompt.
+
+   ![Configuration Library in LoRAForge](screenshots/configuration-library.png)
 
 ## How it works
 
