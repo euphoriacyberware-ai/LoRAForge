@@ -66,6 +66,16 @@ LoRAForge uses Draw Things generation configurations to control how images are g
 
    ![Configuration Library in LoRAForge](screenshots/configuration-library.png)
 
+## Project settings
+
+Each project has its own settings, accessible from the toolbar. Project settings control the project name, which tag categories are enabled, their display order, and the default generation configuration.
+
+![Project Settings](screenshots/project-settings.png)
+
+- **Category order and enabled state** — Reorder categories by dragging and toggle them on or off per-project. These settings are independent of the app-wide defaults, so each project can use a different subset of categories.
+- **Default generation configuration** — Set the generation config that new entries inherit. You can load a saved preset from the Config Library or edit the JSON directly. The editor validates the JSON and shows whether the current configuration is valid.
+- **Apply to all entries** — Push the current default configuration to every existing entry in the project at once. This is useful when you change models or settings mid-project and want all entries to match.
+
 ## Demo project
 
 A complete example project is included in the [`Example Project`](Example%20Project/) folder. Download **Demo Character - Tina.loraforge.zip** and import it into LoRAForge to see a fully built-out project — this is the project shown in the screenshots above.
@@ -80,8 +90,8 @@ The demo will populate the app with basic category tags and demonstrates the end
 
 ## How it works
 
-1. **Create a project** — Projects live in the app's managed library. Each is a self-contained `.loraforge` bundle.
-2. **Set up a configuration** — Copy a generation configuration from Draw Things and save it as a preset in the Config Library. Load it as the project default or apply it per-prompt.
+1. **Set up a configuration** — Copy a generation configuration from Draw Things and save it as a preset in the Config Library. Load it as the project default or apply it per-prompt.
+2. **Create a project** — Projects live in the app's managed library. Each is a self-contained `.loraforge` bundle.
 3. **Import references** — Add reference images to the Reference Library and attach them to prompts. This works the same as the Moodboard in Draw Things.
 4. **Add prompts** — Write prompt text, attach reference images, and optionally override the generation config per-prompt. Use templates to reuse prompt sets across projects.
 5. **Generate images** — Send prompts to a Draw Things server. Results arrive asynchronously and are stored in the project bundle automatically.
