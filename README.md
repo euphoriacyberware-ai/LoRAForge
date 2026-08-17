@@ -102,11 +102,12 @@ LoRAForge uses Draw Things generation configurations to control how images are g
 
 ## Project settings
 
-Each project has its own settings, accessible from the toolbar. Project settings control the project name, which tag categories are enabled, their display order, and the default generation configuration.
+Each project has its own settings, accessible from the toolbar. Project settings control which tag categories are enabled, their display order, and the default generation configuration.
 
 ![Project Settings](screenshots/project-settings.png)
 
 - **Category order and enabled state** — Reorder categories by dragging and toggle them on or off per-project. These settings are independent of the app-wide defaults, so each project can use a different subset of categories.
+- **Re-render all captions** — After reordering or toggling categories, use this to update caption previews for all unlocked tagged entries at once. Locked and manual captions are not affected.
 - **Default generation configuration** — Set the generation config that new entries inherit. You can load a saved preset from the Config Library or edit the JSON directly. The editor validates the JSON and shows whether the current configuration is valid.
 - **Apply to all entries** — Push the current default configuration to every existing entry in the project at once. This is useful when you change models or settings mid-project and want all entries to match.
 
