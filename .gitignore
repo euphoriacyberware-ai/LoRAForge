@@ -5,3 +5,6 @@ Packages/*/.build/
 /References/LoRAForge-main
 LoRAForge.xcodeproj/xcuserdata/brian.cantin.xcuserdatad/xcschemes/xcschememanagement.plist
 Packages/TaggingCore/.swiftpm/xcode/xcuserdata/brian.cantin.xcuserdatad/xcschemes/xcschememanagement.plist
+/References
+/Docs
+CLAUDE.md
