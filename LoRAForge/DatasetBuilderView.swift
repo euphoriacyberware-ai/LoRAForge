@@ -640,7 +640,7 @@ struct DatasetBuilderView: View {
 
     private func insertEntry(before id: UUID) {
         guard let idx = document.entries.firstIndex(where: { $0.id == id }) else { return }
-        let entry = EntryDocument(name: "Entry \(document.entries.count + 1)", position: 0)
+        let entry = EntryDocument(name: "Entry \(document.entries.count + 1)", position: 0, defaultConfigJSON: document.defaultGenerationConfigJSON)
         document.entries.insert(entry, at: idx)
         reindexPositions()
         onChanged()
@@ -648,7 +648,7 @@ struct DatasetBuilderView: View {
 
     private func insertEntry(after id: UUID) {
         guard let idx = document.entries.firstIndex(where: { $0.id == id }) else { return }
-        let entry = EntryDocument(name: "Entry \(document.entries.count + 1)", position: 0)
+        let entry = EntryDocument(name: "Entry \(document.entries.count + 1)", position: 0, defaultConfigJSON: document.defaultGenerationConfigJSON)
         document.entries.insert(entry, at: idx + 1)
         reindexPositions()
         onChanged()
