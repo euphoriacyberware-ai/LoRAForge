@@ -932,7 +932,7 @@ private struct EntryRow: View {
 
     private var imageStrip: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            LazyHStack(spacing: 4) {
+            HStack(spacing: 4) {
                 ForEach(visibleImages) { image in
                     ImageThumbnail(
                         image: image,
