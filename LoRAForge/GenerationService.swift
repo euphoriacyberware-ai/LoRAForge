@@ -228,18 +228,23 @@ final class GenerationService {
     // MARK: - Observation
 
     private func observeQueue(_ q: DrawThingsQueue) {
+        // Use RunLoop.main instead of DispatchQueue.main so delivery is always
+        // deferred to the next run-loop iteration. DispatchQueue.main can deliver
+        // synchronously when already on the main thread, which lets a Combine sink
+        // mutate an @Observable property while SwiftUI is mid-observation — the
+        // registrar's os_unfair_lock is still held and the recursive acquire traps.
         q.$isPaused
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .sink { [weak self] in self?.isPaused = $0 }
             .store(in: &cancellables)
 
         q.$lastError
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .sink { [weak self] in self?.lastError = $0 }
             .store(in: &cancellables)
 
         q.$pendingRequests
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .sink { [weak self] in
                 self?.pendingCount = $0.count
                 self?.pendingRequests = $0
@@ -247,17 +252,17 @@ final class GenerationService {
             .store(in: &cancellables)
 
         q.$isProcessing
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .sink { [weak self] in self?.isProcessing = $0 }
             .store(in: &cancellables)
 
         q.$currentRequest
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .sink { [weak self] in self?.currentRequest = $0 }
             .store(in: &cancellables)
 
         q.$currentProgress
-            .receive(on: DispatchQueue.main)
+            .receive(on: RunLoop.main)
             .sink { [weak self] in self?.currentProgress = $0 }
             .store(in: &cancellables)
     }
