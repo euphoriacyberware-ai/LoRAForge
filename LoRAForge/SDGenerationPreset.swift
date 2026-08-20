@@ -18,7 +18,7 @@ final class SDGenerationPreset {
 
 @Observable
 final class GenerationPresetRepository {
-    private let modelContext: ModelContext
+    @ObservationIgnored private let modelContext: ModelContext
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext

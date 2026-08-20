@@ -20,7 +20,7 @@ final class SDConnectionProfile {
 
 @Observable
 final class ConnectionProfileRepository {
-    private let modelContext: ModelContext
+    @ObservationIgnored private let modelContext: ModelContext
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext

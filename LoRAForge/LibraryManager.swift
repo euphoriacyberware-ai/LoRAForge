@@ -21,8 +21,8 @@ final class LibraryManager {
 
     private(set) var lastExternalUpdate: ExternalUpdate?
 
-    private var loadedDocuments: [UUID: ProjectDocument] = [:]
-    private var saveTask: [UUID: Task<Void, Never>] = [:]
+    @ObservationIgnored private var loadedDocuments: [UUID: ProjectDocument] = [:]
+    @ObservationIgnored private var saveTask: [UUID: Task<Void, Never>] = [:]
 
     private static let libraryURLKey = "customLibraryURL"
 

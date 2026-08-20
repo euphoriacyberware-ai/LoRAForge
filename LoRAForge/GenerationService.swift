@@ -33,11 +33,11 @@ final class GenerationService {
         didSet { UserDefaults.standard.set(sharedSecret, forKey: "dtSharedSecret") }
     }
 
-    private var queue: DrawThingsQueue?
-    private var requestMap: [UUID: RequestTarget] = [:]
-    private var cancellables = Set<AnyCancellable>()
-    private var resultTask: Task<Void, Never>?
-    private weak var library: LibraryManager?
+    @ObservationIgnored private var queue: DrawThingsQueue?
+    @ObservationIgnored private var requestMap: [UUID: RequestTarget] = [:]
+    @ObservationIgnored private var cancellables = Set<AnyCancellable>()
+    @ObservationIgnored private var resultTask: Task<Void, Never>?
+    @ObservationIgnored private weak var library: LibraryManager?
 
     struct RequestTarget: Codable {
         let projectID: UUID
