@@ -4,7 +4,7 @@ import TaggingCore
 
 @Observable
 final class TagRepository {
-    private let modelContext: ModelContext
+    @ObservationIgnored private let modelContext: ModelContext
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext

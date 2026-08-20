@@ -4,7 +4,7 @@ import Foundation
 final class TemplateManager {
     var templates: [Template] = []
 
-    private let fileURL: URL
+    @ObservationIgnored private let fileURL: URL
 
     init() {
         let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!

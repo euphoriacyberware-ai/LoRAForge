@@ -20,7 +20,7 @@ final class SDOllamaProfile {
 
 @Observable
 final class OllamaRepository {
-    private let modelContext: ModelContext
+    @ObservationIgnored private let modelContext: ModelContext
 
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
