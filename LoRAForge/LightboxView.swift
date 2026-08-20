@@ -86,6 +86,7 @@ struct LightboxView: View {
     @State private var zoomLevel: Int = 0 // 0 = fit, 1..5 = zoom steps
     @State private var nativeImageSize: CGSize = .zero
     @State private var discardFinalAlert: LightboxDiscardAlert?
+    @State private var rankVersion = 0
     @FocusState private var isFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
@@ -314,7 +315,9 @@ struct LightboxView: View {
     }
 
     private var rankButtons: some View {
-        HStack(spacing: 4) {
+        let _ = rankVersion
+        let image = currentImage
+        return HStack(spacing: 4) {
             ForEach([ImageRank.candidate, .shortlist, .final], id: \.self) { rank in
                 Button {
                     handleRankChange(rank)
@@ -326,10 +329,10 @@ struct LightboxView: View {
                     }
                 }
                 .buttonStyle(.bordered)
-                .disabled(currentImage?.rank == rank)
+                .disabled(image?.rank == rank)
             }
 
-            if let image = currentImage, image.rank != .discarded {
+            if let image, image.rank != .discarded {
                 Button { handleRankChange(.discarded) } label: {
                     Image(systemName: "trash")
                 }
@@ -422,6 +425,7 @@ struct LightboxView: View {
         }
 
         document.entries[entryIdx].images[imgIdx].rank = newRank
+        rankVersion += 1
         onChanged()
 
         if !visibleRanks.contains(newRank) {
