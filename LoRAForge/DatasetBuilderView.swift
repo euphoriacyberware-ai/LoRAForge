@@ -12,6 +12,8 @@ struct DatasetBuilderView: View {
     @State private var showingEmptyTrash = false
     @State private var discardFinalAlert: DiscardFinalAlert?
     @State private var importingForEntryID: UUID?
+    @State private var showingFolderImport = false
+    @State private var folderImportRequest: FolderImportRequest?
     @State private var captioningEntryID: UUID?
     @State private var showingExport = false
     @State private var importError: String?
@@ -73,6 +75,27 @@ struct DatasetBuilderView: View {
                 importImages(urls, to: entryID)
             }
             importingForEntryID = nil
+        }
+        .fileImporter(
+            isPresented: $showingFolderImport,
+            allowedContentTypes: [.folder]
+        ) { result in
+            switch result {
+            case .success(let url):
+                beginFolderImport(at: url)
+            case .failure(let error):
+                importError = error.localizedDescription
+            }
+        }
+        .sheet(item: $folderImportRequest) { request in
+            FolderImportSheet(request: request, bundleURL: bundleURL) { summary in
+                applyFolderImport(summary)
+            }
+            .onDisappear {
+                if request.isScoped {
+                    request.url.stopAccessingSecurityScopedResource()
+                }
+            }
         }
         .alert("Import error", isPresented: .init(
             get: { importError != nil },
@@ -180,6 +203,11 @@ struct DatasetBuilderView: View {
             } label: {
                 Label("Templates", systemImage: "doc.on.doc")
             }
+
+            Button { showingFolderImport = true } label: {
+                Label("Import folder", systemImage: "folder.badge.plus")
+            }
+            .help("Import a folder of images as new entries")
 
             Button { addEntry() } label: {
                 Label("New", systemImage: "plus")
@@ -582,6 +610,29 @@ struct DatasetBuilderView: View {
             }
         }
         return (images, entries)
+    }
+
+    /// Takes security-scoped access to the chosen folder and hands it to the import sheet.
+    /// Access covers the folder's children and is released when the sheet goes away.
+    ///
+    /// A `false` return means the URL simply is not security-scoped, not that it is
+    /// unreadable, so the import proceeds either way and only the matching stop is skipped.
+    private func beginFolderImport(at url: URL) {
+        let scoped = url.startAccessingSecurityScopedResource()
+        folderImportRequest = FolderImportRequest(url: url, isScoped: scoped)
+    }
+
+    /// Appends the imported entries in one pass. Image files are already on disk by now,
+    /// so there is no window in which autosave could capture a half-built project.
+    private func applyFolderImport(_ summary: FolderImporter.Summary) {
+        let start = (document.entries.map(\.position).max() ?? 0) + 1
+        document.entries.append(contentsOf: FolderImporter.makeEntries(
+            from: summary.items,
+            startPosition: start,
+            defaultConfigJSON: document.defaultGenerationConfigJSON
+        ))
+        reindexPositions()
+        onChanged()
     }
 
     private func importImages(_ urls: [URL], to entryID: UUID) {

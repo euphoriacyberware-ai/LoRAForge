@@ -1,6 +1,9 @@
 import Testing
 import Foundation
 import SwiftData
+import ImageIO
+import UniformTypeIdentifiers
+import CoreGraphics
 @testable import LoRAForge
 import TaggingCore
 
@@ -690,5 +693,494 @@ struct StoreTests {
         #expect(result.totalEntries == 0)
         #expect(result.scopedEntries == 0)
         #expect(result.categoryResults.isEmpty)
+    }
+}
+
+// MARK: - Folder import
+
+@Suite("Folder import")
+struct FolderImportTests {
+
+    private func makeTempDir() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
+    /// Writes a real image so the scan and transcode paths have something genuine to read.
+    @discardableResult
+    private func writeTestImage(
+        at url: URL,
+        type: UTType,
+        width: Int = 8,
+        height: Int = 4,
+        orientation: UInt32? = nil,
+        frames: Int = 1
+    ) throws -> URL {
+        let context = CGContext(
+            data: nil, width: width, height: height,
+            bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        )!
+        context.setFillColor(CGColor(red: 0.2, green: 0.6, blue: 0.9, alpha: 1))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+        let cgImage = context.makeImage()!
+
+        let dest = CGImageDestinationCreateWithURL(
+            url as CFURL, type.identifier as CFString, frames, nil
+        )!
+        let properties: CFDictionary? = orientation.map {
+            [kCGImagePropertyOrientation: $0] as CFDictionary
+        }
+        for _ in 0..<frames {
+            CGImageDestinationAddImage(dest, cgImage, properties)
+        }
+        #expect(CGImageDestinationFinalize(dest))
+        return url
+    }
+
+    // MARK: Scan
+
+    @Test("Scan finds only top-level images and counts subfolders")
+    func scanIsShallow() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try writeTestImage(at: dir.appending(path: "top.png"), type: .png)
+        let sub = dir.appending(path: "nested")
+        try FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+        try writeTestImage(at: sub.appending(path: "buried.png"), type: .png)
+
+        let result = FolderImporter.scan(folder: dir)
+        #expect(result.candidates.count == 1)
+        #expect(result.candidates.first?.stem == "top")
+        #expect(result.subfoldersIgnored == 1)
+    }
+
+    @Test("Scan skips hidden files, sidecars, and non-images")
+    func scanSkipsNonImages() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try writeTestImage(at: dir.appending(path: "real.png"), type: .png)
+        try Data("caption".utf8).write(to: dir.appending(path: "real.txt"))
+        try Data().write(to: dir.appending(path: ".DS_Store"))
+        try Data("notes".utf8).write(to: dir.appending(path: "readme.md"))
+
+        let result = FolderImporter.scan(folder: dir)
+        #expect(result.candidates.count == 1)
+        #expect(result.candidates.first?.stem == "real")
+        #expect(result.orphanSidecars == 0)
+    }
+
+    @Test("Scan pairs sidecars by stem and counts orphans")
+    func scanPairsSidecars() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try writeTestImage(at: dir.appending(path: "a.jpg"), type: .jpeg)
+        try Data("a caption".utf8).write(to: dir.appending(path: "a.txt"))
+        try writeTestImage(at: dir.appending(path: "b.png"), type: .png)
+        try Data("nobody".utf8).write(to: dir.appending(path: "orphan.txt"))
+
+        let result = FolderImporter.scan(folder: dir)
+        #expect(result.candidates.count == 2)
+        #expect(result.candidates.first { $0.stem == "a" }?.sidecarURL != nil)
+        #expect(result.candidates.first { $0.stem == "b" }?.sidecarURL == nil)
+        #expect(result.orphanSidecars == 1)
+        #expect(result.captionCount == 1)
+    }
+
+    @Test("Sidecar pairing is case-insensitive")
+    func scanPairsCaseInsensitively() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try writeTestImage(at: dir.appending(path: "Maya_042.jpg"), type: .jpeg)
+        try Data("a woman".utf8).write(to: dir.appending(path: "maya_042.txt"))
+
+        let result = FolderImporter.scan(folder: dir)
+        #expect(result.candidates.count == 1)
+        #expect(result.candidates.first?.sidecarURL != nil)
+        #expect(result.orphanSidecars == 0)
+    }
+
+    @Test("Scan orders numerically, not lexically")
+    func scanNaturalOrder() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        for name in ["img10.png", "img2.png", "img1.png"] {
+            try writeTestImage(at: dir.appending(path: name), type: .png)
+        }
+
+        let stems = FolderImporter.scan(folder: dir).candidates.map(\.stem)
+        #expect(stems == ["img1", "img2", "img10"])
+    }
+
+    @Test("Supported types exclude vector and non-image formats")
+    func supportedTypes() {
+        #expect(FolderImporter.isSupportedImageType(.png))
+        #expect(FolderImporter.isSupportedImageType(.jpeg))
+        #expect(FolderImporter.isSupportedImageType(.gif))
+        #expect(FolderImporter.isSupportedImageType(.tiff))
+        #expect(!FolderImporter.isSupportedImageType(.svg))
+        #expect(!FolderImporter.isSupportedImageType(.pdf))
+        #expect(!FolderImporter.isSupportedImageType(.plainText))
+        #expect(!FolderImporter.isSupportedImageType(nil))
+    }
+
+    // MARK: Caption decoding
+
+    @Test("Caption decoding strips BOM, CRLF, and the exporter's trailing newline")
+    func captionNormalization() {
+        var bytes = Data([0xEF, 0xBB, 0xBF])
+        bytes.append(Data("a woman,\r\n standing\n".utf8))
+
+        let decoded = FolderImporter.decodeCaption(bytes)
+        #expect(decoded == "a woman,\n standing")
+        #expect(!(decoded ?? "").hasPrefix("\u{FEFF}"))
+    }
+
+    @Test("Caption decoding round-trips what ExportManager writes")
+    func captionRoundTrips() {
+        let caption = "a woman, standing, red hair"
+        #expect(FolderImporter.decodeCaption(Data((caption + "\n").utf8)) == caption)
+    }
+
+    @Test("Caption decoding preserves interior blank lines")
+    func captionKeepsInteriorBlanks() {
+        let caption = "first line\n\nthird line"
+        #expect(FolderImporter.decodeCaption(Data((caption + "\n").utf8)) == caption)
+    }
+
+    @Test("Whitespace-only caption decodes to empty")
+    func captionWhitespaceOnly() {
+        #expect(FolderImporter.decodeCaption(Data("   \n\n".utf8)) == "")
+    }
+
+    // MARK: Conversion
+
+    @Test("Non-PNG input is converted to a real PNG")
+    func convertsToPNG() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let source = try writeTestImage(at: dir.appending(path: "src.jpg"), type: .jpeg)
+        let dest = dir.appending(path: "out.png")
+
+        #expect(FolderImporter.writePNG(from: source, to: dest) == nil)
+        let header = try Data(contentsOf: dest).prefix(8)
+        #expect(Array(header) == [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+    }
+
+    @Test("Clean PNG input is copied byte-for-byte")
+    func pngIsNotReEncoded() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let source = try writeTestImage(at: dir.appending(path: "src.png"), type: .png)
+        let dest = dir.appending(path: "out.png")
+
+        #expect(FolderImporter.writePNG(from: source, to: dest) == nil)
+        #expect(try Data(contentsOf: source) == (try Data(contentsOf: dest)))
+    }
+
+    @Test("A JPEG named .png is transcoded, not copied")
+    func mislabelledJPEGIsTranscoded() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // The extension lies; only ImageIO's sniff catches it.
+        let source = try writeTestImage(at: dir.appending(path: "liar.png"), type: .jpeg)
+        let dest = dir.appending(path: "out.png")
+
+        #expect(FolderImporter.writePNG(from: source, to: dest) == nil)
+        #expect(try Data(contentsOf: source) != (try Data(contentsOf: dest)))
+
+        let out = CGImageSourceCreateWithURL(dest as CFURL, nil)!
+        #expect((CGImageSourceGetType(out) as String?) == UTType.png.identifier)
+    }
+
+    @Test("Multi-frame input yields a single frame")
+    func animatedInputFlattened() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let source = try writeTestImage(at: dir.appending(path: "anim.gif"), type: .gif, frames: 2)
+        let dest = dir.appending(path: "out.png")
+
+        #expect(FolderImporter.writePNG(from: source, to: dest) == nil)
+        let out = CGImageSourceCreateWithURL(dest as CFURL, nil)!
+        #expect(CGImageSourceGetCount(out) == 1)
+    }
+
+    @Test("EXIF orientation is baked in and not carried forward")
+    func orientationIsBaked() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // Orientation 6 means the stored pixels are rotated a quarter turn.
+        let source = try writeTestImage(
+            at: dir.appending(path: "rot.jpg"), type: .jpeg,
+            width: 8, height: 4, orientation: 6
+        )
+        let dest = dir.appending(path: "out.png")
+        #expect(FolderImporter.writePNG(from: source, to: dest) == nil)
+
+        let out = CGImageSourceCreateWithURL(dest as CFURL, nil)!
+        let props = CGImageSourceCopyPropertiesAtIndex(out, 0, nil) as? [CFString: Any]
+        #expect((props?[kCGImagePropertyPixelWidth] as? NSNumber)?.intValue == 4)
+        #expect((props?[kCGImagePropertyPixelHeight] as? NSNumber)?.intValue == 8)
+        #expect(props?[kCGImagePropertyOrientation] == nil)
+    }
+
+    @Test("Unreadable input is reported and leaves no file behind")
+    func unreadableInputSkipped() throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let source = dir.appending(path: "broken.jpg")
+        try Data("not an image".utf8).write(to: source)
+        let dest = dir.appending(path: "out.png")
+
+        #expect(FolderImporter.writePNG(from: source, to: dest) != nil)
+        #expect(!FileManager.default.fileExists(atPath: dest.path))
+    }
+
+    // MARK: Ingest
+
+    @Test("Ingest writes every image and attaches captions")
+    func ingestWritesAll() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try writeTestImage(at: dir.appending(path: "one.png"), type: .png)
+        try writeTestImage(at: dir.appending(path: "two.jpg"), type: .jpeg)
+        try Data("two's caption\n".utf8).write(to: dir.appending(path: "two.txt"))
+
+        let imagesDir = dir.appending(path: "images")
+        let scan = FolderImporter.scan(folder: dir)
+        let summary = await FolderImporter.ingest(scan.candidates, into: imagesDir)
+
+        #expect(summary.items.count == 2)
+        #expect(summary.captionCount == 1)
+        #expect(summary.skipped.isEmpty)
+        #expect(!summary.wasCancelled)
+
+        for item in summary.items {
+            #expect(FileManager.default.fileExists(
+                atPath: imagesDir.appending(path: item.filename).path
+            ))
+        }
+    }
+
+    @Test("A corrupt file is skipped without stopping the import")
+    func ingestSurvivesCorruptFile() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        try writeTestImage(at: dir.appending(path: "a.png"), type: .png)
+        try Data("garbage".utf8).write(to: dir.appending(path: "b.png"))
+        try writeTestImage(at: dir.appending(path: "c.png"), type: .png)
+
+        let imagesDir = dir.appending(path: "images")
+        let scan = FolderImporter.scan(folder: dir)
+        let summary = await FolderImporter.ingest(scan.candidates, into: imagesDir)
+
+        #expect(summary.items.count == 2)
+        #expect(summary.skipped.count == 1)
+        #expect(summary.skipped.first?.name == "b.png")
+        #expect(summary.items.map(\.stem) == ["a", "c"])
+    }
+
+    @Test("Cancelling rolls back every file already written")
+    func ingestCancelRollsBack() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        for name in ["a.png", "b.png", "c.png"] {
+            try writeTestImage(at: dir.appending(path: name), type: .png)
+        }
+
+        let imagesDir = dir.appending(path: "images")
+        let scan = FolderImporter.scan(folder: dir)
+
+        // Injected rather than Task.isCancelled, so the cancellation point is deterministic.
+        nonisolated(unsafe) var calls = 0
+        let summary = await FolderImporter.ingest(
+            scan.candidates,
+            into: imagesDir,
+            isCancelled: { calls += 1; return calls > 2 }
+        )
+
+        #expect(summary.wasCancelled)
+        #expect(summary.items.isEmpty)
+        let leftovers = try FileManager.default.contentsOfDirectory(
+            at: imagesDir, includingPropertiesForKeys: nil
+        )
+        #expect(leftovers.isEmpty)
+    }
+
+    @Test("Progress reports every file and ends at the total")
+    func ingestReportsProgress() async throws {
+        let dir = try makeTempDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        for name in ["a.png", "b.png", "c.png"] {
+            try writeTestImage(at: dir.appending(path: name), type: .png)
+        }
+
+        let scan = FolderImporter.scan(folder: dir)
+        nonisolated(unsafe) var seen: [Int] = []
+        _ = await FolderImporter.ingest(
+            scan.candidates, into: dir.appending(path: "images")
+        ) { done in
+            seen.append(done)
+        }
+
+        #expect(seen == [1, 2, 3])
+    }
+
+    // MARK: Entry mapping
+
+    @Test("Sidecar produces a manual entry, absence keeps tagged mode")
+    func captionModeRule() {
+        let items = [
+            FolderImporter.ImportedItem(filename: "a.png", stem: "a", caption: "a woman"),
+            FolderImporter.ImportedItem(filename: "b.png", stem: "b", caption: nil),
+        ]
+
+        let entries = FolderImporter.makeEntries(
+            from: items, startPosition: 1, defaultConfigJSON: ""
+        )
+
+        #expect(entries[0].captionMode == .manual)
+        #expect(entries[0].manualCaptionText == "a woman")
+        #expect(entries[0].captionPreviewText == "a woman")
+        #expect(entries[0].lockedCaptionText == nil)
+
+        #expect(entries[1].captionMode == .tagged)
+        #expect(entries[1].manualCaptionText.isEmpty)
+    }
+
+    @Test("Imported image is the entry's final")
+    func importedImageIsFinal() {
+        let items = [FolderImporter.ImportedItem(filename: "a.png", stem: "a", caption: nil)]
+        let entries = FolderImporter.makeEntries(
+            from: items, startPosition: 1, defaultConfigJSON: ""
+        )
+
+        #expect(entries[0].finalImage?.filename == "a.png")
+        #expect(entries[0].images.count == 1)
+    }
+
+    @Test("Entry names come from filename stems, positions continue the project")
+    func namingAndPositions() {
+        let items = (1...3).map {
+            FolderImporter.ImportedItem(filename: "\($0).png", stem: "maya_00\($0)", caption: nil)
+        }
+        let entries = FolderImporter.makeEntries(
+            from: items, startPosition: 5, defaultConfigJSON: "{}"
+        )
+
+        #expect(entries.map(\.name) == ["maya_001", "maya_002", "maya_003"])
+        #expect(entries.map(\.position) == [5, 6, 7])
+        #expect(entries[0].generationConfigJSON == "{}")
+    }
+
+    @Test("An empty stem falls back to a positional name")
+    func emptyStemFallback() {
+        let items = [FolderImporter.ImportedItem(filename: "a.png", stem: "   ", caption: nil)]
+        let entries = FolderImporter.makeEntries(
+            from: items, startPosition: 7, defaultConfigJSON: ""
+        )
+        #expect(entries[0].name == "Entry 7")
+    }
+
+    // MARK: Round trip
+
+    @Test("Imported entries round-trip through the bundle")
+    func importedEntriesRoundTrip() throws {
+        let categories = BuiltInCategory.defaultCategories
+        var doc = ProjectDocument(name: "Imported", categories: categories)
+        doc.entries = FolderImporter.makeEntries(
+            from: [FolderImporter.ImportedItem(
+                filename: "x.png", stem: "maya_001", caption: "a woman, standing"
+            )],
+            startPosition: 1,
+            defaultConfigJSON: ""
+        )
+
+        let tempDir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        let bundleURL = tempDir.appending(path: "Imported.loraforge")
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+
+        let schema = SchemaSnapshot(categories: categories, tags: [])
+        try ProjectBundle.create(at: bundleURL, project: doc, schema: schema)
+
+        let loaded = try ProjectBundle(url: bundleURL).readProject()
+        #expect(loaded.entries.count == 1)
+        #expect(loaded.entries[0].name == "maya_001")
+        #expect(loaded.entries[0].captionMode == .manual)
+        #expect(loaded.entries[0].manualCaptionText == "a woman, standing")
+        #expect(loaded.entries[0].finalImage?.filename == "x.png")
+    }
+
+    @Test("Export then import preserves captions and images")
+    func exportImportRoundTrip() async throws {
+        let categories = BuiltInCategory.defaultCategories
+        let tempDir = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tempDir) }
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        // A project with two captioned finals, backed by real PNG bytes.
+        let bundleURL = tempDir.appending(path: "Source.loraforge")
+        var doc = ProjectDocument(name: "Source", categories: categories)
+        let captions = ["a woman, standing", "a woman, seated\n\nsecond paragraph"]
+        try ProjectBundle.create(
+            at: bundleURL, project: doc, schema: SchemaSnapshot(categories: categories, tags: [])
+        )
+        for (index, caption) in captions.enumerated() {
+            let filename = "img\(index).png"
+            try writeTestImage(
+                at: bundleURL.appending(path: "images/\(filename)"), type: .png
+            )
+            var entry = EntryDocument(name: "e\(index)", position: index + 1)
+            entry.images = [ImageDocument(filename: filename, rank: .final)]
+            entry.captionMode = .manual
+            entry.manualCaptionText = caption
+            doc.entries.append(entry)
+        }
+
+        let exportDir = tempDir.appending(path: "export")
+        try FileManager.default.createDirectory(at: exportDir, withIntermediateDirectories: true)
+        _ = try ExportManager.export(
+            document: doc, bundleURL: bundleURL, to: exportDir,
+            baseName: "maya", scope: .finalsOnly, categories: categories, allTags: [:]
+        )
+
+        // Now read that export straight back in.
+        let scan = FolderImporter.scan(folder: exportDir)
+        #expect(scan.candidates.count == 2)
+
+        let imagesDir = tempDir.appending(path: "reimport")
+        let summary = await FolderImporter.ingest(scan.candidates, into: imagesDir)
+        let entries = FolderImporter.makeEntries(
+            from: summary.items, startPosition: 1, defaultConfigJSON: ""
+        )
+
+        #expect(entries.map(\.name) == ["maya_001", "maya_002"])
+        #expect(entries.map(\.manualCaptionText) == captions)
+        #expect(entries.allSatisfy { $0.captionMode == .manual })
+        #expect(entries.allSatisfy { $0.finalImage != nil })
+
+        // Tier-1 byte copy means the exported pixels reach the new bundle untouched.
+        for (index, item) in summary.items.enumerated() {
+            let exported = try Data(contentsOf: exportDir.appending(path: "maya_00\(index + 1).png"))
+            let imported = try Data(contentsOf: imagesDir.appending(path: item.filename))
+            #expect(exported == imported)
+        }
     }
 }
