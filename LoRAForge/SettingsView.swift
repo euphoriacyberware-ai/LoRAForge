@@ -129,14 +129,20 @@ struct DrawThingsConnectionPane: View {
         Form {
             Section("Profiles") {
                 ForEach(profiles) { profile in
-                    HStack {
-                        VStack(alignment: .leading) {
-                            HStack(spacing: 4) {
+                    HStack(spacing: 10) {
+                        Image(systemName: isActive(profile) ? "largecircle.fill.circle" : "circle")
+                            .foregroundStyle(isActive(profile) ? Color.accentColor : Color.secondary)
+                            .imageScale(.large)
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack(spacing: 6) {
                                 Text(profile.name).font(.headline)
                                 if profile.id == defaultUUID {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(.blue)
-                                        .font(.caption)
+                                    Text("Default")
+                                        .font(.caption2)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 1)
+                                        .background(Color.secondary.opacity(0.15), in: Capsule())
+                                        .foregroundStyle(.secondary)
                                 }
                             }
                             Text(profile.address)
@@ -144,7 +150,12 @@ struct DrawThingsConnectionPane: View {
                                 .foregroundStyle(.secondary)
                         }
                         Spacer()
+                        Button(isActive(profile) ? "Reconnect" : "Connect") {
+                            connectToProfile(profile)
+                        }
+                        .buttonStyle(.bordered)
                     }
+                    .contentShape(Rectangle())
                     .contextMenu {
                         Button("Connect") {
                             connectToProfile(profile)
@@ -176,10 +187,6 @@ struct DrawThingsConnectionPane: View {
                     Text("No profiles saved.")
                         .foregroundStyle(.secondary)
                 }
-                Button("Save current as profile\u{2026}") {
-                    saveProfileName = ""
-                    showingSaveSheet = true
-                }
             }
 
             Section("Active connection") {
@@ -208,6 +215,10 @@ struct DrawThingsConnectionPane: View {
                     Text(error)
                         .foregroundStyle(.red)
                         .font(.caption)
+                }
+                Button("Save current as profile\u{2026}") {
+                    saveProfileName = ""
+                    showingSaveSheet = true
                 }
             }
 
@@ -259,9 +270,16 @@ struct DrawThingsConnectionPane: View {
             Button("Cancel", role: .cancel) {
                 pendingSwitchProfile = nil
             }
-        } message: { _ in
-            Text("You have \(generation.pendingCount) items queued. Switching servers will discard them.")
+        } message: { profile in
+            Text("You have \(generation.pendingCount) items queued. Connecting to \(profile.name) will discard them.")
         }
+    }
+
+    /// The profile whose settings match the active connection fields, if any.
+    private func isActive(_ profile: SDConnectionProfile) -> Bool {
+        profile.address == generation.serverAddress
+            && profile.useTLS == generation.useTLS
+            && profile.sharedSecret == generation.sharedSecret
     }
 
     private func refresh() {
@@ -376,6 +394,14 @@ struct OllamaConnectionPane: View {
                             Image(systemName: "trash")
                         }
                         .buttonStyle(.plain)
+                    }
+                    .contentShape(Rectangle())
+                    .contextMenu {
+                        Button("Edit\u{2026}") { editingProfile = profile }
+                        Button("Delete", role: .destructive) {
+                            try? repo.deleteProfile(profile)
+                            refresh()
+                        }
                     }
                 }
                 if profiles.isEmpty {
