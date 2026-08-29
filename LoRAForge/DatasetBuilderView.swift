@@ -76,17 +76,6 @@ struct DatasetBuilderView: View {
             }
             importingForEntryID = nil
         }
-        .fileImporter(
-            isPresented: $showingFolderImport,
-            allowedContentTypes: [.folder]
-        ) { result in
-            switch result {
-            case .success(let url):
-                beginFolderImport(at: url)
-            case .failure(let error):
-                importError = error.localizedDescription
-            }
-        }
         .sheet(item: $folderImportRequest) { request in
             FolderImportSheet(request: request, bundleURL: bundleURL) { summary in
                 applyFolderImport(summary)
@@ -274,6 +263,17 @@ struct DatasetBuilderView: View {
                     }
                 )
                 .frame(width: 280)
+            }
+        }
+        .fileImporter(
+            isPresented: $showingFolderImport,
+            allowedContentTypes: [.folder]
+        ) { result in
+            switch result {
+            case .success(let url):
+                beginFolderImport(at: url)
+            case .failure(let error):
+                importError = error.localizedDescription
             }
         }
     }
