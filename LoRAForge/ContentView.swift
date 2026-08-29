@@ -27,6 +27,8 @@ struct ContentView: View {
     @State private var currentDocument: ProjectDocument?
     @State private var renamingProjectID: UUID?
     @State private var renameText = ""
+    @State private var duplicatingProject: LibraryManager.ProjectInfo?
+    @State private var duplicateName = ""
     @State private var showingQueuePopover = false
     @State private var showingProjectSettings = false
     @State private var importResult: LegacyImporter.BatchImportResult?
@@ -125,6 +127,14 @@ struct ContentView: View {
             Button("Rename") { performRename() }
             Button("Cancel", role: .cancel) { renamingProjectID = nil }
         }
+        .alert("Duplicate project", isPresented: .init(
+            get: { duplicatingProject != nil },
+            set: { if !$0 { duplicatingProject = nil } }
+        )) {
+            TextField("Name", text: $duplicateName)
+            Button("Duplicate") { performDuplicate() }
+            Button("Cancel", role: .cancel) { duplicatingProject = nil }
+        }
         .alert("Delete project?", isPresented: .init(
             get: { projectToDelete != nil },
             set: { if !$0 { projectToDelete = nil } }
@@ -165,6 +175,10 @@ struct ContentView: View {
             renameText = project.name
             renamingProjectID = project.id
         }
+        Button("Duplicate...") {
+            duplicateName = project.name + " Copy"
+            duplicatingProject = project
+        }
         Button("Delete...", role: .destructive) {
             projectToDelete = project
         }
@@ -197,6 +211,16 @@ struct ContentView: View {
         }
         try? library.deleteProject(id: project.id)
         projectToDelete = nil
+    }
+
+    private func performDuplicate() {
+        guard let project = duplicatingProject else { return }
+        let name = duplicateName.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { duplicatingProject = nil; return }
+        if let info = try? library.duplicateProject(id: project.id, newName: name) {
+            sidebarSelection = .project(id: info.id)
+        }
+        duplicatingProject = nil
     }
 
     private func performImport() {
