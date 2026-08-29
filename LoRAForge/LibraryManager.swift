@@ -191,6 +191,45 @@ final class LibraryManager {
         refresh()
     }
 
+    func duplicateProject(id: UUID, newName: String) throws -> ProjectInfo {
+        guard let source = projects.first(where: { $0.id == id }) else {
+            throw CocoaError(.fileNoSuchFile)
+        }
+
+        // If the source is currently loaded and dirty, save it first
+        if loadedDocuments[id] != nil {
+            try saveImmediately(id: id)
+        }
+
+        // Copy entire bundle to new location
+        let sanitized = sanitizeFilename(newName)
+        var destURL = libraryURL.appending(path: "\(sanitized).loraforge")
+        var counter = 2
+        while FileManager.default.fileExists(atPath: destURL.path) {
+            destURL = libraryURL.appending(path: "\(sanitized) \(counter).loraforge")
+            counter += 1
+        }
+        try FileManager.default.copyItem(at: source.url, to: destURL)
+
+        // Patch project.json with new UUID and name
+        let bundle = ProjectBundle(url: destURL)
+        var doc = try bundle.readProject()
+        doc = ProjectDocument(
+            id: UUID(),
+            name: newName,
+            createdAt: Date(),
+            categoryOrder: doc.categoryOrder,
+            categoryEnabled: doc.categoryEnabled,
+            entries: doc.entries,
+            referenceImages: doc.referenceImages,
+            defaultGenerationConfigJSON: doc.defaultGenerationConfigJSON
+        )
+        try bundle.writeProjectAtomic(doc)
+
+        refresh()
+        return ProjectInfo(id: doc.id, name: doc.name, url: destURL)
+    }
+
     // MARK: - Load / Save
 
     func loadDocument(id: UUID) throws -> ProjectDocument? {
