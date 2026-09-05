@@ -11,8 +11,7 @@ struct DatasetBuilderView: View {
     @State private var rankVisibility: Set<ImageRank> = [.final, .shortlist, .candidate]
     @State private var showingEmptyTrash = false
     @State private var discardFinalAlert: DiscardFinalAlert?
-    @State private var importingForEntryID: UUID?
-    @State private var showingFolderImport = false
+    @State private var fileImportMode: FileImportMode?
     @State private var folderImportRequest: FolderImportRequest?
     @State private var captioningEntryID: UUID?
     @State private var showingExport = false
@@ -30,6 +29,13 @@ struct DatasetBuilderView: View {
     @Environment(GenerationService.self) private var generation
     @Environment(TemplateManager.self) private var templateManager
     @Environment(LibraryManager.self) private var library
+
+    private var fileImportContentTypes: [UTType] {
+        switch fileImportMode {
+        case .folder: return [.folder]
+        case .images, nil: return [.image]
+        }
+    }
 
     private var filteredEntries: [EntryDocument] {
         if entryFilter.isEmpty { return document.entries }
@@ -65,16 +71,25 @@ struct DatasetBuilderView: View {
         }
         .fileImporter(
             isPresented: .init(
-                get: { importingForEntryID != nil },
+                get: { fileImportMode != nil },
                 set: { _ in } // cleared in result handler to avoid race
             ),
-            allowedContentTypes: [.image],
+            allowedContentTypes: fileImportContentTypes,
             allowsMultipleSelection: true
         ) { result in
-            if let entryID = importingForEntryID, case .success(let urls) = result {
+            let mode = fileImportMode
+            fileImportMode = nil
+            guard case .success(let urls) = result else { return }
+            switch mode {
+            case .images(let entryID):
                 importImages(urls, to: entryID)
+            case .folder:
+                if let url = urls.first {
+                    beginFolderImport(at: url)
+                }
+            case nil:
+                break
             }
-            importingForEntryID = nil
         }
         .sheet(item: $folderImportRequest) { request in
             FolderImportSheet(request: request, bundleURL: bundleURL) { summary in
@@ -193,7 +208,7 @@ struct DatasetBuilderView: View {
                 Label("Templates", systemImage: "doc.on.doc")
             }
 
-            Button { showingFolderImport = true } label: {
+            Button { fileImportMode = .folder } label: {
                 Label("Import folder", systemImage: "folder.badge.plus")
             }
             .help("Import a folder of images as new entries")
@@ -265,17 +280,6 @@ struct DatasetBuilderView: View {
                 .frame(width: 280)
             }
         }
-        .fileImporter(
-            isPresented: $showingFolderImport,
-            allowedContentTypes: [.folder]
-        ) { result in
-            switch result {
-            case .success(let url):
-                beginFolderImport(at: url)
-            case .failure(let error):
-                importError = error.localizedDescription
-            }
-        }
     }
 
     private var entryListContent: some View {
@@ -291,7 +295,7 @@ struct DatasetBuilderView: View {
                             thumbnailSize: CGFloat(thumbnailSize),
                             captionPreview: entry.captionPreviewText.isEmpty ? "No caption" : entry.captionPreviewText,
                             selectedImageIDs: $selectedImageIDs,
-                            onImport: { importingForEntryID = entry.id },
+                            onImport: { fileImportMode = .images(entryID: entry.id) },
                             onCaption: { captioningEntryID = entry.id },
                             onEditGeneration: { editingGenerationEntryID = entry.id },
                             onGenerate: { generateForEntry(entry) },
@@ -1306,6 +1310,11 @@ private struct LoadTemplateSheet: View {
 
 extension UUID: @retroactive Identifiable {
     public var id: UUID { self }
+}
+
+private enum FileImportMode {
+    case images(entryID: UUID)
+    case folder
 }
 
 private struct DiscardFinalAlert: Identifiable {
