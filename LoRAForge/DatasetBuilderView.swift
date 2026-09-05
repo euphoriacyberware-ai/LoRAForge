@@ -11,6 +11,7 @@ struct DatasetBuilderView: View {
     @State private var rankVisibility: Set<ImageRank> = [.final, .shortlist, .candidate]
     @State private var showingEmptyTrash = false
     @State private var discardFinalAlert: DiscardFinalAlert?
+    @State private var showingFileImporter = false
     @State private var fileImportMode: FileImportMode?
     @State private var folderImportRequest: FolderImportRequest?
     @State private var captioningEntryID: UUID?
@@ -70,17 +71,12 @@ struct DatasetBuilderView: View {
             )
         }
         .fileImporter(
-            isPresented: .init(
-                get: { fileImportMode != nil },
-                set: { _ in } // cleared in result handler to avoid race
-            ),
+            isPresented: $showingFileImporter,
             allowedContentTypes: fileImportContentTypes,
             allowsMultipleSelection: true
         ) { result in
-            let mode = fileImportMode
-            fileImportMode = nil
             guard case .success(let urls) = result else { return }
-            switch mode {
+            switch fileImportMode {
             case .images(let entryID):
                 importImages(urls, to: entryID)
             case .folder:
@@ -208,7 +204,7 @@ struct DatasetBuilderView: View {
                 Label("Templates", systemImage: "doc.on.doc")
             }
 
-            Button { fileImportMode = .folder } label: {
+            Button { fileImportMode = .folder; showingFileImporter = true } label: {
                 Label("Import folder", systemImage: "folder.badge.plus")
             }
             .help("Import a folder of images as new entries")
@@ -295,7 +291,7 @@ struct DatasetBuilderView: View {
                             thumbnailSize: CGFloat(thumbnailSize),
                             captionPreview: entry.captionPreviewText.isEmpty ? "No caption" : entry.captionPreviewText,
                             selectedImageIDs: $selectedImageIDs,
-                            onImport: { fileImportMode = .images(entryID: entry.id) },
+                            onImport: { fileImportMode = .images(entryID: entry.id); showingFileImporter = true },
                             onCaption: { captioningEntryID = entry.id },
                             onEditGeneration: { editingGenerationEntryID = entry.id },
                             onGenerate: { generateForEntry(entry) },
