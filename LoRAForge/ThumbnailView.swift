@@ -38,6 +38,7 @@ struct ThumbnailView: View {
 @Observable
 final class ThumbnailItem {
     var image: Image?
+    @ObservationIgnored var lastAccess: UInt64 = 0
 }
 
 // MARK: - Thumbnail Store
@@ -51,6 +52,7 @@ final class ThumbnailStore {
     private var pending: [(item: ThumbnailItem, url: URL, size: CGFloat)] = []
     private let maxConcurrent = 4
     private let maxCached = 600
+    private var accessCounter: UInt64 = 0
 
     func clearAll() {
         items.removeAll()
@@ -58,8 +60,13 @@ final class ThumbnailStore {
     }
 
     func item(for url: URL, size: CGFloat) -> ThumbnailItem {
-        if let existing = items[url] { return existing }
+        accessCounter += 1
+        if let existing = items[url] {
+            existing.lastAccess = accessCounter
+            return existing
+        }
         let item = ThumbnailItem()
+        item.lastAccess = accessCounter
         items[url] = item
         enqueue(item: item, url: url, size: 200)
         return item
@@ -86,8 +93,12 @@ final class ThumbnailStore {
 
     private func didFinishLoad() {
         activeLoads -= 1
+        // LIFO: prioritize the most recently requested (currently visible) items.
+        // removeLast is O(1) vs removeFirst which is O(n).
         while activeLoads < maxConcurrent, !pending.isEmpty {
-            let next = pending.removeFirst()
+            let next = pending.removeLast()
+            // Skip stale entries whose item was evicted and replaced
+            guard items[next.url] === next.item else { continue }
             startLoad(item: next.item, url: next.url, size: next.size)
         }
         evictIfNeeded()
@@ -95,14 +106,13 @@ final class ThumbnailStore {
 
     private func evictIfNeeded() {
         guard items.count > maxCached else { return }
-        // Drop entries whose item has already been displayed (image loaded).
-        // Keep the most recently added by removing from the front.
-        var toRemove: [URL] = []
-        for (url, item) in items {
-            if item.image != nil { toRemove.append(url) }
-            if items.count - toRemove.count <= maxCached / 2 { break }
+        // LRU: evict items not accessed recently, keeping the most
+        // recently viewed (which are likely still on screen).
+        let sorted = items.sorted { $0.value.lastAccess < $1.value.lastAccess }
+        let evictCount = items.count - maxCached * 3 / 4
+        for (url, _) in sorted.prefix(evictCount) {
+            items.removeValue(forKey: url)
         }
-        for url in toRemove { items.removeValue(forKey: url) }
     }
 
     // MARK: - Image Loading (runs on detached task)
