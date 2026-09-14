@@ -315,7 +315,6 @@ struct LightboxView: View {
     }
 
     private var rankButtons: some View {
-        let _ = rankVersion
         let image = currentImage
         return HStack(spacing: 4) {
             ForEach([ImageRank.candidate, .shortlist, .final], id: \.self) { rank in
@@ -339,6 +338,7 @@ struct LightboxView: View {
                 .help("Discard")
             }
         }
+        .id(rankVersion)
     }
 
     // MARK: - Navigation
