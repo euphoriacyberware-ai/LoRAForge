@@ -213,13 +213,19 @@ struct ProjectSettingsView: View {
 
         for index in document.entries.indices {
             let entry = document.entries[index]
-            guard !entry.isLocked, entry.captionMode == .tagged else { continue }
+            guard entry.captionMode == .tagged else { continue }
             let domainAssignments = entry.assignments.map {
                 TagAssignment(tagID: $0.tagID, selectionOrder: $0.selectionOrder)
             }
-            document.entries[index].captionPreviewText = CaptionRenderer.render(
+            let rendered = CaptionRenderer.render(
                 assignments: domainAssignments, tags: allTags, categories: enabledCats
             )
+            if entry.isLocked {
+                document.entries[index].driftDetected = (rendered != entry.lockedCaptionText)
+            } else {
+                document.entries[index].captionPreviewText = rendered
+                document.entries[index].driftDetected = false
+            }
         }
         onChanged()
     }

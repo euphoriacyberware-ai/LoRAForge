@@ -361,10 +361,12 @@ struct CaptionEditorView: View {
 
     private func updatePreview() {
         entry.captionPreviewText = currentCaptionText
+        entry.driftDetected = hasDrift
     }
 
     private func lockEntry() {
         entry.lockedCaptionText = currentCaptionText
+        entry.driftDetected = false
         updatePreview()
         onChanged()
     }
@@ -374,6 +376,7 @@ struct CaptionEditorView: View {
             showingUnlockDiff = true
         }
         entry.lockedCaptionText = nil
+        entry.driftDetected = false
         updatePreview()
         onChanged()
     }

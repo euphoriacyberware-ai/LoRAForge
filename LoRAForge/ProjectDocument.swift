@@ -68,6 +68,7 @@ struct EntryDocument: Codable, Identifiable {
     var manualCaptionText: String
     var lockedCaptionText: String?
     var captionPreviewText: String
+    var driftDetected: Bool
     var generationPrompt: String
     var generationNegativePrompt: String
     var generationSeed: Int64?
@@ -80,7 +81,7 @@ struct EntryDocument: Codable, Identifiable {
     // Legacy key kept for decoding existing projects
     private enum CodingKeys: String, CodingKey {
         case id, name, position, images, assignments, captionMode
-        case manualCaptionText, lockedCaptionText, captionPreviewText
+        case manualCaptionText, lockedCaptionText, captionPreviewText, driftDetected
         case generationPrompt, generationNegativePrompt
         case generationSeed, useCustomSeed
         case generationConfigJSON, useCustomConfig
@@ -97,6 +98,7 @@ struct EntryDocument: Codable, Identifiable {
         self.manualCaptionText = ""
         self.lockedCaptionText = nil
         self.captionPreviewText = ""
+        self.driftDetected = false
         self.generationPrompt = ""
         self.generationNegativePrompt = ""
         self.generationSeed = nil
@@ -116,6 +118,7 @@ struct EntryDocument: Codable, Identifiable {
         manualCaptionText = try c.decode(String.self, forKey: .manualCaptionText)
         lockedCaptionText = try c.decodeIfPresent(String.self, forKey: .lockedCaptionText)
         captionPreviewText = try c.decodeIfPresent(String.self, forKey: .captionPreviewText) ?? ""
+        driftDetected = try c.decodeIfPresent(Bool.self, forKey: .driftDetected) ?? false
         generationPrompt = try c.decode(String.self, forKey: .generationPrompt)
         generationNegativePrompt = try c.decode(String.self, forKey: .generationNegativePrompt)
         generationSeed = try c.decodeIfPresent(Int64.self, forKey: .generationSeed)
@@ -137,6 +140,7 @@ struct EntryDocument: Codable, Identifiable {
         try c.encode(manualCaptionText, forKey: .manualCaptionText)
         try c.encodeIfPresent(lockedCaptionText, forKey: .lockedCaptionText)
         try c.encode(captionPreviewText, forKey: .captionPreviewText)
+        try c.encode(driftDetected, forKey: .driftDetected)
         try c.encode(generationPrompt, forKey: .generationPrompt)
         try c.encode(generationNegativePrompt, forKey: .generationNegativePrompt)
         try c.encodeIfPresent(generationSeed, forKey: .generationSeed)

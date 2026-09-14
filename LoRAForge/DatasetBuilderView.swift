@@ -1,6 +1,7 @@
 import SwiftUI
 import CryptoKit
 import UniformTypeIdentifiers
+import TaggingCore
 
 struct DatasetBuilderView: View {
     @Binding var document: ProjectDocument
@@ -30,6 +31,7 @@ struct DatasetBuilderView: View {
     @Environment(GenerationService.self) private var generation
     @Environment(TemplateManager.self) private var templateManager
     @Environment(LibraryManager.self) private var library
+    @Environment(TagRepository.self) private var repo
 
     private var fileImportContentTypes: [UTType] {
         switch fileImportMode {
@@ -52,6 +54,7 @@ struct DatasetBuilderView: View {
             Divider()
             entryList
         }
+        .onAppear(perform: refreshDrift)
         .navigationTitle("Dataset Builder")
         .alert("Empty trash?", isPresented: $showingEmptyTrash) {
             Button("Empty trash", role: .destructive) { emptyTrash() }
@@ -152,6 +155,7 @@ struct DatasetBuilderView: View {
                     tagFrequency: tagFrequency,
                     onChanged: onChanged
                 )
+                .onDisappear { refreshDrift() }
             }
         }
     }
@@ -587,6 +591,43 @@ struct DatasetBuilderView: View {
         onChanged()
     }
 
+    private func refreshDrift() {
+        let categories = (try? repo.allCategories()) ?? []
+        let enabledCats: [TagCategory] = document.categoryOrder.compactMap { catID in
+            guard document.categoryEnabled[catID] != false else { return nil }
+            return categories.first { $0.id == catID }
+        }
+        let allTags: [UUID: Tag] = categories.compactMap { cat in
+            (try? repo.tags(in: cat.id))?.map { (cat.id, $0) }
+        }
+        .flatMap { $0 }
+        .reduce(into: [UUID: Tag]()) { $0[$1.1.id] = $1.1 }
+
+        var changed = false
+        for index in document.entries.indices {
+            let entry = document.entries[index]
+            guard entry.isLocked, entry.captionMode == .tagged else {
+                if entry.driftDetected {
+                    document.entries[index].driftDetected = false
+                    changed = true
+                }
+                continue
+            }
+            let domainAssignments = entry.assignments.map {
+                TagAssignment(tagID: $0.tagID, selectionOrder: $0.selectionOrder)
+            }
+            let rendered = CaptionRenderer.render(
+                assignments: domainAssignments, tags: allTags, categories: enabledCats
+            )
+            let drifted = (rendered != entry.lockedCaptionText)
+            if entry.driftDetected != drifted {
+                document.entries[index].driftDetected = drifted
+                changed = true
+            }
+        }
+        if changed { onChanged() }
+    }
+
     private func emptyTrash() {
         for entryIdx in document.entries.indices {
             let discarded = document.entries[entryIdx].images.filter { $0.rank == .discarded }
@@ -923,6 +964,11 @@ private struct EntryRow: View {
                         Label("Locked", systemImage: "lock.fill")
                             .font(.caption)
                             .foregroundStyle(.secondary)
+                    }
+                    if entry.driftDetected {
+                        Label("Drifted", systemImage: "exclamationmark.triangle")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
                     }
                 }
             }
