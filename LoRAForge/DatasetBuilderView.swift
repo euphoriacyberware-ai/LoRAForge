@@ -27,7 +27,8 @@ struct DatasetBuilderView: View {
     #if os(macOS)
     @State private var lightboxManager = LightboxWindowManager()
     #endif
-    @AppStorage("thumbnailSize") private var thumbnailSize: Double = 100
+    @AppStorage("thumbnailSize") private var thumbnailSize: Double = 160
+    private static let thumbnailSizeRange: ClosedRange<Double> = 130...270
     @Environment(GenerationService.self) private var generation
     @Environment(TemplateManager.self) private var templateManager
     @Environment(LibraryManager.self) private var library
@@ -174,7 +175,7 @@ struct DatasetBuilderView: View {
 
             HStack(spacing: 4) {
                 Image(systemName: "photo").font(.caption2).foregroundStyle(.secondary)
-                Slider(value: $thumbnailSize, in: 60...200).frame(width: 100)
+                Slider(value: $thumbnailSize, in: Self.thumbnailSizeRange).frame(width: 100)
                 Image(systemName: "photo").font(.caption).foregroundStyle(.secondary)
             }
 
@@ -292,7 +293,7 @@ struct DatasetBuilderView: View {
                             entry: entry,
                             bundleURL: bundleURL,
                             visibleRanks: rankVisibility,
-                            thumbnailSize: CGFloat(thumbnailSize),
+                            thumbnailSize: CGFloat(min(max(thumbnailSize, Self.thumbnailSizeRange.lowerBound), Self.thumbnailSizeRange.upperBound)),
                             captionPreview: entry.captionPreviewText.isEmpty ? "No caption" : entry.captionPreviewText,
                             selectedImageIDs: $selectedImageIDs,
                             onImport: { fileImportMode = .images(entryID: entry.id); showingFileImporter = true },
@@ -919,7 +920,7 @@ private struct EntryRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             entryHeader
-                .frame(width: 320)
+                .frame(width: 420)
                 .padding(8)
                 .draggable(entry.id.uuidString) {
                     Text(entry.name)
@@ -991,11 +992,25 @@ private struct EntryRow: View {
                     Label("Add images", systemImage: "photo.badge.plus")
                 }
                 .help("Import images")
+                
+                Button(action: onGenerate) {
+                    Label("Generate", systemImage: "sparkles")
+                }
+                .disabled(!generation.isConnected)
+                .help("Generate one image")
+                
+
             }
             .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
-            .font(.system(size: 18))
+            .buttonStyle(.bordered)
+            .font(.system(size: 16))
         }
+        .padding()
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.thickMaterial, lineWidth: 2)
+        )
         .contentShape(Rectangle())
         .contextMenu {
             Button("Generate", systemImage: "sparkles", action: onGenerate)
@@ -1090,6 +1105,7 @@ private struct ImageThumbnail: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
+            // preview image
             loadedImage
                 .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -1097,7 +1113,9 @@ private struct ImageThumbnail: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.accentColor, lineWidth: isSelected ? 3 : 0)
                 )
-
+                .shadow(color: .black.opacity(0.5), radius: 1, x: 1, y: 1)
+            
+            // rank icon
             if let icon = image.rank.badgeIcon {
                 Image(systemName: icon)
                     .font(.caption)
