@@ -12,6 +12,7 @@ struct ReferenceLibraryView: View {
     @State private var imageToRemove: ReferenceImageDocument?
     @State private var imagesToRemove: Set<UUID> = []
     @State private var errorMessage: String?
+    @State private var appendNotice: String?
     @State private var isDropTargeted = false
     @State private var selectedImageIDs: Set<UUID> = []
     @State private var lightboxRefID: UUID?
@@ -88,6 +89,14 @@ struct ReferenceLibraryView: View {
                 Text("These images are not referenced by any entries.")
             }
         }
+        .alert("Some entries were skipped", isPresented: .init(
+            get: { appendNotice != nil },
+            set: { if !$0 { appendNotice = nil } }
+        )) {
+            Button("OK") { appendNotice = nil }
+        } message: {
+            Text(appendNotice ?? "")
+        }
         .alert("Error", isPresented: .init(
             get: { errorMessage != nil },
             set: { if !$0 { errorMessage = nil } }
@@ -137,7 +146,7 @@ struct ReferenceLibraryView: View {
                         bundleURL: bundleURL,
                         usageCount: entriesUsing(ref.id),
                         onAppendToAll: { appendReferenceToAllEntries(ref.id) },
-                        onReplaceInAll: { replaceReferenceInAllEntries(ref.id) },
+                        onReplaceInAll: { replaceReferencesInAllEntries([ref.id]) },
                         onExport: { exportReferenceImages(Set([ref.id])) },
                         onRemove: { imageToRemove = ref }
                     )
@@ -196,7 +205,7 @@ struct ReferenceLibraryView: View {
                         onDoubleTap: { lightboxRefID = refImage.id },
                         onRemove: { imageToRemove = refImage },
                         onAppendToAll: { appendReferenceToAllEntries(refImage.id) },
-                        onReplaceInAll: { replaceReferenceInAllEntries(refImage.id) },
+                        onReplaceInAll: { replaceReferencesInAllEntries([refImage.id]) },
                         onExport: { exportReferenceImages(Set([refImage.id])) }
                     )
                 }
@@ -223,9 +232,9 @@ struct ReferenceLibraryView: View {
             .disabled(selectedImageIDs.count > 1)
 
             Button("Replace in all entries", systemImage: "arrow.triangle.2.circlepath") {
-                for refID in selectedImageIDs {
-                    replaceReferenceInAllEntries(refID)
-                }
+                // Library order, so the result doesn't depend on Set iteration order.
+                let orderedIDs = document.referenceImages.map(\.id).filter { selectedImageIDs.contains($0) }
+                replaceReferencesInAllEntries(orderedIDs)
             }
             .disabled(selectedImageIDs.count > EntryDocument.maxReferenceImages)
 
@@ -353,18 +362,34 @@ struct ReferenceLibraryView: View {
         document.entries.filter { $0.referenceImageIDs.contains(refID) }.count
     }
 
+    /// Appends to every entry that has room. Entries already at the reference
+    /// limit are skipped and reported rather than pushed past it.
     private func appendReferenceToAllEntries(_ refID: UUID) {
+        let limit = EntryDocument.maxReferenceImages
+        var added = 0
+        var skipped = 0
         for i in document.entries.indices {
-            if !document.entries[i].referenceImageIDs.contains(refID) {
+            guard !document.entries[i].referenceImageIDs.contains(refID) else { continue }
+            if document.entries[i].referenceImageIDs.count >= limit {
+                skipped += 1
+            } else {
                 document.entries[i].referenceImageIDs.append(refID)
+                added += 1
             }
         }
-        onChanged()
+        if added > 0 { onChanged() }
+        if skipped > 0 {
+            let addedText = "Added to \(added) entr\(added == 1 ? "y" : "ies")."
+            let skippedText = skipped == 1
+                ? "1 entry already had \(limit) references and was skipped."
+                : "\(skipped) entries already had \(limit) references and were skipped."
+            appendNotice = "\(addedText) \(skippedText)"
+        }
     }
 
-    private func replaceReferenceInAllEntries(_ refID: UUID) {
+    private func replaceReferencesInAllEntries(_ refIDs: [UUID]) {
         for i in document.entries.indices {
-            document.entries[i].referenceImageIDs = [refID]
+            document.entries[i].referenceImageIDs = refIDs
         }
         onChanged()
     }
