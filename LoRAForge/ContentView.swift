@@ -339,8 +339,52 @@ struct ContentView: View {
 
     // MARK: - Detail
 
-    @ViewBuilder
     private var detail: some View {
+        Group {
+            detailContent
+        }
+        // Attached at the detail-column level so connection and queue
+        // controls are present on every sidebar selection.
+        .toolbar { generationToolbarItems }
+    }
+
+    @ToolbarContentBuilder
+    private var generationToolbarItems: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+                // Draw Things connection toggle
+                Button {
+                    if generation.isConnected {
+                        generation.disconnect()
+                    } else {
+                        generation.connect()
+                    }
+                } label: {
+                    Label(
+                        generation.isConnected ? "Connected" : "Connect",
+                        systemImage: generation.isConnected ? "bolt.fill" : "bolt.slash"
+                    )
+                }
+                .labelStyle(.iconOnly)
+                .help(generation.isConnected
+                      ? "Connected to Draw Things — click to disconnect"
+                      : "Connect to Draw Things at \(generation.serverAddress)")
+                .foregroundStyle(generation.isConnected ? .green : .secondary)
+
+                // Queue manager — visible when items are queued or processing
+                if generation.pendingCount > 0 || generation.isProcessing {
+                    Button { showingQueuePopover.toggle() } label: {
+                        Label("Queue", systemImage: "hourglass")
+                    }
+                    .badge(generation.pendingCount + (generation.isProcessing ? 1 : 0))
+                    .popover(isPresented: $showingQueuePopover) {
+                        QueueManagerView()
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
         if sidebarSelection == .tagLibrary {
             TagLibraryView()
         } else if sidebarSelection == .configLibrary {
@@ -415,36 +459,6 @@ struct ContentView: View {
                     .help(unfilled.isEmpty
                           ? "All entries have a final image"
                           : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final — \(generateUnfilledCount * unfilled.count) total")
-                }
-
-                // Draw Things connection toggle
-                Button {
-                    if generation.isConnected {
-                        generation.disconnect()
-                    } else {
-                        generation.connect()
-                    }
-                } label: {
-                    Label(
-                        generation.isConnected ? "Connected" : "Connect",
-                        systemImage: generation.isConnected ? "bolt.fill" : "bolt.slash"
-                    )
-                }
-                .labelStyle(.iconOnly)
-                .help(generation.isConnected
-                      ? "Connected to Draw Things — click to disconnect"
-                      : "Connect to Draw Things at \(generation.serverAddress)")
-                .foregroundStyle(generation.isConnected ? .green : .secondary)
-
-                // Queue manager — visible when items are queued or processing
-                if generation.pendingCount > 0 || generation.isProcessing {
-                    Button { showingQueuePopover.toggle() } label: {
-                        Label("Queue", systemImage: "hourglass")
-                    }
-                    .badge(generation.pendingCount + (generation.isProcessing ? 1 : 0))
-                    .popover(isPresented: $showingQueuePopover) {
-                        QueueManagerView()
-                    }
                 }
 
                 // Project settings — hidden on Tag Library
