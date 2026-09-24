@@ -56,7 +56,7 @@ struct DatasetBuilderView: View {
             entryList
         }
         .onAppear(perform: refreshDrift)
-        .navigationTitle("Dataset Builder")
+        .navigationTitle(document.name)
         .alert("Empty trash?", isPresented: $showingEmptyTrash) {
             Button("Empty trash", role: .destructive) { emptyTrash() }
             Button("Cancel", role: .cancel) {}
@@ -1113,7 +1113,6 @@ private struct ImageThumbnail: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.accentColor, lineWidth: isSelected ? 3 : 0)
                 )
-                .shadow(color: .black.opacity(0.5), radius: 1, x: 1, y: 1)
             
             // rank icon
             if let icon = image.rank.badgeIcon {

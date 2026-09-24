@@ -49,7 +49,7 @@ struct ReferenceLibraryView: View {
             handleDrop(providers)
             return true
         }
-        .navigationTitle("Reference Library")
+        .navigationTitle(document.name)
         .fileImporter(
             isPresented: $showingFilePicker,
             allowedContentTypes: [.image],
