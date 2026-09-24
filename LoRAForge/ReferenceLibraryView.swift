@@ -29,10 +29,12 @@ struct ReferenceLibraryView: View {
                     systemImage: "photo.stack",
                     description: Text("Drop images here or use the + button to add reference images.")
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 contentArea
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .overlay {
             if isDropTargeted {
                 RoundedRectangle(cornerRadius: 8)
