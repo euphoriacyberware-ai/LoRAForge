@@ -937,7 +937,7 @@ private struct EntryRow: View {
         HStack(alignment: .top, spacing: 8) {
             // Final image thumbnail
             finalThumbnail
-                .frame(width: 64, height: 64)
+                .frame(width: 96, height: 96)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
 
             // Center: name, caption, count
@@ -994,7 +994,7 @@ private struct EntryRow: View {
             }
             .labelStyle(.iconOnly)
             .buttonStyle(.borderless)
-            .font(.headline)
+            .font(.system(size: 18))
         }
         .contentShape(Rectangle())
         .contextMenu {
