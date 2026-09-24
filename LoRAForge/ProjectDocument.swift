@@ -76,6 +76,9 @@ struct EntryDocument: Codable, Identifiable {
     var generationConfigJSON: String
     var referenceImageIDs: [UUID]
 
+    /// App-level limit on reference images per entry (design §5.1).
+    static let maxReferenceImages = 6
+
     var isLocked: Bool { lockedCaptionText != nil }
 
     // Legacy key kept for decoding existing projects

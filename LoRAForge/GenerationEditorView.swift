@@ -11,27 +11,43 @@ struct GenerationEditorView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(GenerationPresetRepository.self) private var presetRepo
-    @State private var showingPromptTab = true // true = prompt, false = negative
+    @State private var selectedTab: EditorTab = .prompt
     @State private var showingRefPicker = false
     @State private var refPickerSlot = 0
     @State private var configModel: ConfigEditorModel?
     @State private var presets: [SDGenerationPreset] = []
 
+    private enum EditorTab: Hashable {
+        case prompt, configuration
+    }
+
     var body: some View {
         NavigationStack {
-            HStack(spacing: 0) {
-                promptPanel
-                    .frame(minWidth: 260, idealWidth: 340)
+            VStack(spacing: 0) {
+                // Inline rather than a .principal toolbar item: macOS sheets
+                // don't render principal toolbar items.
+                Picker("", selection: $selectedTab) {
+                    Text("Prompt").tag(EditorTab.prompt)
+                    Text("Configuration").tag(EditorTab.configuration)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
                 Divider()
-                seedAndReferencesPanel
-                    .frame(minWidth: 220, idealWidth: 280)
-                Divider()
-                configPanel
-                    .frame(minWidth: 300, idealWidth: 400)
+
+                switch selectedTab {
+                case .prompt:
+                    promptTab
+                case .configuration:
+                    configPanel
+                }
             }
             .navigationTitle("Entry generation editor")
             #if os(macOS)
-            .frame(minWidth: 900, idealWidth: 1100, minHeight: 550, idealHeight: 650)
+            .frame(minWidth: 720, idealWidth: 1000, minHeight: 550, idealHeight: 650)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -39,9 +55,29 @@ struct GenerationEditorView: View {
                 }
             }
         }
+        .onAppear {
+            presets = (try? presetRepo.allPresets()) ?? []
+            initConfigModel()
+        }
     }
 
-    // MARK: - Left: Name + Prompt
+    // MARK: - Prompt tab: prompts (⅔) + seed and references (⅓)
+
+    private var promptTab: some View {
+        GeometryReader { geo in
+            HStack(spacing: 0) {
+                promptPanel
+                    .frame(width: geo.size.width * 2 / 3)
+                Divider()
+                ScrollView {
+                    seedAndReferencesPanel
+                }
+                .frame(maxWidth: .infinity)
+            }
+        }
+    }
+
+    // MARK: - Left: Name + Prompts
 
     private var promptPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -54,26 +90,32 @@ struct GenerationEditorView: View {
                     .onChange(of: entry.name) { onChanged() }
             }
 
-            Picker("", selection: $showingPromptTab) {
-                Text("Prompt").tag(true)
-                Text("Negative").tag(false)
-            }
-            .pickerStyle(.segmented)
+            GeometryReader { geo in
+                let available = max(geo.size.height - 48, 0)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Prompt")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    TextEditor(text: $entry.generationPrompt)
+                        .font(.body)
+                        .frame(height: available * 0.6)
+                        .onChange(of: entry.generationPrompt) { onChanged() }
 
-            if showingPromptTab {
-                TextEditor(text: $entry.generationPrompt)
-                    .font(.body)
-                    .onChange(of: entry.generationPrompt) { onChanged() }
-            } else {
-                TextEditor(text: $entry.generationNegativePrompt)
-                    .font(.body)
-                    .onChange(of: entry.generationNegativePrompt) { onChanged() }
+                    Text("Negative prompt")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 8)
+                    TextEditor(text: $entry.generationNegativePrompt)
+                        .font(.body)
+                        .frame(height: available * 0.4)
+                        .onChange(of: entry.generationNegativePrompt) { onChanged() }
+                }
             }
         }
         .padding()
     }
 
-    // MARK: - Center: Seed + Reference Images
+    // MARK: - Right: Seed + Reference Images
 
     private var seedAndReferencesPanel: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -108,19 +150,19 @@ struct GenerationEditorView: View {
 
             Divider()
 
-            // Reference Images — four slots
+            // Reference images
             HStack {
                 Text("Reference images")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(entry.referenceImageIDs.count)/4")
+                Text("\(entry.referenceImageIDs.count)/\(EntryDocument.maxReferenceImages)")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
             }
 
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
-                ForEach(0..<4, id: \.self) { slot in
+                ForEach(0..<EntryDocument.maxReferenceImages, id: \.self) { slot in
                     refSlotView(slot: slot)
                 }
             }
@@ -203,14 +245,14 @@ struct GenerationEditorView: View {
                     .foregroundStyle(.quaternary)
             }
             .onTapGesture {
-                guard entry.referenceImageIDs.count < 4 || slot < entry.referenceImageIDs.count else { return }
+                guard entry.referenceImageIDs.count < EntryDocument.maxReferenceImages || slot < entry.referenceImageIDs.count else { return }
                 guard !referenceImages.isEmpty else { return }
                 refPickerSlot = slot
                 showingRefPicker = true
             }
     }
 
-    // MARK: - Right: Generation Configuration
+    // MARK: - Configuration tab
 
     private var configPanel: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -247,10 +289,6 @@ struct GenerationEditorView: View {
                 .foregroundStyle(.tertiary)
         }
         .padding()
-        .onAppear {
-            presets = (try? presetRepo.allPresets()) ?? []
-            initConfigModel()
-        }
     }
 
     private func initConfigModel() {

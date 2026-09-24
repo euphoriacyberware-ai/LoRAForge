@@ -225,7 +225,7 @@ struct ReferenceLibraryView: View {
                     replaceReferenceInAllEntries(refID)
                 }
             }
-            .disabled(selectedImageIDs.count > 4)
+            .disabled(selectedImageIDs.count > EntryDocument.maxReferenceImages)
 
             Button("Remove", systemImage: "trash", role: .destructive) {
                 if selectedImageIDs.count == 1, let refID = selectedImageIDs.first,
