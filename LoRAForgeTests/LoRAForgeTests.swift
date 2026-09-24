@@ -353,6 +353,168 @@ struct StoreTests {
         #expect(doc?.name == "New Name")
     }
 
+    // MARK: - Sidebar folders
+
+    private func tempLibraryDir() -> URL {
+        FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    }
+
+    /// Compares file locations, ignoring trailing slashes and the /var → /private/var symlink.
+    private func samePath(_ a: URL?, _ b: URL) -> Bool {
+        guard let a else { return false }
+        return a.resolvingSymlinksInPath().path(percentEncoded: false).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            == b.resolvingSymlinksInPath().path(percentEncoded: false).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    @Test("Library scan finds folders and bundles one level deep only")
+    func libraryFolderScan() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        try library.createFolder(name: "Empty")
+        let top = try library.createProject(name: "Loose", repo: repo)
+        let inFolder = try library.createProject(name: "Head", folder: "Maya", repo: repo)
+
+        // A bundle two levels deep is not part of the library
+        let deep = dir.appending(path: "Maya/Nested")
+        try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)
+        try ProjectBundle.create(
+            at: deep.appending(path: "Deep.loraforge"),
+            project: ProjectDocument(name: "Deep", categories: BuiltInCategory.defaultCategories),
+            schema: SchemaSnapshot(categories: BuiltInCategory.defaultCategories, tags: [])
+        )
+        library.refresh()
+
+        #expect(library.folders == ["Empty", "Maya"])
+        #expect(library.projects.count == 2)
+        #expect(library.projects.first { $0.id == top.id }?.folder == nil)
+        #expect(library.projects.first { $0.id == inFolder.id }?.folder == "Maya")
+        #expect(!library.projects.contains { $0.name == "Deep" })
+    }
+
+    @Test("Moving a project keeps its UUID and resolves the new bundle URL")
+    func libraryMoveProject() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        let info = try library.createProject(name: "Body", repo: repo)
+
+        try library.moveProject(id: info.id, toFolder: "Maya")
+        #expect(library.projects.first { $0.id == info.id }?.folder == "Maya")
+        #expect(samePath(library.bundleURL(for: info.id), dir.appending(path: "Maya/Body.loraforge")))
+        #expect(try library.loadDocument(id: info.id)?.name == "Body")
+
+        // Name collision on the way back out gets a suffix
+        _ = try library.createProject(name: "Body", repo: repo)
+        try library.moveProject(id: info.id, toFolder: nil)
+        #expect(library.projects.first { $0.id == info.id }?.folder == nil)
+        #expect(library.bundleURL(for: info.id)?.lastPathComponent == "Body 2.loraforge")
+    }
+
+    @Test("Rename and duplicate keep a project in its folder")
+    func libraryRenameDuplicateInFolder() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        let info = try library.createProject(name: "Head", folder: "Maya", repo: repo)
+
+        try library.renameProject(id: info.id, to: "Face")
+        #expect(library.projects.first { $0.id == info.id }?.folder == "Maya")
+        #expect(samePath(library.bundleURL(for: info.id), dir.appending(path: "Maya/Face.loraforge")))
+
+        let copy = try library.duplicateProject(id: info.id, newName: "Face copy")
+        #expect(library.projects.first { $0.id == copy.id }?.folder == "Maya")
+    }
+
+    @Test("Deleting a folder can ungroup or delete its projects")
+    func libraryDeleteFolder() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Keep")
+        try library.createFolder(name: "Drop")
+        let kept = try library.createProject(name: "A", folder: "Keep", repo: repo)
+        _ = try library.createProject(name: "B", folder: "Drop", repo: repo)
+
+        try library.deleteFolder("Keep", deletingProjects: false)
+        #expect(!library.folders.contains("Keep"))
+        #expect(library.projects.first { $0.id == kept.id }?.folder == nil)
+
+        try library.deleteFolder("Drop", deletingProjects: true)
+        #expect(library.folders.isEmpty)
+        #expect(library.projects.map(\.id) == [kept.id])
+    }
+
+    @Test("Ungrouping keeps a folder that still holds other files")
+    func libraryDeleteFolderWithStrayFile() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        let info = try library.createProject(name: "A", folder: "Maya", repo: repo)
+        try Data("notes".utf8).write(to: dir.appending(path: "Maya/notes.txt"))
+
+        #expect(throws: LibraryManager.FolderError.self) {
+            try library.deleteFolder("Maya", deletingProjects: false)
+        }
+        #expect(library.folders == ["Maya"])
+        #expect(library.projects.first { $0.id == info.id }?.folder == nil)
+        #expect(FileManager.default.fileExists(atPath: dir.appending(path: "Maya/notes.txt").path))
+    }
+
+    @Test("Folder names get a suffix on create and never merge on rename")
+    func libraryFolderNaming() throws {
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        #expect(try library.createFolder(name: "Maya") == "Maya")
+        #expect(try library.createFolder(name: "Maya") == "Maya 2")
+        #expect(throws: LibraryManager.FolderError.self) {
+            try library.renameFolder("Maya 2", to: "Maya")
+        }
+        #expect(try library.renameFolder("Maya 2", to: "Nia") == "Nia")
+        #expect(library.folders == ["Maya", "Nia"])
+    }
+
+    @Test("Moving the library carries folders across")
+    func libraryMigrateFolders() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        let dest = tempLibraryDir()
+        defer {
+            try? FileManager.default.removeItem(at: dir)
+            try? FileManager.default.removeItem(at: dest)
+        }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        let info = try library.createProject(name: "Head", folder: "Maya", repo: repo)
+
+        try library.migrateLibrary(to: dest)
+        #expect(library.folders == ["Maya"])
+        #expect(samePath(library.bundleURL(for: info.id), dest.appending(path: "Maya/Head.loraforge")))
+    }
+
     @Test("Project snapshots category order at creation")
     func categoryOrderSnapshot() throws {
         let repo = try freshRepository()
