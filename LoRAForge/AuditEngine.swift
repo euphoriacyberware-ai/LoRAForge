@@ -132,4 +132,19 @@ enum AuditEngine {
             categoryResults: categoryResults
         )
     }
+
+    /// Tagged-mode entries with no tag in `categoryID`. Uses the same "any tag in the
+    /// category" rule as audit coverage, but does not require a final image.
+    static func entriesMissingCategory(
+        _ categoryID: UUID,
+        in entries: [EntryDocument],
+        tagCategory: [UUID: UUID]
+    ) -> Set<UUID> {
+        Set(entries.lazy
+            .filter { $0.captionMode == .tagged }
+            .filter { entry in
+                !entry.assignments.contains { tagCategory[$0.tagID] == categoryID }
+            }
+            .map(\.id))
+    }
 }

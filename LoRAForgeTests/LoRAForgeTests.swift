@@ -1400,3 +1400,37 @@ struct ServerCatalogTests {
         #expect(ServerCatalog(reply: reply) == .available(models: 0, loras: 4, controlNets: 0))
     }
 }
+
+// MARK: - Highlight missing category
+
+@Suite("Missing category highlight")
+@MainActor
+struct MissingCategoryTests {
+    @Test("Flags tagged entries with no tag in the category, final or not")
+    func missingCategory() {
+        let pose = UUID(), expression = UUID()
+        let standing = UUID(), smiling = UUID()
+        let index = [standing: pose, smiling: expression]
+
+        var hasPose = EntryDocument(name: "Has pose", position: 1)
+        hasPose.captionMode = .tagged
+        hasPose.images = [ImageDocument(filename: "a.png", rank: .final)]
+        hasPose.assignments = [AssignmentDocument(tagID: standing, selectionOrder: 0)]
+
+        var noPose = EntryDocument(name: "No pose", position: 2)
+        noPose.captionMode = .tagged
+        noPose.images = [ImageDocument(filename: "b.png", rank: .final)]
+        noPose.assignments = [AssignmentDocument(tagID: smiling, selectionOrder: 0)]
+
+        var manual = EntryDocument(name: "Manual", position: 3)
+        manual.captionMode = .manual
+
+        var noFinal = EntryDocument(name: "No final", position: 4)
+        noFinal.captionMode = .tagged
+
+        let missing = AuditEngine.entriesMissingCategory(
+            pose, in: [hasPose, noPose, manual, noFinal], tagCategory: index
+        )
+        #expect(missing == [noPose.id, noFinal.id])
+    }
+}
