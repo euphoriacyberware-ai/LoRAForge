@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 import CoreGraphics
 @testable import LoRAForge
 import TaggingCore
+import DrawThingsClient
 
 private typealias Tag = TaggingCore.Tag
 
@@ -1344,5 +1345,58 @@ struct FolderImportTests {
             let imported = try Data(contentsOf: imagesDir.appending(path: item.filename))
             #expect(exported == imported)
         }
+    }
+}
+
+
+// MARK: - Server catalog
+
+@Suite("Server catalog")
+struct ServerCatalogTests {
+    private func override(models: Data = Data(), loras: Data = Data(), controlNets: Data = Data()) -> MetadataOverride {
+        var o = MetadataOverride()
+        o.models = models
+        o.loras = loras
+        o.controlNets = controlNets
+        return o
+    }
+
+    private func json(_ count: Int) -> Data {
+        let items = (0..<count).map { ["file": "item_\($0).ckpt", "name": "Item \($0)"] }
+        return try! JSONSerialization.data(withJSONObject: items)
+    }
+
+    @Test("Counts models, LoRAs and ControlNets from the override")
+    func counts() {
+        var reply = EchoReply()
+        reply.override = override(models: json(3), loras: json(2), controlNets: json(0))
+        #expect(ServerCatalog(reply: reply) == .available(models: 3, loras: 2, controlNets: 0))
+    }
+
+    @Test("No override means model browsing is disabled")
+    func noOverride() {
+        #expect(ServerCatalog(reply: EchoReply()) == .browsingDisabled)
+    }
+
+    @Test("An override with no lists means model browsing is disabled")
+    func emptyOverride() {
+        var reply = EchoReply()
+        reply.override = MetadataOverride()
+        #expect(ServerCatalog(reply: reply) == .browsingDisabled)
+    }
+
+    @Test("A missing shared secret takes precedence")
+    func sharedSecretMissing() {
+        var reply = EchoReply()
+        reply.sharedSecretMissing = true
+        reply.override = override(models: json(5))
+        #expect(ServerCatalog(reply: reply) == .sharedSecretMissing)
+    }
+
+    @Test("Malformed list data counts as zero")
+    func malformed() {
+        var reply = EchoReply()
+        reply.override = override(models: Data("not json".utf8), loras: json(4))
+        #expect(ServerCatalog(reply: reply) == .available(models: 0, loras: 4, controlNets: 0))
     }
 }

@@ -222,6 +222,27 @@ struct DrawThingsConnectionPane: View {
                 }
             }
 
+            Section("Server models") {
+                switch generation.serverCatalog {
+                case .available(let models, let loras, let controlNets):
+                    LabeledContent("Models") { Text("\(models)") }
+                    LabeledContent("LoRAs") { Text("\(loras)") }
+                    LabeledContent("ControlNets") { Text("\(controlNets)") }
+                case .browsingDisabled:
+                    Label("Model browsing is disabled on the server", systemImage: "eye.slash")
+                        .foregroundStyle(.orange)
+                    Text("Turn on Enable Model Browsing in Draw Things' API server settings to see what's installed.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                case .sharedSecretMissing:
+                    Label("Model list unavailable: the server requires a shared secret.", systemImage: "lock")
+                        .foregroundStyle(.orange)
+                case .unavailable:
+                    Text("Connect to see the server's models.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Queue") {
                 LabeledContent("Pending") { Text("\(generation.pendingCount)") }
                 LabeledContent("Processing") { Text(generation.isProcessing ? "Yes" : "No") }

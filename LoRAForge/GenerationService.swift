@@ -22,6 +22,7 @@ final class GenerationService {
     private(set) var currentRequest: GenerationRequest?
     private(set) var currentProgress: GenerationProgress?
     private(set) var pendingRequests: [GenerationRequest] = []
+    private(set) var serverCatalog: ServerCatalog = .unavailable
 
     var serverAddress: String {
         didSet { UserDefaults.standard.set(serverAddress, forKey: "dtServerAddress") }
@@ -92,9 +93,12 @@ final class GenerationService {
             // Verify connectivity asynchronously
             Task {
                 do {
-                    _ = try await service.echo()
+                    let reply = try await service.echo(sharedSecret: secret)
+                    serverCatalog = ServerCatalog(reply: reply)
                     isConnected = true
-                    lastError = nil
+                    lastError = serverCatalog == .sharedSecretMissing
+                        ? "Server requires a shared secret"
+                        : nil
                 } catch {
                     lastError = "Connection test failed: \(error.localizedDescription)"
                     isConnected = false
@@ -112,6 +116,7 @@ final class GenerationService {
         cancellables.removeAll()
         queue = nil
         isConnected = false
+        serverCatalog = .unavailable
         isPaused = false
         pendingCount = 0
         isProcessing = false
