@@ -64,10 +64,8 @@ enum AuditEngine {
         }
 
         // Filter to enabled categories in project order
-        let enabledCategories: [TagCategory] = document.categoryOrder.compactMap { catID in
-            guard document.categoryEnabled[catID] != false else { return nil }
-            return categories.first { $0.id == catID }
-        }
+        let enabledCategories: [TagCategory] = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
+            .filter(\.isEnabled)
 
         var categoryResults: [CategoryAuditResult] = []
 

@@ -276,10 +276,8 @@ struct DatasetBuilderView: View {
     /// Enabled categories in project order, and a tag → category lookup, for highlighting.
     private func refreshTagIndex() {
         let categories = (try? repo.allCategories()) ?? []
-        enabledCategories = document.categoryOrder.compactMap { catID in
-            guard document.categoryEnabled[catID] != false else { return nil }
-            return categories.first { $0.id == catID }
-        }
+        enabledCategories = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
+            .filter(\.isEnabled)
         var index: [UUID: UUID] = [:]
         for category in categories {
             for tag in (try? repo.tags(in: category.id)) ?? [] {
@@ -666,10 +664,8 @@ struct DatasetBuilderView: View {
 
     private func refreshDrift() {
         let categories = (try? repo.allCategories()) ?? []
-        let enabledCats: [TagCategory] = document.categoryOrder.compactMap { catID in
-            guard document.categoryEnabled[catID] != false else { return nil }
-            return categories.first { $0.id == catID }
-        }
+        let enabledCats: [TagCategory] = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
+            .filter(\.isEnabled)
         let allTags: [UUID: Tag] = categories.compactMap { cat in
             (try? repo.tags(in: cat.id))?.map { (cat.id, $0) }
         }

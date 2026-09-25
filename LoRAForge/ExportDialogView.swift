@@ -137,7 +137,12 @@ struct ExportDialogView: View {
             // Clear existing export if present
             try ExportManager.clearExistingExport(at: directory, baseName: baseName)
 
-            let categories = try repo.allCategories()
+            // Resolve against the project: its order and enabled state, not the app defaults.
+            let categories = ProjectCategories.resolve(
+                try repo.allCategories(),
+                order: document.categoryOrder,
+                enabled: document.categoryEnabled
+            )
             let tags = try repo.allTags()
             let tagDict = Dictionary(uniqueKeysWithValues: tags.map { ($0.id, $0) })
 

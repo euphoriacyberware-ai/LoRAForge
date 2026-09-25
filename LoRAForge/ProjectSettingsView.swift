@@ -220,10 +220,8 @@ struct ProjectSettingsView: View {
     }
 
     private func reRenderAllCaptions() {
-        let enabledCats: [TagCategory] = document.categoryOrder.compactMap { catID in
-            guard document.categoryEnabled[catID] != false else { return nil }
-            return categories.first { $0.id == catID }
-        }
+        let enabledCats: [TagCategory] = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
+            .filter(\.isEnabled)
         let allTags: [UUID: Tag] = categories.compactMap { cat in
             (try? repo.tags(in: cat.id))?.map { (cat.id, $0) }
         }

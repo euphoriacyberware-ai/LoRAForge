@@ -1434,3 +1434,37 @@ struct MissingCategoryTests {
         #expect(missing == [noPose.id, noFinal.id])
     }
 }
+
+// MARK: - Export caption uses project category order
+
+@Suite("Export caption order")
+@MainActor
+struct ExportCaptionOrderTests {
+    @Test("Exported caption follows the project's category order")
+    func exportFollowsProjectOrder() {
+        let subject = TagCategory(name: "Subject", selectMode: .single, position: 0)
+        let pose = TagCategory(name: "Pose", selectMode: .single, position: 1)
+        let expression = TagCategory(name: "Expression", selectMode: .single, position: 2)
+        let maya = Tag(canonicalString: "Maya", categoryID: subject.id)
+        let standing = Tag(canonicalString: "standing", categoryID: pose.id)
+        let smiling = Tag(canonicalString: "smiling", categoryID: expression.id)
+
+        var entry = EntryDocument(name: "E", position: 1)
+        entry.captionMode = .tagged
+        entry.assignments = [maya, standing, smiling].enumerated().map {
+            AssignmentDocument(tagID: $1.id, selectionOrder: $0)
+        }
+
+        let resolved = ProjectCategories.resolve(
+            [subject, pose, expression],
+            order: [subject.id, expression.id, pose.id],
+            enabled: [:]
+        )
+        let caption = ExportManager.captionForExport(
+            entry: entry,
+            categories: resolved,
+            allTags: [maya.id: maya, standing.id: standing, smiling.id: smiling]
+        )
+        #expect(caption == "Maya, smiling, standing")
+    }
+}
