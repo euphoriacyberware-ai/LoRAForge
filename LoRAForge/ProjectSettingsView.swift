@@ -17,19 +17,39 @@ struct ProjectSettingsView: View {
     @State private var configModel: ConfigEditorModel?
     @State private var showingApplyAllAlert = false
     @State private var showingApplyOrderAlert = false
+    @State private var selectedTab: SettingsTab = .categories
+
+    private enum SettingsTab: Hashable {
+        case categories, configuration
+    }
 
     var body: some View {
         NavigationStack {
-            HStack(spacing: 0) {
-                // Left pane: project + categories
-                leftPane
+            VStack(spacing: 0) {
+                // Inline rather than a .principal toolbar item: macOS sheets
+                // don't render principal toolbar items.
+                Picker("", selection: $selectedTab) {
+                    Text("Categories").tag(SettingsTab.categories)
+                    Text("Configuration").tag(SettingsTab.configuration)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                .padding(.top, 8)
+                .padding(.bottom, 4)
+
                 Divider()
-                // Right pane: generation config
-                rightPane
+
+                switch selectedTab {
+                case .categories:
+                    leftPane
+                case .configuration:
+                    rightPane
+                }
             }
             .navigationTitle("Project settings")
             #if os(macOS)
-            .frame(minWidth: 800, minHeight: 450)
+            .frame(minWidth: 600, minHeight: 450)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -44,7 +64,7 @@ struct ProjectSettingsView: View {
         }
     }
 
-    // MARK: - Left Pane
+    // MARK: - Categories tab
 
     private var leftPane: some View {
         List {
@@ -82,7 +102,6 @@ struct ProjectSettingsView: View {
             }
         }
         .listStyle(.sidebar)
-        .frame(minWidth: 300)
         .alert("Re-render all captions?", isPresented: $showingApplyOrderAlert) {
             Button("Re-render", role: .destructive) { reRenderAllCaptions() }
             Button("Cancel", role: .cancel) {}
@@ -91,7 +110,7 @@ struct ProjectSettingsView: View {
         }
     }
 
-    // MARK: - Right Pane
+    // MARK: - Configuration tab
 
     private var rightPane: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -201,10 +220,8 @@ struct ProjectSettingsView: View {
     }
 
     private func reRenderAllCaptions() {
-        let enabledCats: [TagCategory] = document.categoryOrder.compactMap { catID in
-            guard document.categoryEnabled[catID] != false else { return nil }
-            return categories.first { $0.id == catID }
-        }
+        let enabledCats: [TagCategory] = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
+            .filter(\.isEnabled)
         let allTags: [UUID: Tag] = categories.compactMap { cat in
             (try? repo.tags(in: cat.id))?.map { (cat.id, $0) }
         }

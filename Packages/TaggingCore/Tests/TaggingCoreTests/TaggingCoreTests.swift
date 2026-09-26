@@ -420,3 +420,62 @@ struct DuplicateDetectionTests {
         #expect(DuplicateDetector.levenshteinSimilarity("", "abc") == 0.0)
     }
 }
+
+// MARK: - Project category resolution
+
+@Suite("Project categories")
+struct ProjectCategoriesTests {
+    private let subject = TagCategory(name: "Subject", selectMode: .single, position: 0)
+    private let pose = TagCategory(name: "Pose", selectMode: .single, position: 1)
+    private let expression = TagCategory(name: "Expression", selectMode: .single, position: 2)
+
+    @Test("Resolve applies project order and enabled overrides, omitting unlisted categories")
+    func resolve() {
+        let resolved = ProjectCategories.resolve(
+            [subject, pose, expression],
+            order: [subject.id, expression.id],
+            enabled: [expression.id: false]
+        )
+        #expect(resolved.map(\.id) == [subject.id, expression.id])
+        #expect(resolved.map(\.position) == [0, 1])
+        #expect(resolved.map(\.isEnabled) == [true, false])
+    }
+
+    @Test("Rendering follows the project order, not the global position")
+    func renderFollowsProjectOrder() {
+        let maya = Tag(canonicalString: "Maya", categoryID: subject.id)
+        let standing = Tag(canonicalString: "standing", categoryID: pose.id)
+        let smiling = Tag(canonicalString: "smiling", categoryID: expression.id)
+        let assignments = [maya, standing, smiling].map { TagAssignment(tagID: $0.id, selectionOrder: 0) }
+
+        let resolved = ProjectCategories.resolve(
+            [subject, pose, expression],
+            order: [subject.id, expression.id, pose.id],
+            enabled: [:]
+        )
+        let result = CaptionRenderer.render(
+            assignments: assignments, tags: tagDict([maya, standing, smiling]), categories: resolved
+        )
+        #expect(result == "Maya, smiling, standing")
+    }
+
+    @Test("Project enabled state overrides the app-level flag in both directions")
+    func enabledOverride() {
+        var globallyDisabled = pose
+        globallyDisabled.isEnabled = false
+        let maya = Tag(canonicalString: "Maya", categoryID: subject.id)
+        let standing = Tag(canonicalString: "standing", categoryID: pose.id)
+        let smiling = Tag(canonicalString: "smiling", categoryID: expression.id)
+        let assignments = [maya, standing, smiling].map { TagAssignment(tagID: $0.id, selectionOrder: 0) }
+
+        let resolved = ProjectCategories.resolve(
+            [subject, globallyDisabled, expression],
+            order: [subject.id, pose.id, expression.id],
+            enabled: [pose.id: true, expression.id: false]
+        )
+        let result = CaptionRenderer.render(
+            assignments: assignments, tags: tagDict([maya, standing, smiling]), categories: resolved
+        )
+        #expect(result == "Maya, standing")
+    }
+}

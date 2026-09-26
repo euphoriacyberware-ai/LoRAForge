@@ -5,7 +5,9 @@ public enum CaptionRenderer {
     /// Renders a caption string from tag assignments against a set of categories.
     ///
     /// Categories are sorted by position. Disabled categories and categories with
-    /// no assignments are omitted. Multi-select values are joined with " and " in
+    /// no assignments are omitted. Pass categories resolved for the project
+    /// (`ProjectCategories.resolve`) — raw categories carry the app-level position and
+    /// enabled state, not the project's. Multi-select values are joined with " and " in
     /// selection order. Prefixes are prepended when present.
     public static func render(
         assignments: [TagAssignment],

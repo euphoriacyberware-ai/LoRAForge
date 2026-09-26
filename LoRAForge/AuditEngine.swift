@@ -64,10 +64,8 @@ enum AuditEngine {
         }
 
         // Filter to enabled categories in project order
-        let enabledCategories: [TagCategory] = document.categoryOrder.compactMap { catID in
-            guard document.categoryEnabled[catID] != false else { return nil }
-            return categories.first { $0.id == catID }
-        }
+        let enabledCategories: [TagCategory] = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
+            .filter(\.isEnabled)
 
         var categoryResults: [CategoryAuditResult] = []
 
@@ -131,5 +129,20 @@ enum AuditEngine {
             excludedNotTagged: excludedNotTagged,
             categoryResults: categoryResults
         )
+    }
+
+    /// Tagged-mode entries with no tag in `categoryID`. Uses the same "any tag in the
+    /// category" rule as audit coverage, but does not require a final image.
+    static func entriesMissingCategory(
+        _ categoryID: UUID,
+        in entries: [EntryDocument],
+        tagCategory: [UUID: UUID]
+    ) -> Set<UUID> {
+        Set(entries.lazy
+            .filter { $0.captionMode == .tagged }
+            .filter { entry in
+                !entry.assignments.contains { tagCategory[$0.tagID] == categoryID }
+            }
+            .map(\.id))
     }
 }

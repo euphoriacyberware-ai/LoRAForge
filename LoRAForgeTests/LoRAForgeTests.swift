@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 import CoreGraphics
 @testable import LoRAForge
 import TaggingCore
+import DrawThingsClient
 
 private typealias Tag = TaggingCore.Tag
 
@@ -351,6 +352,168 @@ struct StoreTests {
 
         let doc = try library.loadDocument(id: info.id)
         #expect(doc?.name == "New Name")
+    }
+
+    // MARK: - Sidebar folders
+
+    private func tempLibraryDir() -> URL {
+        FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+    }
+
+    /// Compares file locations, ignoring trailing slashes and the /var → /private/var symlink.
+    private func samePath(_ a: URL?, _ b: URL) -> Bool {
+        guard let a else { return false }
+        return a.resolvingSymlinksInPath().path(percentEncoded: false).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+            == b.resolvingSymlinksInPath().path(percentEncoded: false).trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+    }
+
+    @Test("Library scan finds folders and bundles one level deep only")
+    func libraryFolderScan() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        try library.createFolder(name: "Empty")
+        let top = try library.createProject(name: "Loose", repo: repo)
+        let inFolder = try library.createProject(name: "Head", folder: "Maya", repo: repo)
+
+        // A bundle two levels deep is not part of the library
+        let deep = dir.appending(path: "Maya/Nested")
+        try FileManager.default.createDirectory(at: deep, withIntermediateDirectories: true)
+        try ProjectBundle.create(
+            at: deep.appending(path: "Deep.loraforge"),
+            project: ProjectDocument(name: "Deep", categories: BuiltInCategory.defaultCategories),
+            schema: SchemaSnapshot(categories: BuiltInCategory.defaultCategories, tags: [])
+        )
+        library.refresh()
+
+        #expect(library.folders == ["Empty", "Maya"])
+        #expect(library.projects.count == 2)
+        #expect(library.projects.first { $0.id == top.id }?.folder == nil)
+        #expect(library.projects.first { $0.id == inFolder.id }?.folder == "Maya")
+        #expect(!library.projects.contains { $0.name == "Deep" })
+    }
+
+    @Test("Moving a project keeps its UUID and resolves the new bundle URL")
+    func libraryMoveProject() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        let info = try library.createProject(name: "Body", repo: repo)
+
+        try library.moveProject(id: info.id, toFolder: "Maya")
+        #expect(library.projects.first { $0.id == info.id }?.folder == "Maya")
+        #expect(samePath(library.bundleURL(for: info.id), dir.appending(path: "Maya/Body.loraforge")))
+        #expect(try library.loadDocument(id: info.id)?.name == "Body")
+
+        // Name collision on the way back out gets a suffix
+        _ = try library.createProject(name: "Body", repo: repo)
+        try library.moveProject(id: info.id, toFolder: nil)
+        #expect(library.projects.first { $0.id == info.id }?.folder == nil)
+        #expect(library.bundleURL(for: info.id)?.lastPathComponent == "Body 2.loraforge")
+    }
+
+    @Test("Rename and duplicate keep a project in its folder")
+    func libraryRenameDuplicateInFolder() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        let info = try library.createProject(name: "Head", folder: "Maya", repo: repo)
+
+        try library.renameProject(id: info.id, to: "Face")
+        #expect(library.projects.first { $0.id == info.id }?.folder == "Maya")
+        #expect(samePath(library.bundleURL(for: info.id), dir.appending(path: "Maya/Face.loraforge")))
+
+        let copy = try library.duplicateProject(id: info.id, newName: "Face copy")
+        #expect(library.projects.first { $0.id == copy.id }?.folder == "Maya")
+    }
+
+    @Test("Deleting a folder can ungroup or delete its projects")
+    func libraryDeleteFolder() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Keep")
+        try library.createFolder(name: "Drop")
+        let kept = try library.createProject(name: "A", folder: "Keep", repo: repo)
+        _ = try library.createProject(name: "B", folder: "Drop", repo: repo)
+
+        try library.deleteFolder("Keep", deletingProjects: false)
+        #expect(!library.folders.contains("Keep"))
+        #expect(library.projects.first { $0.id == kept.id }?.folder == nil)
+
+        try library.deleteFolder("Drop", deletingProjects: true)
+        #expect(library.folders.isEmpty)
+        #expect(library.projects.map(\.id) == [kept.id])
+    }
+
+    @Test("Ungrouping keeps a folder that still holds other files")
+    func libraryDeleteFolderWithStrayFile() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        let info = try library.createProject(name: "A", folder: "Maya", repo: repo)
+        try Data("notes".utf8).write(to: dir.appending(path: "Maya/notes.txt"))
+
+        #expect(throws: LibraryManager.FolderError.self) {
+            try library.deleteFolder("Maya", deletingProjects: false)
+        }
+        #expect(library.folders == ["Maya"])
+        #expect(library.projects.first { $0.id == info.id }?.folder == nil)
+        #expect(FileManager.default.fileExists(atPath: dir.appending(path: "Maya/notes.txt").path))
+    }
+
+    @Test("Folder names get a suffix on create and never merge on rename")
+    func libraryFolderNaming() throws {
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        #expect(try library.createFolder(name: "Maya") == "Maya")
+        #expect(try library.createFolder(name: "Maya") == "Maya 2")
+        #expect(throws: LibraryManager.FolderError.self) {
+            try library.renameFolder("Maya 2", to: "Maya")
+        }
+        #expect(try library.renameFolder("Maya 2", to: "Nia") == "Nia")
+        #expect(library.folders == ["Maya", "Nia"])
+    }
+
+    @Test("Moving the library carries folders across")
+    func libraryMigrateFolders() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        let dest = tempLibraryDir()
+        defer {
+            try? FileManager.default.removeItem(at: dir)
+            try? FileManager.default.removeItem(at: dest)
+        }
+
+        let library = LibraryManager(libraryURL: dir)
+        try library.createFolder(name: "Maya")
+        let info = try library.createProject(name: "Head", folder: "Maya", repo: repo)
+
+        try library.migrateLibrary(to: dest)
+        #expect(library.folders == ["Maya"])
+        #expect(samePath(library.bundleURL(for: info.id), dest.appending(path: "Maya/Head.loraforge")))
     }
 
     @Test("Project snapshots category order at creation")
@@ -1182,5 +1345,126 @@ struct FolderImportTests {
             let imported = try Data(contentsOf: imagesDir.appending(path: item.filename))
             #expect(exported == imported)
         }
+    }
+}
+
+
+// MARK: - Server catalog
+
+@Suite("Server catalog")
+struct ServerCatalogTests {
+    private func override(models: Data = Data(), loras: Data = Data(), controlNets: Data = Data()) -> MetadataOverride {
+        var o = MetadataOverride()
+        o.models = models
+        o.loras = loras
+        o.controlNets = controlNets
+        return o
+    }
+
+    private func json(_ count: Int) -> Data {
+        let items = (0..<count).map { ["file": "item_\($0).ckpt", "name": "Item \($0)"] }
+        return try! JSONSerialization.data(withJSONObject: items)
+    }
+
+    @Test("Counts models, LoRAs and ControlNets from the override")
+    func counts() {
+        var reply = EchoReply()
+        reply.override = override(models: json(3), loras: json(2), controlNets: json(0))
+        #expect(ServerCatalog(reply: reply) == .available(models: 3, loras: 2, controlNets: 0))
+    }
+
+    @Test("No override means model browsing is disabled")
+    func noOverride() {
+        #expect(ServerCatalog(reply: EchoReply()) == .browsingDisabled)
+    }
+
+    @Test("An override with no lists means model browsing is disabled")
+    func emptyOverride() {
+        var reply = EchoReply()
+        reply.override = MetadataOverride()
+        #expect(ServerCatalog(reply: reply) == .browsingDisabled)
+    }
+
+    @Test("A missing shared secret takes precedence")
+    func sharedSecretMissing() {
+        var reply = EchoReply()
+        reply.sharedSecretMissing = true
+        reply.override = override(models: json(5))
+        #expect(ServerCatalog(reply: reply) == .sharedSecretMissing)
+    }
+
+    @Test("Malformed list data counts as zero")
+    func malformed() {
+        var reply = EchoReply()
+        reply.override = override(models: Data("not json".utf8), loras: json(4))
+        #expect(ServerCatalog(reply: reply) == .available(models: 0, loras: 4, controlNets: 0))
+    }
+}
+
+// MARK: - Highlight missing category
+
+@Suite("Missing category highlight")
+@MainActor
+struct MissingCategoryTests {
+    @Test("Flags tagged entries with no tag in the category, final or not")
+    func missingCategory() {
+        let pose = UUID(), expression = UUID()
+        let standing = UUID(), smiling = UUID()
+        let index = [standing: pose, smiling: expression]
+
+        var hasPose = EntryDocument(name: "Has pose", position: 1)
+        hasPose.captionMode = .tagged
+        hasPose.images = [ImageDocument(filename: "a.png", rank: .final)]
+        hasPose.assignments = [AssignmentDocument(tagID: standing, selectionOrder: 0)]
+
+        var noPose = EntryDocument(name: "No pose", position: 2)
+        noPose.captionMode = .tagged
+        noPose.images = [ImageDocument(filename: "b.png", rank: .final)]
+        noPose.assignments = [AssignmentDocument(tagID: smiling, selectionOrder: 0)]
+
+        var manual = EntryDocument(name: "Manual", position: 3)
+        manual.captionMode = .manual
+
+        var noFinal = EntryDocument(name: "No final", position: 4)
+        noFinal.captionMode = .tagged
+
+        let missing = AuditEngine.entriesMissingCategory(
+            pose, in: [hasPose, noPose, manual, noFinal], tagCategory: index
+        )
+        #expect(missing == [noPose.id, noFinal.id])
+    }
+}
+
+// MARK: - Export caption uses project category order
+
+@Suite("Export caption order")
+@MainActor
+struct ExportCaptionOrderTests {
+    @Test("Exported caption follows the project's category order")
+    func exportFollowsProjectOrder() {
+        let subject = TagCategory(name: "Subject", selectMode: .single, position: 0)
+        let pose = TagCategory(name: "Pose", selectMode: .single, position: 1)
+        let expression = TagCategory(name: "Expression", selectMode: .single, position: 2)
+        let maya = Tag(canonicalString: "Maya", categoryID: subject.id)
+        let standing = Tag(canonicalString: "standing", categoryID: pose.id)
+        let smiling = Tag(canonicalString: "smiling", categoryID: expression.id)
+
+        var entry = EntryDocument(name: "E", position: 1)
+        entry.captionMode = .tagged
+        entry.assignments = [maya, standing, smiling].enumerated().map {
+            AssignmentDocument(tagID: $1.id, selectionOrder: $0)
+        }
+
+        let resolved = ProjectCategories.resolve(
+            [subject, pose, expression],
+            order: [subject.id, expression.id, pose.id],
+            enabled: [:]
+        )
+        let caption = ExportManager.captionForExport(
+            entry: entry,
+            categories: resolved,
+            allTags: [maya.id: maya, standing.id: standing, smiling.id: smiling]
+        )
+        #expect(caption == "Maya, smiling, standing")
     }
 }

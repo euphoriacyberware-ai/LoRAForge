@@ -23,10 +23,8 @@ struct CaptionEditorView: View {
     @State private var ollamaError: String?
 
     private var enabledCategories: [TagCategory] {
-        projectCategoryOrder.compactMap { catID in
-            guard projectCategoryEnabled[catID] != false else { return nil }
-            return categories.first { $0.id == catID }
-        }
+        ProjectCategories.resolve(categories, order: projectCategoryOrder, enabled: projectCategoryEnabled)
+            .filter(\.isEnabled)
     }
 
     private var renderedCaption: String {

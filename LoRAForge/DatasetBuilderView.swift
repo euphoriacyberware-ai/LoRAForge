@@ -20,6 +20,9 @@ struct DatasetBuilderView: View {
     @State private var importError: String?
     @State private var editingGenerationEntryID: UUID?
     @State private var showingAudit = false
+    @State private var highlightCategoryID: UUID?
+    @State private var tagCategoryIndex: [UUID: UUID] = [:]
+    @State private var enabledCategories: [TagCategory] = []
     @State private var showingSaveTemplate = false
     @State private var showingLoadTemplate = false
     @State private var selectedImageIDs: Set<UUID> = []
@@ -27,7 +30,8 @@ struct DatasetBuilderView: View {
     #if os(macOS)
     @State private var lightboxManager = LightboxWindowManager()
     #endif
-    @AppStorage("thumbnailSize") private var thumbnailSize: Double = 100
+    @AppStorage("thumbnailSize") private var thumbnailSize: Double = 160
+    private static let thumbnailSizeRange: ClosedRange<Double> = 130...270
     @Environment(GenerationService.self) private var generation
     @Environment(TemplateManager.self) private var templateManager
     @Environment(LibraryManager.self) private var library
@@ -50,12 +54,17 @@ struct DatasetBuilderView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            toolbar
+            mainToolbar
+            Divider()
+            tagToolbar
             Divider()
             entryList
         }
-        .onAppear(perform: refreshDrift)
-        .navigationTitle("Dataset Builder")
+        .onAppear {
+            refreshDrift()
+            refreshTagIndex()
+        }
+        .navigationTitle(document.name)
         .alert("Empty trash?", isPresented: $showingEmptyTrash) {
             Button("Empty trash", role: .destructive) { emptyTrash() }
             Button("Cancel", role: .cancel) {}
@@ -155,14 +164,17 @@ struct DatasetBuilderView: View {
                     tagFrequency: tagFrequency,
                     onChanged: onChanged
                 )
-                .onDisappear { refreshDrift() }
+                .onDisappear {
+                    refreshDrift()
+                    refreshTagIndex()
+                }
             }
         }
     }
 
     // MARK: - Toolbar
 
-    private var toolbar: some View {
+    private var mainToolbar: some View {
         HStack(spacing: 12) {
             TextField("Filter entries", text: $entryFilter)
                 .textFieldStyle(.roundedBorder)
@@ -174,7 +186,7 @@ struct DatasetBuilderView: View {
 
             HStack(spacing: 4) {
                 Image(systemName: "photo").font(.caption2).foregroundStyle(.secondary)
-                Slider(value: $thumbnailSize, in: 60...200).frame(width: 100)
+                Slider(value: $thumbnailSize, in: Self.thumbnailSizeRange).frame(width: 100)
                 Image(systemName: "photo").font(.caption).foregroundStyle(.secondary)
             }
 
@@ -186,10 +198,6 @@ struct DatasetBuilderView: View {
                 }
             }
 
-            Button { showingAudit = true } label: {
-                Label("Audit", systemImage: "chart.bar")
-            }
-            
             Button { showingExport = true } label: {
                 Label("Export", systemImage: "square.and.arrow.up")
             }
@@ -220,6 +228,66 @@ struct DatasetBuilderView: View {
         }
         .padding(.horizontal)
         .padding(.vertical, 8)
+    }
+
+    /// Tag-related controls: highlight entries missing a category, and the audit.
+    private var tagToolbar: some View {
+        HStack(spacing: 12) {
+            Picker("Highlight missing", selection: $highlightCategoryID) {
+                Text("None").tag(UUID?.none)
+                Divider()
+                ForEach(enabledCategories) { category in
+                    Text(category.name).tag(UUID?.some(category.id))
+                }
+            }
+            .pickerStyle(.menu)
+            .fixedSize()
+            .help("Highlight tagged entries that have no tag in this category")
+
+            if let category = highlightedCategory {
+                let tagged = document.entries.filter { $0.captionMode == .tagged }.count
+                Text("\(missingEntryIDs.count) of \(tagged) tagged entr\(tagged == 1 ? "y has" : "ies have") no \(category.name)")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            Button { showingAudit = true } label: {
+                Label("Audit", systemImage: "chart.bar")
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 6)
+    }
+
+    private var highlightedCategory: TagCategory? {
+        guard let id = highlightCategoryID else { return nil }
+        return enabledCategories.first { $0.id == id }
+    }
+
+    private var missingEntryIDs: Set<UUID> {
+        guard let category = highlightedCategory else { return [] }
+        return AuditEngine.entriesMissingCategory(
+            category.id, in: document.entries, tagCategory: tagCategoryIndex
+        )
+    }
+
+    /// Enabled categories in project order, and a tag → category lookup, for highlighting.
+    private func refreshTagIndex() {
+        let categories = (try? repo.allCategories()) ?? []
+        enabledCategories = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
+            .filter(\.isEnabled)
+        var index: [UUID: UUID] = [:]
+        for category in categories {
+            for tag in (try? repo.tags(in: category.id)) ?? [] {
+                index[tag.id] = category.id
+            }
+        }
+        tagCategoryIndex = index
+        if let id = highlightCategoryID, !enabledCategories.contains(where: { $0.id == id }) {
+            highlightCategoryID = nil
+        }
     }
 
     private var rankToggles: some View {
@@ -287,12 +355,15 @@ struct DatasetBuilderView: View {
             ScrollView {
                 LazyVStack(spacing: 1) {
                     headerBar
+                    let missing = missingEntryIDs
+                    let highlightName = highlightedCategory?.name
                     ForEach(filteredEntries) { entry in
                         EntryRow(
                             entry: entry,
+                            missingCategoryName: missing.contains(entry.id) ? highlightName : nil,
                             bundleURL: bundleURL,
                             visibleRanks: rankVisibility,
-                            thumbnailSize: CGFloat(thumbnailSize),
+                            thumbnailSize: CGFloat(min(max(thumbnailSize, Self.thumbnailSizeRange.lowerBound), Self.thumbnailSizeRange.upperBound)),
                             captionPreview: entry.captionPreviewText.isEmpty ? "No caption" : entry.captionPreviewText,
                             selectedImageIDs: $selectedImageIDs,
                             onImport: { fileImportMode = .images(entryID: entry.id); showingFileImporter = true },
@@ -593,10 +664,8 @@ struct DatasetBuilderView: View {
 
     private func refreshDrift() {
         let categories = (try? repo.allCategories()) ?? []
-        let enabledCats: [TagCategory] = document.categoryOrder.compactMap { catID in
-            guard document.categoryEnabled[catID] != false else { return nil }
-            return categories.first { $0.id == catID }
-        }
+        let enabledCats: [TagCategory] = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
+            .filter(\.isEnabled)
         let allTags: [UUID: Tag] = categories.compactMap { cat in
             (try? repo.tags(in: cat.id))?.map { (cat.id, $0) }
         }
@@ -891,6 +960,8 @@ struct DatasetBuilderView: View {
 
 private struct EntryRow: View {
     let entry: EntryDocument
+    /// Set when the "highlight missing" category is selected and this entry lacks it.
+    let missingCategoryName: String?
     let bundleURL: URL
     let visibleRanks: Set<ImageRank>
     let thumbnailSize: CGFloat
@@ -919,7 +990,7 @@ private struct EntryRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 0) {
             entryHeader
-                .frame(width: 320)
+                .frame(width: 420)
                 .padding(8)
                 .draggable(entry.id.uuidString) {
                     Text(entry.name)
@@ -931,13 +1002,23 @@ private struct EntryRow: View {
                 .padding(.vertical, 4)
         }
         .background(.background)
+        .overlay {
+            if missingCategoryName != nil {
+                Color.orange.opacity(0.08)
+                    .allowsHitTesting(false)
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(Color.orange, lineWidth: 2)
+                    .padding(1)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 
     private var entryHeader: some View {
         HStack(alignment: .top, spacing: 8) {
             // Final image thumbnail
             finalThumbnail
-                .frame(width: 64, height: 64)
+                .frame(width: 96, height: 96)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
 
             // Center: name, caption, count
@@ -970,6 +1051,14 @@ private struct EntryRow: View {
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
+                    if let missingCategoryName {
+                        Text("No \(missingCategoryName)")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 1)
+                            .background(Color.orange, in: Capsule())
+                    }
                 }
             }
 
@@ -991,11 +1080,25 @@ private struct EntryRow: View {
                     Label("Add images", systemImage: "photo.badge.plus")
                 }
                 .help("Import images")
+                
+                Button(action: onGenerate) {
+                    Label("Generate", systemImage: "sparkles")
+                }
+                .disabled(!generation.isConnected)
+                .help("Generate one image")
+                
+
             }
             .labelStyle(.iconOnly)
-            .buttonStyle(.borderless)
-            .font(.headline)
+            .buttonStyle(.bordered)
+            .font(.system(size: 16))
         }
+        .padding()
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.thickMaterial, lineWidth: 2)
+        )
         .contentShape(Rectangle())
         .contextMenu {
             Button("Generate", systemImage: "sparkles", action: onGenerate)
@@ -1090,6 +1193,7 @@ private struct ImageThumbnail: View {
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
+            // preview image
             loadedImage
                 .frame(width: size, height: size)
                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -1097,7 +1201,8 @@ private struct ImageThumbnail: View {
                     RoundedRectangle(cornerRadius: 6)
                         .stroke(Color.accentColor, lineWidth: isSelected ? 3 : 0)
                 )
-
+            
+            // rank icon
             if let icon = image.rank.badgeIcon {
                 Image(systemName: icon)
                     .font(.caption)

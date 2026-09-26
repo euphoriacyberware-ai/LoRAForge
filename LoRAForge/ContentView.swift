@@ -36,6 +36,15 @@ struct ContentView: View {
     @State private var importError: String?
     @State private var showingImportError = false
     @AppStorage("generateUnfilledCount") private var generateUnfilledCount: Int = 1
+    @State private var newProjectFolder: String?
+    @State private var showingNewFolder = false
+    @State private var newFolderName = ""
+    @State private var projectPendingNewFolder: UUID?
+    @State private var renamingFolder: String?
+    @State private var renameFolderText = ""
+    @State private var folderToDelete: String?
+    @State private var folderError: String?
+    @AppStorage("collapsedSidebarFolders") private var collapsedFoldersJSON = "[]"
 
     var body: some View {
         NavigationSplitView {
@@ -76,12 +85,22 @@ struct ContentView: View {
 
     private var sidebar: some View {
         List(selection: $sidebarSelection) {
-            Section("Projects") {
-                ForEach(library.projects) { project in
-                    Label(project.name, systemImage: "doc.fill")
-                        .tag(SidebarItem.project(id: project.id))
-                        .contextMenu { projectContextMenu(for: project) }
+            Section {
+                ForEach(library.folders, id: \.self) { folder in
+                    folderRow(folder)
                 }
+                // Keyed on the whole value (including folder), so a move is a remove + insert.
+                // The macOS sidebar won't otherwise reparent a row whose identity is unchanged.
+                ForEach(library.projects.filter { $0.folder == nil }, id: \.self) { project in
+                    projectRow(project)
+                }
+            } header: {
+                Text("Projects")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .dropDestination(for: String.self) { items, _ in
+                        moveDroppedProjects(items, toFolder: nil)
+                    }
             }
 
             Section("Libraries") {
@@ -109,7 +128,16 @@ struct ContentView: View {
                 Button { performImport() } label: {
                     Label("Import project", systemImage: "square.and.arrow.down")
                 }
-                Button { showingNewProject = true } label: {
+                Button {
+                    projectPendingNewFolder = nil
+                    showingNewFolder = true
+                } label: {
+                    Label("New folder", systemImage: "folder.badge.plus")
+                }
+                Button {
+                    newProjectFolder = nil
+                    showingNewProject = true
+                } label: {
                     Label("New project", systemImage: "plus")
                 }
             }
@@ -118,6 +146,63 @@ struct ContentView: View {
             TextField("Project name", text: $newProjectName)
             Button("Create") { createProject() }
             Button("Cancel", role: .cancel) { newProjectName = "" }
+        } message: {
+            if let newProjectFolder {
+                Text("In \(newProjectFolder)")
+            }
+        }
+        .alert("New folder", isPresented: $showingNewFolder) {
+            TextField("Folder name", text: $newFolderName)
+            Button("Create") { createFolder() }
+            Button("Cancel", role: .cancel) {
+                newFolderName = ""
+                projectPendingNewFolder = nil
+            }
+        }
+        .alert("Rename folder", isPresented: .init(
+            get: { renamingFolder != nil },
+            set: { if !$0 { renamingFolder = nil } }
+        )) {
+            TextField("Name", text: $renameFolderText)
+            Button("Rename") { performRenameFolder() }
+            Button("Cancel", role: .cancel) { renamingFolder = nil }
+        }
+        .confirmationDialog(
+            "Delete folder \"\(folderToDelete ?? "")\"?",
+            isPresented: .init(
+                get: { folderToDelete != nil },
+                set: { if !$0 { folderToDelete = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: folderToDelete
+        ) { folder in
+            let count = projectsInFolder(folder).count
+            if count > 0 {
+                Button("Ungroup projects") { performDeleteFolder(folder, deletingProjects: false) }
+                Button("Delete folder and \(count) project\(count == 1 ? "" : "s")", role: .destructive) {
+                    performDeleteFolder(folder, deletingProjects: true)
+                }
+            } else {
+                Button("Delete folder", role: .destructive) {
+                    performDeleteFolder(folder, deletingProjects: false)
+                }
+            }
+            Button("Cancel", role: .cancel) { folderToDelete = nil }
+        } message: { folder in
+            let count = projectsInFolder(folder).count
+            if count > 0 {
+                Text("Ungrouping moves its \(count) project\(count == 1 ? "" : "s") to the top level. Deleting them also deletes all their images and cannot be undone.")
+            } else {
+                Text("The folder is empty.")
+            }
+        }
+        .alert("Folder error", isPresented: .init(
+            get: { folderError != nil },
+            set: { if !$0 { folderError = nil } }
+        )) {
+            Button("OK") { folderError = nil }
+        } message: {
+            Text(folderError ?? "")
         }
         .alert("Rename project", isPresented: .init(
             get: { renamingProjectID != nil },
@@ -169,8 +254,61 @@ struct ContentView: View {
         }
     }
 
+    private func projectRow(_ project: LibraryManager.ProjectInfo) -> some View {
+        Label(project.name, systemImage: "doc.fill")
+            .tag(SidebarItem.project(id: project.id))
+            .contextMenu { projectContextMenu(for: project) }
+            .draggable(project.id.uuidString)
+    }
+
+    private func folderRow(_ folder: String) -> some View {
+        let members = projectsInFolder(folder)
+        return DisclosureGroup(isExpanded: folderExpansionBinding(folder)) {
+            ForEach(members, id: \.self) { project in
+                projectRow(project)
+            }
+        } label: {
+            Label(folder, systemImage: "folder")
+                .badge(members.count)
+                .contextMenu { folderContextMenu(for: folder) }
+                .dropDestination(for: String.self) { items, _ in
+                    moveDroppedProjects(items, toFolder: folder)
+                }
+        }
+    }
+
+    @ViewBuilder
+    private func folderContextMenu(for folder: String) -> some View {
+        Button("New project in folder...") {
+            newProjectFolder = folder
+            showingNewProject = true
+        }
+        Button("Rename...") {
+            renameFolderText = folder
+            renamingFolder = folder
+        }
+        Button("Delete...", role: .destructive) {
+            folderToDelete = folder
+        }
+    }
+
     @ViewBuilder
     private func projectContextMenu(for project: LibraryManager.ProjectInfo) -> some View {
+        Menu("Move to") {
+            ForEach(library.folders, id: \.self) { folder in
+                Button(folder) { moveProject(project.id, toFolder: folder) }
+                    .disabled(project.folder == folder)
+            }
+            if !library.folders.isEmpty { Divider() }
+            Button("No folder") { moveProject(project.id, toFolder: nil) }
+                .disabled(project.folder == nil)
+            Divider()
+            Button("New folder...") {
+                projectPendingNewFolder = project.id
+                showingNewFolder = true
+            }
+        }
+        Divider()
         Button("Rename...") {
             renameText = project.name
             renamingProjectID = project.id
@@ -187,10 +325,107 @@ struct ContentView: View {
     private func createProject() {
         let name = newProjectName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { newProjectName = ""; return }
-        if let info = try? library.createProject(name: name, repo: repo) {
+        if let info = try? library.createProject(name: name, folder: newProjectFolder, repo: repo) {
+            if let newProjectFolder { setFolder(newProjectFolder, collapsed: false) }
             sidebarSelection = .project(id: info.id)
         }
         newProjectName = ""
+        newProjectFolder = nil
+    }
+
+    // MARK: - Folders
+
+    private func projectsInFolder(_ folder: String) -> [LibraryManager.ProjectInfo] {
+        library.projects.filter { $0.folder == folder }
+    }
+
+    private var collapsedFolders: Set<String> {
+        get { (try? JSONDecoder().decode(Set<String>.self, from: Data(collapsedFoldersJSON.utf8))) ?? [] }
+        nonmutating set {
+            let data = (try? JSONEncoder().encode(newValue.sorted())) ?? Data("[]".utf8)
+            collapsedFoldersJSON = String(decoding: data, as: UTF8.self)
+        }
+    }
+
+    private func setFolder(_ folder: String, collapsed: Bool) {
+        var set = collapsedFolders
+        if collapsed { set.insert(folder) } else { set.remove(folder) }
+        collapsedFolders = set
+    }
+
+    private func folderExpansionBinding(_ folder: String) -> Binding<Bool> {
+        Binding(
+            get: { !collapsedFolders.contains(folder) },
+            set: { setFolder(folder, collapsed: !$0) }
+        )
+    }
+
+    private func createFolder() {
+        let name = newFolderName.trimmingCharacters(in: .whitespaces)
+        let pendingProject = projectPendingNewFolder
+        newFolderName = ""
+        projectPendingNewFolder = nil
+        guard !name.isEmpty else { return }
+        do {
+            let created = try library.createFolder(name: name)
+            setFolder(created, collapsed: false)
+            if let pendingProject {
+                moveProject(pendingProject, toFolder: created)
+            }
+        } catch {
+            folderError = error.localizedDescription
+        }
+    }
+
+    private func performRenameFolder() {
+        guard let folder = renamingFolder else { return }
+        renamingFolder = nil
+        let name = renameFolderText.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+        saveCurrentProject()
+        do {
+            let wasCollapsed = collapsedFolders.contains(folder)
+            let renamed = try library.renameFolder(folder, to: name)
+            setFolder(folder, collapsed: false)
+            setFolder(renamed, collapsed: wasCollapsed)
+        } catch {
+            folderError = error.localizedDescription
+        }
+    }
+
+    private func performDeleteFolder(_ folder: String, deletingProjects: Bool) {
+        folderToDelete = nil
+        if deletingProjects,
+           case .project(let id) = sidebarSelection,
+           projectsInFolder(folder).contains(where: { $0.id == id }) {
+            sidebarSelection = nil
+        }
+        saveCurrentProject()
+        do {
+            try library.deleteFolder(folder, deletingProjects: deletingProjects)
+            setFolder(folder, collapsed: false)
+        } catch {
+            folderError = error.localizedDescription
+        }
+    }
+
+    private func moveProject(_ id: UUID, toFolder folder: String?) {
+        // Push the open document's latest edits so the move writes them first.
+        saveCurrentProject()
+        do {
+            try library.moveProject(id: id, toFolder: folder)
+            if let folder { setFolder(folder, collapsed: false) }
+        } catch {
+            folderError = error.localizedDescription
+        }
+    }
+
+    private func moveDroppedProjects(_ items: [String], toFolder folder: String?) -> Bool {
+        let ids = items.compactMap(UUID.init(uuidString:))
+            .filter { id in library.projects.contains { $0.id == id } }
+        guard !ids.isEmpty else { return false }
+        for id in ids { moveProject(id, toFolder: folder) }
+        return true
     }
 
     private func performRename() {
@@ -339,8 +574,52 @@ struct ContentView: View {
 
     // MARK: - Detail
 
-    @ViewBuilder
     private var detail: some View {
+        Group {
+            detailContent
+        }
+        // Attached at the detail-column level so connection and queue
+        // controls are present on every sidebar selection.
+        .toolbar { generationToolbarItems }
+    }
+
+    @ToolbarContentBuilder
+    private var generationToolbarItems: some ToolbarContent {
+        ToolbarItemGroup(placement: .primaryAction) {
+                // Draw Things connection toggle
+                Button {
+                    if generation.isConnected {
+                        generation.disconnect()
+                    } else {
+                        generation.connect()
+                    }
+                } label: {
+                    Label(
+                        generation.isConnected ? "Connected" : "Connect",
+                        systemImage: generation.isConnected ? "bolt.fill" : "bolt.slash"
+                    )
+                }
+                .labelStyle(.iconOnly)
+                .help(generation.isConnected
+                      ? "Connected to Draw Things — click to disconnect"
+                      : "Connect to Draw Things at \(generation.serverAddress)")
+                .foregroundStyle(generation.isConnected ? .green : .secondary)
+
+                // Queue manager — visible when items are queued or processing
+                if generation.pendingCount > 0 || generation.isProcessing {
+                    Button { showingQueuePopover.toggle() } label: {
+                        Label("Queue", systemImage: "hourglass")
+                    }
+                    .badge(generation.pendingCount + (generation.isProcessing ? 1 : 0))
+                    .popover(isPresented: $showingQueuePopover) {
+                        QueueManagerView()
+                    }
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var detailContent: some View {
         if sidebarSelection == .tagLibrary {
             TagLibraryView()
         } else if sidebarSelection == .configLibrary {
@@ -415,36 +694,6 @@ struct ContentView: View {
                     .help(unfilled.isEmpty
                           ? "All entries have a final image"
                           : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final — \(generateUnfilledCount * unfilled.count) total")
-                }
-
-                // Draw Things connection toggle
-                Button {
-                    if generation.isConnected {
-                        generation.disconnect()
-                    } else {
-                        generation.connect()
-                    }
-                } label: {
-                    Label(
-                        generation.isConnected ? "Connected" : "Connect",
-                        systemImage: generation.isConnected ? "bolt.fill" : "bolt.slash"
-                    )
-                }
-                .labelStyle(.iconOnly)
-                .help(generation.isConnected
-                      ? "Connected to Draw Things — click to disconnect"
-                      : "Connect to Draw Things at \(generation.serverAddress)")
-                .foregroundStyle(generation.isConnected ? .green : .secondary)
-
-                // Queue manager — visible when items are queued or processing
-                if generation.pendingCount > 0 || generation.isProcessing {
-                    Button { showingQueuePopover.toggle() } label: {
-                        Label("Queue", systemImage: "hourglass")
-                    }
-                    .badge(generation.pendingCount + (generation.isProcessing ? 1 : 0))
-                    .popover(isPresented: $showingQueuePopover) {
-                        QueueManagerView()
-                    }
                 }
 
                 // Project settings — hidden on Tag Library
