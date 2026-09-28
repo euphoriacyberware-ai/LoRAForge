@@ -10,7 +10,6 @@
 		A4B5152030280A470049F8D7 /* DrawThingsQueue in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5151F30280A470049F8D7 /* DrawThingsQueue */; };
 		A4B5152330280BCE0049F8D7 /* DTConfigBridge in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152230280BCE0049F8D7 /* DTConfigBridge */; };
 		A4B5152530280BCE0049F8D7 /* DTConfigEditorKit in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */; };
-		A4B5152730280BCE0049F8D7 /* configlint in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152630280BCE0049F8D7 /* configlint */; };
 		A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152930280BD00049F8D7 /* TaggingCore */; };
 		A4B5152B30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152C30280BD00049F8D7 /* TaggingCore */; };
 		A4B5152D30280BD00049F8D7 /* DrawThingsClient in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152E30280BD00049F8D7 /* DrawThingsClient */; };
@@ -78,7 +77,6 @@
 				A4B5152030280A470049F8D7 /* DrawThingsQueue in Frameworks */,
 				A4B5152530280BCE0049F8D7 /* DTConfigEditorKit in Frameworks */,
 				A4B5152330280BCE0049F8D7 /* DTConfigBridge in Frameworks */,
-				A4B5152730280BCE0049F8D7 /* configlint in Frameworks */,
 				A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */,
 				A4B5152D30280BD00049F8D7 /* DrawThingsClient in Frameworks */,
 			);
@@ -145,7 +143,6 @@
 				A4B5151F30280A470049F8D7 /* DrawThingsQueue */,
 				A4B5152230280BCE0049F8D7 /* DTConfigBridge */,
 				A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */,
-				A4B5152630280BCE0049F8D7 /* configlint */,
 				A4B5152930280BD00049F8D7 /* TaggingCore */,
 				A4B5152E30280BD00049F8D7 /* DrawThingsClient */,
 			);
@@ -233,7 +230,7 @@
 			mainGroup = A4B514DB302809A90049F8D7;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
-				A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */,
+				A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThings-Swift" */,
 				A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */,
 				A4B5152830280BD00049F8D7 /* XCLocalSwiftPackageReference "Packages/TaggingCore" */,
 			);
@@ -694,11 +691,11 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */ = {
+		A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThings-Swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/euphoriacyberware-ai/DrawThingsQueue";
+			repositoryURL = "https://github.com/euphoriacyberware-ai/DrawThings-Swift";
 			requirement = {
-				branch = main;
+				branch = v2;
 				kind = branch;
 			};
 		};
@@ -706,7 +703,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/euphoriacyberware-ai/DTConfigEditorKit";
 			requirement = {
-				branch = main;
+				branch = v2;
 				kind = branch;
 			};
 		};
@@ -715,7 +712,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		A4B5151F30280A470049F8D7 /* DrawThingsQueue */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */;
+			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThings-Swift" */;
 			productName = DrawThingsQueue;
 		};
 		A4B5152230280BCE0049F8D7 /* DTConfigBridge */ = {
@@ -728,11 +725,6 @@
 			package = A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */;
 			productName = DTConfigEditorKit;
 		};
-		A4B5152630280BCE0049F8D7 /* configlint */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */;
-			productName = configlint;
-		};
 		A4B5152930280BD00049F8D7 /* TaggingCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = TaggingCore;
@@ -743,7 +735,7 @@
 		};
 		A4B5152E30280BD00049F8D7 /* DrawThingsClient */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThingsQueue" */;
+			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThings-Swift" */;
 			productName = DrawThingsClient;
 		};
 /* End XCSwiftPackageProductDependency section */

@@ -1,28 +1,27 @@
 import Foundation
-import Combine
+import CoreGraphics
 import DrawThingsQueue
 import DrawThingsClient
 import DTConfigBridge
-#if os(macOS)
-import AppKit
-#else
-import UIKit
-#endif
 
 @Observable
 final class GenerationService {
     static func enableDebugLogging() {
-        DrawThingsClientLogger.minimumLevel = .debug
+        DTLogger.shared.minimumLevel = .debug
     }
     private(set) var isConnected = false
-    private(set) var isPaused = false
     private(set) var lastError: String?
-    private(set) var pendingCount = 0
-    private(set) var isProcessing = false
-    private(set) var currentRequest: GenerationRequest?
-    private(set) var currentProgress: GenerationProgress?
-    private(set) var pendingRequests: [GenerationRequest] = []
     private(set) var serverCatalog: ServerCatalog = .unavailable
+
+    // Queue state is read straight from the @Observable GenerationQueue, so views
+    // track it without a mirroring layer.
+    var isPaused: Bool { queue?.isPaused ?? false }
+    var isProcessing: Bool { queue?.isProcessing ?? false }
+    var pendingJobs: [QueueJob] { queue?.pending ?? [] }
+    var pendingCount: Int { pendingJobs.count }
+    var currentJob: QueueJob? { queue?.current }
+    var currentProgress: GenerationProgress? { queue?.progress }
+    var currentPreview: CGImage? { queue?.preview }
 
     var serverAddress: String {
         didSet { UserDefaults.standard.set(serverAddress, forKey: "dtServerAddress") }
@@ -34,10 +33,10 @@ final class GenerationService {
         didSet { UserDefaults.standard.set(sharedSecret, forKey: "dtSharedSecret") }
     }
 
-    @ObservationIgnored private var queue: DrawThingsQueue?
+    private var queue: GenerationQueue?
     @ObservationIgnored private var requestMap: [UUID: RequestTarget] = [:]
-    @ObservationIgnored private var cancellables = Set<AnyCancellable>()
     @ObservationIgnored private var resultTask: Task<Void, Never>?
+    @ObservationIgnored private var eventTask: Task<Void, Never>?
     @ObservationIgnored private weak var library: LibraryManager?
 
     struct RequestTarget: Codable {
@@ -81,24 +80,31 @@ final class GenerationService {
 
     func connect() {
         disconnect()
-        let secret = sharedSecret.isEmpty ? nil : sharedSecret
+        let options = ConnectionOptions(
+            security: useTLS ? .tls() : .plaintext,
+            sharedSecret: sharedSecret.isEmpty ? nil : sharedSecret
+        )
         do {
-            // Test the connection first with an echo call
-            let service = try DrawThingsService(address: serverAddress, useTLS: useTLS)
-            let q = DrawThingsQueue(service: service, sharedSecret: secret)
+            let service = try DrawThingsService(address: serverAddress, options: options)
+            let q = GenerationQueue(service: service)
             queue = q
-            observeQueue(q)
-            startIngestion(q)
+            // Subscribe before anything can be enqueued: the queue's streams only
+            // deliver values sent after the subscription is made.
+            startIngestion(q.results)
+            observeEvents(q.events)
 
             // Verify connectivity asynchronously
             Task {
                 do {
-                    let reply = try await service.echo(sharedSecret: secret)
+                    let reply = try await service.echo()
                     serverCatalog = ServerCatalog(reply: reply)
                     isConnected = true
-                    lastError = serverCatalog == .sharedSecretMissing
-                        ? "Server requires a shared secret"
-                        : nil
+                    lastError = nil
+                } catch DrawThingsError.unauthenticated {
+                    // v2 throws instead of returning a reply with sharedSecretMissing set.
+                    serverCatalog = .sharedSecretMissing
+                    isConnected = true
+                    lastError = "Server requires a shared secret"
                 } catch {
                     lastError = "Connection test failed: \(error.localizedDescription)"
                     isConnected = false
@@ -113,16 +119,22 @@ final class GenerationService {
     func disconnect() {
         resultTask?.cancel()
         resultTask = nil
-        cancellables.removeAll()
+        eventTask?.cancel()
+        eventTask = nil
+        if let queue {
+            // Unfinished jobs are discarded with the queue; drop their routing entries.
+            let unfinished = queue.jobs.filter { !$0.status.isFinished }.map(\.id)
+            if !unfinished.isEmpty {
+                unfinished.forEach { requestMap.removeValue(forKey: $0) }
+                saveRequestMap()
+            }
+            queue.cancelAll()
+            let service = queue.service
+            Task { await service.shutdown() }
+        }
         queue = nil
         isConnected = false
         serverCatalog = .unavailable
-        isPaused = false
-        pendingCount = 0
-        isProcessing = false
-        currentRequest = nil
-        currentProgress = nil
-        pendingRequests = []
     }
 
     // MARK: - Enqueue
@@ -162,20 +174,26 @@ final class GenerationService {
         }
 
         // App owns seed and batch size — override regardless of config
-        let actualSeed = seed ?? Int64(Int.random(in: 0...Int(UInt32.max)))
-        config.seed = actualSeed
+        // Draw Things seeds are 32-bit; stored Int64 seeds keep their low 32 bits,
+        // as the 1.x client did when encoding.
+        config.seed = seed.map { UInt32(truncatingIfNeeded: $0) } ?? UInt32.random(in: 0...UInt32.max)
         config.batchSize = 1
         config.batchCount = 1
 
         // Build moodboard hints from reference images
         var hints: [HintProto] = []
         if !referenceImageData.isEmpty {
-            let builder = HintBuilder()
+            var builder = HintBuilder()
             builder.addMoodboardImages(referenceImageData, weight: 1.0)
-            hints = builder.build()
+            do {
+                hints = try builder.build()
+            } catch {
+                lastError = "Reference images could not be read: \(error.localizedDescription)"
+                return
+            }
         }
 
-        let request = queue.enqueue(
+        let request = GenerationRequest(
             prompt: prompt,
             negativePrompt: negativePrompt,
             configuration: config,
@@ -192,6 +210,7 @@ final class GenerationService {
             referenceImageIDs: referenceImageIDs.isEmpty ? nil : referenceImageIDs
         )
         saveRequestMap()
+        queue.enqueue(request)
     }
 
     func pendingRequestCount(for projectID: UUID) -> Int {
@@ -210,13 +229,13 @@ final class GenerationService {
     }
 
     func cancelRequest(id: UUID) {
-        queue?.cancel(id: id)
+        queue?.cancel(id)
     }
 
     func clearPending() {
         guard let queue else { return }
-        for request in queue.pendingRequests {
-            queue.cancel(id: request.id)
+        for job in queue.pending {
+            queue.cancel(job.id)
         }
     }
 
@@ -230,53 +249,40 @@ final class GenerationService {
         return entry.name
     }
 
-    // MARK: - Observation
+    // MARK: - Queue Events
 
-    private func observeQueue(_ q: DrawThingsQueue) {
-        // Use RunLoop.main instead of DispatchQueue.main so delivery is always
-        // deferred to the next run-loop iteration. DispatchQueue.main can deliver
-        // synchronously when already on the main thread, which lets a Combine sink
-        // mutate an @Observable property while SwiftUI is mid-observation — the
-        // registrar's os_unfair_lock is still held and the recursive acquire traps.
-        q.$isPaused
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.isPaused = $0 }
-            .store(in: &cancellables)
-
-        q.$lastError
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.lastError = $0 }
-            .store(in: &cancellables)
-
-        q.$pendingRequests
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in
-                self?.pendingCount = $0.count
-                self?.pendingRequests = $0
+    private func observeEvents(_ events: AsyncStream<QueueEvent>) {
+        eventTask = Task { [weak self] in
+            for await event in events {
+                guard let self else { return }
+                switch event {
+                case .failed(let job):
+                    // Failed and cancelled jobs never produce a result, so their
+                    // routing entries would otherwise stay in the map.
+                    releaseTarget(for: job.id)
+                    lastError = "Generation failed: \(job.error?.localizedDescription ?? "unknown error")"
+                case .cancelled(let job):
+                    releaseTarget(for: job.id)
+                case .paused(let reason):
+                    if let reason { lastError = reason }
+                default:
+                    break
+                }
             }
-            .store(in: &cancellables)
+        }
+    }
 
-        q.$isProcessing
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.isProcessing = $0 }
-            .store(in: &cancellables)
-
-        q.$currentRequest
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.currentRequest = $0 }
-            .store(in: &cancellables)
-
-        q.$currentProgress
-            .receive(on: RunLoop.main)
-            .sink { [weak self] in self?.currentProgress = $0 }
-            .store(in: &cancellables)
+    private func releaseTarget(for id: UUID) {
+        if requestMap.removeValue(forKey: id) != nil {
+            saveRequestMap()
+        }
     }
 
     // MARK: - Result Ingestion (stream-driven, not polling)
 
-    private func startIngestion(_ q: DrawThingsQueue) {
+    private func startIngestion(_ results: AsyncStream<GenerationResult>) {
         resultTask = Task { [weak self] in
-            for await result in q.results {
+            for await result in results {
                 guard let self else { return }
 
                 // 1. Claim target on main (observable mutation)
@@ -294,22 +300,14 @@ final class GenerationService {
 
                     let destURL = imagesDir.appending(path: filename)
 
-                    #if os(macOS)
-                    if let tiff = image.tiffRepresentation,
-                       let bitmap = NSBitmapImageRep(data: tiff),
-                       let png = bitmap.representation(using: .png, properties: [:]) {
+                    if let png = try? ImageHelpers.pngData(for: image) {
                         try? png.write(to: destURL)
                     }
-                    #else
-                    if let data = image.pngData() {
-                        try? data.write(to: destURL)
-                    }
-                    #endif
 
                     let provenance = ImageProvenance(
                         prompt: result.request.prompt,
                         negativePrompt: result.request.negativePrompt,
-                        seed: result.request.configuration.seed ?? 0,
+                        seed: Int64(result.request.configuration.seed ?? 0),
                         configJSON: target.configJSON,
                         referenceImageIDs: target.referenceImageIDs
                     )
