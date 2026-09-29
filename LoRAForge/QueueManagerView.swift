@@ -1,5 +1,4 @@
 import SwiftUI
-import Combine
 import DrawThingsQueue
 import DrawThingsClient
 
@@ -25,7 +24,7 @@ struct QueueManagerView: View {
                     Divider()
                 }
 
-                if !generation.pendingRequests.isEmpty {
+                if !generation.pendingJobs.isEmpty {
                     pendingList
                 }
 
@@ -79,19 +78,21 @@ struct QueueManagerView: View {
 
     private var activeJobView: some View {
         HStack(alignment: .top, spacing: 10) {
-            if let progress = generation.currentProgress {
-                ProgressPreviewImage(progress: progress)
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-            } else {
-                progressPlaceholder
-                    .frame(width: 80, height: 80)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+            Group {
+                if let preview = generation.currentPreview {
+                    Image(decorative: preview, scale: 1)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                } else {
+                    progressPlaceholder
+                }
             }
+            .frame(width: 80, height: 80)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
 
             VStack(alignment: .leading, spacing: 4) {
-                if let request = generation.currentRequest {
-                    Text(generation.entryName(for: request.id) ?? request.name)
+                if let job = generation.currentJob {
+                    Text(generation.entryName(for: job.id) ?? job.name)
                         .font(.subheadline.weight(.medium))
                         .lineLimit(2)
                 }
@@ -121,13 +122,13 @@ struct QueueManagerView: View {
     private var pendingList: some View {
         ScrollView {
             LazyVStack(spacing: 0) {
-                ForEach(generation.pendingRequests) { request in
+                ForEach(generation.pendingJobs) { job in
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(generation.entryName(for: request.id) ?? request.name)
+                            Text(generation.entryName(for: job.id) ?? job.name)
                                 .font(.subheadline)
                                 .lineLimit(1)
-                            Text(String(request.prompt.prefix(60)))
+                            Text(String(job.request.prompt.prefix(60)))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                                 .lineLimit(1)
@@ -136,7 +137,7 @@ struct QueueManagerView: View {
                         Spacer()
 
                         Button {
-                            generation.cancelRequest(id: request.id)
+                            generation.cancelRequest(id: job.id)
                         } label: {
                             Image(systemName: "xmark.circle.fill")
                                 .foregroundStyle(.secondary)
@@ -171,7 +172,7 @@ struct QueueManagerView: View {
 
             Spacer()
 
-            if !generation.pendingRequests.isEmpty {
+            if !generation.pendingJobs.isEmpty {
                 Button("Clear pending", role: .destructive) {
                     generation.clearPending()
                 }
@@ -183,36 +184,10 @@ struct QueueManagerView: View {
     }
 }
 
-// MARK: - Progress Child Views
-// These use @ObservedObject to react to @Published changes on GenerationProgress.
-
-private struct ProgressPreviewImage: View {
-    @ObservedObject var progress: GenerationProgress
-
-    var body: some View {
-        if let preview = progress.previewImage {
-            #if os(macOS)
-            Image(nsImage: preview)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-            #else
-            Image(uiImage: preview)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-            #endif
-        } else {
-            Rectangle()
-                .fill(Color.gray.opacity(0.15))
-                .overlay {
-                    ProgressView()
-                        .controlSize(.small)
-                }
-        }
-    }
-}
+// MARK: - Progress Detail
 
 private struct ProgressDetailView: View {
-    @ObservedObject var progress: GenerationProgress
+    let progress: GenerationProgress
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -220,10 +195,16 @@ private struct ProgressDetailView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            ProgressView(value: progress.progressFraction)
-                .controlSize(.small)
+            if let fraction = progress.fractionCompleted {
+                ProgressView(value: fraction)
+                    .controlSize(.small)
+            } else {
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .controlSize(.small)
+            }
 
-            Text("\(progress.currentStep)/\(progress.totalSteps) steps")
+            Text("\(progress.step ?? 0)/\(progress.totalSteps) steps")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }
