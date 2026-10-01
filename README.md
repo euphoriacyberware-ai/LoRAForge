@@ -165,4 +165,6 @@ The demo will populate the app with basic category tags and demonstrates the end
 
 ## License
 
-Copyright Euphoria Cyberware AI. All rights reserved.
+Copyright Euphoria Cyberware AI.
+
+LoRAForge is source-available under the [PolyForm Shield License 1.0.0](LICENSE.md). You may use, modify, and distribute it for any purpose except providing a product that competes with LoRAForge. See [LICENSE.md](LICENSE.md) for the full terms.
