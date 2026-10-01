@@ -163,6 +163,12 @@ The demo will populate the app with basic category tags and demonstrates the end
 - [DrawThingsQueue](https://github.com/euphoriacyberware-ai/DrawThingsQueue) — FIFO queue management for Draw Things image generation
 - [DTConfigEditorKit](https://github.com/euphoriacyberware-ai/DTConfigEditorKit) — JSON editor for Draw Things generation configurations
 
+  ## Support Me
+
+  If LoRAForge is useful to you, you can support its development:
+
+  [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-donate-yellow?logo=buymeacoffee&logoColor=white)](https://buymeacoffee.com/euphoriacyberware)
+
 ## License
 
 Copyright Euphoria Cyberware AI.
