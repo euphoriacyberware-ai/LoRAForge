@@ -695,15 +695,15 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/euphoriacyberware-ai/DrawThings-Swift";
 			requirement = {
-				branch = v2;
-				kind = branch;
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.2.0;
 			};
 		};
 		A4B5152130280BCE0049F8D7 /* XCRemoteSwiftPackageReference "DTConfigEditorKit" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/euphoriacyberware-ai/DTConfigEditorKit";
 			requirement = {
-				branch = v2;
+				branch = main;
 				kind = branch;
 			};
 		};

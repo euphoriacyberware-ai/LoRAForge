@@ -6,8 +6,17 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/euphoriacyberware-ai/DrawThings-Swift",
       "state" : {
-        "branch" : "v2",
-        "revision" : "a64c35872d632c66610228b75f832d9e224f116e"
+        "revision" : "e1cef4ba4f6201cd538c78fabb5111bc77a2185e",
+        "version" : "2.2.0"
+      }
+    },
+    {
+      "identity" : "dt-grpc-swift-client",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "958003fcdc093fc9497b6b7d33984eeabca8d3e7"
       }
     },
     {
@@ -15,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/euphoriacyberware-ai/DTConfigEditorKit",
       "state" : {
-        "branch" : "v2",
-        "revision" : "f501e793b844af22ad33b54bb6654a888b267fe5"
+        "branch" : "main",
+        "revision" : "cb38da5d6f60d63445887fbdadef416b492b2ea5"
       }
     },
     {
