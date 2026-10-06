@@ -11,21 +11,12 @@
       }
     },
     {
-      "identity" : "dt-grpc-swift-client",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/euphoriacyberware-ai/DT-gRPC-Swift-Client.git",
-      "state" : {
-        "branch" : "main",
-        "revision" : "958003fcdc093fc9497b6b7d33984eeabca8d3e7"
-      }
-    },
-    {
       "identity" : "dtconfigeditorkit",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/euphoriacyberware-ai/DTConfigEditorKit",
       "state" : {
-        "branch" : "main",
-        "revision" : "cb38da5d6f60d63445887fbdadef416b492b2ea5"
+        "branch" : "swift6-drawthings-2.2",
+        "revision" : "374edf3cf3e62c246c26fd1fa8c0f64d2dec923f"
       }
     },
     {
