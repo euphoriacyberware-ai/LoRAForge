@@ -49,7 +49,7 @@ struct ProjectSettingsView: View {
             }
             .navigationTitle("Project settings")
             #if os(macOS)
-            .frame(minWidth: 600, minHeight: 450)
+            .frame(minWidth: 800, minHeight: 650)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -137,28 +137,16 @@ struct ProjectSettingsView: View {
             }
 
             if let configModel {
-                ConfigTextView(model: configModel)
+                ConfigEditorPanel(model: configModel)
                     .onChange(of: configModel.text) {
                         document.defaultGenerationConfigJSON = configModel.text
                         onChanged()
                     }
             }
 
-            HStack {
-                if configModel?.isValid == true {
-                    Label("Valid", systemImage: "checkmark.circle")
-                        .font(.caption)
-                        .foregroundStyle(.green)
-                } else if configModel != nil {
-                    Label("Invalid JSON", systemImage: "exclamationmark.triangle")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-                Spacer()
-                Text("Seed and batch size are overridden by the app.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
+            Text("Seed and batch size are overridden by the app.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
 
             Divider()
 

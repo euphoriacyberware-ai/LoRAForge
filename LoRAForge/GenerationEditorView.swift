@@ -277,7 +277,7 @@ struct GenerationEditorView: View {
             }
 
             if let configModel {
-                ConfigTextView(model: configModel)
+                ConfigEditorPanel(model: configModel)
                     .onChange(of: configModel.text) {
                         entry.generationConfigJSON = configModel.text
                         onChanged()

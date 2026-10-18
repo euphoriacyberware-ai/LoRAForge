@@ -108,23 +108,10 @@ struct ConfigLibraryView: View {
            let preset = presets.first(where: { $0.id == selectedID }),
            let configModel {
             VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text(preset.name)
-                        .font(.headline)
-                    Spacer()
-                    if configModel.isValid {
-                        Label("Valid", systemImage: "checkmark.circle")
-                            .font(.caption)
-                            .foregroundStyle(.green)
-                    } else {
-                        Label("Invalid JSON", systemImage: "exclamationmark.triangle")
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
+                Text(preset.name)
+                    .font(.headline)
 
-                ConfigTextView(model: configModel)
-                    .id(ObjectIdentifier(configModel))
+                ConfigEditorPanel(model: configModel)
                     .onChange(of: configModel.text) {
                         if let idx = presets.firstIndex(where: { $0.id == selectedID }) {
                             presets[idx].configJSON = configModel.text
