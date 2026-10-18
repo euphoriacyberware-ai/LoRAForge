@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/euphoriacyberware-ai/DrawThings-Swift",
       "state" : {
-        "branch" : "v2",
-        "revision" : "a64c35872d632c66610228b75f832d9e224f116e"
+        "revision" : "3f7523799d53fc6ec4684273f3d3fe651f87aa63",
+        "version" : "2.3.0"
       }
     },
     {
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/euphoriacyberware-ai/DTConfigEditorKit",
       "state" : {
-        "branch" : "v2",
-        "revision" : "f501e793b844af22ad33b54bb6654a888b267fe5"
+        "branch" : "swift6-drawthings-2.2",
+        "revision" : "b94ce712fda781586fa082afec421df8e25a660b"
       }
     },
     {
