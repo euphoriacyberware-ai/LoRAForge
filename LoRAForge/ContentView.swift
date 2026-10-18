@@ -12,6 +12,7 @@ enum SidebarItem: Hashable {
 enum ProjectTab: String, CaseIterable {
     case datasetBuilder = "Dataset Builder"
     case referenceLibrary = "Reference Library"
+    case macros = "Macros"
 }
 
 struct ContentView: View {
@@ -535,7 +536,11 @@ struct ContentView: View {
     // MARK: - Generate Unfilled
 
     private func entriesWithoutFinal(in doc: ProjectDocument) -> [EntryDocument] {
-        doc.entries.filter { $0.finalImage == nil && !$0.generationPrompt.trimmingCharacters(in: .whitespaces).isEmpty }
+        doc.entries.filter {
+            $0.finalImage == nil
+                && !MacroExpander.expand($0.generationPrompt, macros: doc.macros).text
+                    .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
     }
 
     private func generateUnfilled(in doc: ProjectDocument) {
@@ -550,7 +555,8 @@ struct ContentView: View {
 
     private func generateForEntry(_ entry: EntryDocument, in doc: ProjectDocument, bundleURL: URL) {
         let prompt = entry.generationPrompt
-        guard !prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        guard !MacroExpander.expand(prompt, macros: doc.macros).text
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         let seed: Int64? = entry.useCustomSeed ? entry.generationSeed : nil
 
         let refData: [Data] = entry.referenceImageIDs.compactMap { refID in
@@ -568,7 +574,8 @@ struct ContentView: View {
             projectID: doc.id,
             entryID: entry.id,
             referenceImageData: refData,
-            referenceImageIDs: entry.referenceImageIDs
+            referenceImageIDs: entry.referenceImageIDs,
+            macros: doc.macros
         )
     }
 
@@ -651,6 +658,15 @@ struct ContentView: View {
                     )
                 case .referenceLibrary:
                     ReferenceLibraryView(
+                        document: Binding(
+                            get: { currentDocument! },
+                            set: { currentDocument = $0 }
+                        ),
+                        bundleURL: library.bundleURL(for: id) ?? URL(filePath: "/"),
+                        onChanged: { saveCurrentProject() }
+                    )
+                case .macros:
+                    MacrosView(
                         document: Binding(
                             get: { currentDocument! },
                             set: { currentDocument = $0 }

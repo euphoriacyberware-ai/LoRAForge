@@ -44,12 +44,20 @@ final class GenerationService {
         let entryID: UUID
         var configJSON: String?
         var referenceImageIDs: [UUID]?
+        /// Entry prompts before macro expansion; nil when expansion changed nothing.
+        var sourcePrompt: String?
+        var sourceNegativePrompt: String?
 
-        init(projectID: UUID, entryID: UUID, configJSON: String? = nil, referenceImageIDs: [UUID]? = nil) {
+        init(
+            projectID: UUID, entryID: UUID, configJSON: String? = nil, referenceImageIDs: [UUID]? = nil,
+            sourcePrompt: String? = nil, sourceNegativePrompt: String? = nil
+        ) {
             self.projectID = projectID
             self.entryID = entryID
             self.configJSON = configJSON
             self.referenceImageIDs = referenceImageIDs
+            self.sourcePrompt = sourcePrompt
+            self.sourceNegativePrompt = sourceNegativePrompt
         }
 
         init(from decoder: Decoder) throws {
@@ -58,6 +66,8 @@ final class GenerationService {
             entryID = try c.decode(UUID.self, forKey: .entryID)
             configJSON = try c.decodeIfPresent(String.self, forKey: .configJSON)
             referenceImageIDs = try c.decodeIfPresent([UUID].self, forKey: .referenceImageIDs)
+            sourcePrompt = try c.decodeIfPresent(String.self, forKey: .sourcePrompt)
+            sourceNegativePrompt = try c.decodeIfPresent(String.self, forKey: .sourceNegativePrompt)
         }
     }
 
@@ -148,7 +158,8 @@ final class GenerationService {
         projectID: UUID,
         entryID: UUID,
         referenceImageData: [Data] = [],
-        referenceImageIDs: [UUID] = []
+        referenceImageIDs: [UUID] = [],
+        macros: [ProjectMacro] = []
     ) {
         guard let queue else {
             lastError = "Not connected to Draw Things server"
@@ -193,9 +204,13 @@ final class GenerationService {
             }
         }
 
+        // Macros expand here; the entry keeps the `<Name>` form, recorded as the source.
+        let expandedPrompt = MacroExpander.expand(prompt, macros: macros).text
+        let expandedNegative = MacroExpander.expand(negativePrompt, macros: macros).text
+
         let request = GenerationRequest(
-            prompt: prompt,
-            negativePrompt: negativePrompt,
+            prompt: expandedPrompt,
+            negativePrompt: expandedNegative,
             configuration: config,
             hints: hints
         )
@@ -207,7 +222,9 @@ final class GenerationService {
             projectID: projectID,
             entryID: entryID,
             configJSON: finalConfigJSON,
-            referenceImageIDs: referenceImageIDs.isEmpty ? nil : referenceImageIDs
+            referenceImageIDs: referenceImageIDs.isEmpty ? nil : referenceImageIDs,
+            sourcePrompt: expandedPrompt == prompt ? nil : prompt,
+            sourceNegativePrompt: expandedNegative == negativePrompt ? nil : negativePrompt
         )
         saveRequestMap()
         queue.enqueue(request)
@@ -309,7 +326,9 @@ final class GenerationService {
                         negativePrompt: result.request.negativePrompt,
                         seed: Int64(result.request.configuration.seed ?? 0),
                         configJSON: target.configJSON,
-                        referenceImageIDs: target.referenceImageIDs
+                        referenceImageIDs: target.referenceImageIDs,
+                        sourcePrompt: target.sourcePrompt,
+                        sourceNegativePrompt: target.sourceNegativePrompt
                     )
                     return ImageDocument(filename: filename, provenance: provenance)
                 }.value

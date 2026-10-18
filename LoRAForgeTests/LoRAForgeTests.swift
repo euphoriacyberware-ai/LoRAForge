@@ -439,6 +439,26 @@ struct StoreTests {
         #expect(library.projects.first { $0.id == copy.id }?.folder == "Maya")
     }
 
+    @Test("Duplicate keeps macros and export name")
+    func libraryDuplicateKeepsMacros() throws {
+        let repo = try freshRepository()
+        try repo.seedBuiltInCategoriesIfNeeded()
+        let dir = tempLibraryDir()
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        let library = LibraryManager(libraryURL: dir)
+        let info = try library.createProject(name: "Source", repo: repo)
+        var doc = try #require(try library.loadDocument(id: info.id))
+        doc.macros = [ProjectMacro(name: "Character", text: "red hair")]
+        doc.lastExportBaseName = "maya"
+        library.updateDocument(doc)
+
+        let copy = try library.duplicateProject(id: info.id, newName: "Source copy")
+        let copied = try ProjectBundle(url: try #require(library.bundleURL(for: copy.id))).readProject()
+        #expect(copied.macros == doc.macros)
+        #expect(copied.lastExportBaseName == "maya")
+    }
+
     @Test("Deleting a folder can ungroup or delete its projects")
     func libraryDeleteFolder() throws {
         let repo = try freshRepository()
