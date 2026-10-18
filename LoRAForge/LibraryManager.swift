@@ -229,7 +229,9 @@ final class LibraryManager {
             categoryEnabled: doc.categoryEnabled,
             entries: doc.entries,
             referenceImages: doc.referenceImages,
-            defaultGenerationConfigJSON: doc.defaultGenerationConfigJSON
+            defaultGenerationConfigJSON: doc.defaultGenerationConfigJSON,
+            lastExportBaseName: doc.lastExportBaseName,
+            macros: doc.macros
         )
         try bundle.writeProjectAtomic(doc)
 

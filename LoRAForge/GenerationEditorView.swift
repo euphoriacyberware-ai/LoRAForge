@@ -6,6 +6,7 @@ import DrawThingsClient
 struct GenerationEditorView: View {
     @Binding var entry: EntryDocument
     let referenceImages: [ReferenceImageDocument]
+    let macros: [ProjectMacro]
     let bundleURL: URL
     let onChanged: () -> Void
 
@@ -16,6 +17,7 @@ struct GenerationEditorView: View {
     @State private var refPickerSlot = 0
     @State private var configModel: ConfigEditorModel?
     @State private var presets: [SDGenerationPreset] = []
+    @State private var showingExpandedPreview = false
 
     private enum EditorTab: Hashable {
         case prompt, configuration
@@ -91,28 +93,111 @@ struct GenerationEditorView: View {
             }
 
             GeometryReader { geo in
-                let available = max(geo.size.height - 48, 0)
+                let promptExpansion = MacroExpander.expand(entry.generationPrompt, macros: macros)
+                let negativeExpansion = MacroExpander.expand(entry.generationNegativePrompt, macros: macros)
+                let warningLines = (promptExpansion.hasWarnings ? 1 : 0) + (negativeExpansion.hasWarnings ? 1 : 0)
+                let available = max(geo.size.height - 56 - CGFloat(warningLines) * 20, 0)
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Prompt")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    promptHeader("Prompt", text: $entry.generationPrompt, showsPreview: true)
                     TextEditor(text: $entry.generationPrompt)
                         .font(.body)
                         .frame(height: available * 0.6)
                         .onChange(of: entry.generationPrompt) { onChanged() }
+                    macroWarnings(promptExpansion)
 
-                    Text("Negative prompt")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    promptHeader("Negative prompt", text: $entry.generationNegativePrompt, showsPreview: false)
                         .padding(.top, 8)
                     TextEditor(text: $entry.generationNegativePrompt)
                         .font(.body)
                         .frame(height: available * 0.4)
                         .onChange(of: entry.generationNegativePrompt) { onChanged() }
+                    macroWarnings(negativeExpansion)
                 }
             }
         }
         .padding()
+    }
+
+    // MARK: - Macros
+
+    private func promptHeader(_ title: String, text: Binding<String>, showsPreview: Bool) -> some View {
+        HStack(spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            if showsPreview, !macros.isEmpty {
+                Button("Preview expanded") { showingExpandedPreview = true }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .popover(isPresented: $showingExpandedPreview) { expandedPreview }
+            }
+            Menu {
+                if macros.isEmpty {
+                    Text("No macros in this project")
+                } else {
+                    ForEach(macros) { macro in
+                        Button(macro.name) { insertReference(to: macro.name, in: text) }
+                    }
+                }
+            } label: {
+                Label("Insert macro", systemImage: "text.badge.plus")
+            }
+            .menuStyle(.borderlessButton)
+            .fixedSize()
+            .controlSize(.small)
+        }
+    }
+
+    @ViewBuilder
+    private func macroWarnings(_ expansion: MacroExpander.Expansion) -> some View {
+        if expansion.hasWarnings {
+            let parts = [
+                expansion.unresolved.isEmpty ? nil
+                    : "Undefined, sent as written: " + expansion.unresolved.map { "<\($0)>" }.joined(separator: ", "),
+                expansion.empty.isEmpty ? nil
+                    : "Empty: " + expansion.empty.map { "<\($0)>" }.joined(separator: ", "),
+            ].compactMap { $0 }
+            Label(parts.joined(separator: " · "), systemImage: "exclamationmark.triangle")
+                .font(.caption)
+                .foregroundStyle(.orange)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .help(parts.joined(separator: "\n"))
+        }
+    }
+
+    private var expandedPreview: some View {
+        let prompt = MacroExpander.expand(entry.generationPrompt, macros: macros).text
+        let negative = MacroExpander.expand(entry.generationNegativePrompt, macros: macros).text
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Prompt as sent")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Text(prompt.isEmpty ? "—" : prompt)
+                    .textSelection(.enabled)
+                if !negative.isEmpty {
+                    Text("Negative prompt as sent")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.top, 4)
+                    Text(negative)
+                        .textSelection(.enabled)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding()
+        }
+        .frame(width: 420, height: 260)
+    }
+
+    /// Appends `<name>` to the prompt, separated from existing text by a space.
+    private func insertReference(to name: String, in text: Binding<String>) {
+        var value = text.wrappedValue
+        if let last = value.last, !last.isWhitespace { value += " " }
+        value += "<\(name)>"
+        text.wrappedValue = value
     }
 
     // MARK: - Right: Seed + Reference Images

@@ -18,6 +18,7 @@ struct DatasetBuilderView: View {
     @State private var captioningEntryID: UUID?
     @State private var showingExport = false
     @State private var importError: String?
+    @State private var macroStubNotice: String?
     @State private var editingGenerationEntryID: UUID?
     @State private var showingAudit = false
     @State private var highlightCategoryID: UUID?
@@ -109,6 +110,14 @@ struct DatasetBuilderView: View {
                 }
             }
         }
+        .alert("Empty macros added", isPresented: .init(
+            get: { macroStubNotice != nil },
+            set: { if !$0 { macroStubNotice = nil } }
+        )) {
+            Button("OK") { macroStubNotice = nil }
+        } message: {
+            Text(macroStubNotice ?? "")
+        }
         .alert("Import error", isPresented: .init(
             get: { importError != nil },
             set: { if !$0 { importError = nil } }
@@ -143,6 +152,7 @@ struct DatasetBuilderView: View {
                 GenerationEditorView(
                     entry: $document.entries[idx],
                     referenceImages: document.referenceImages,
+                    macros: document.macros,
                     bundleURL: bundleURL,
                     onChanged: onChanged
                 )
@@ -544,7 +554,8 @@ struct DatasetBuilderView: View {
 
     private func generateForEntry(_ entry: EntryDocument) {
         let prompt = entry.generationPrompt
-        guard !prompt.trimmingCharacters(in: .whitespaces).isEmpty else {
+        guard !MacroExpander.expand(prompt, macros: document.macros).text
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             importError = "Set a prompt in the generation settings before generating."
             return
         }
@@ -566,7 +577,8 @@ struct DatasetBuilderView: View {
             projectID: document.id,
             entryID: entry.id,
             referenceImageData: refData,
-            referenceImageIDs: entry.referenceImageIDs
+            referenceImageIDs: entry.referenceImageIDs,
+            macros: document.macros
         )
     }
 
@@ -592,6 +604,11 @@ struct DatasetBuilderView: View {
             )
             entry.generationPrompt = tp.text
             document.entries.append(entry)
+        }
+        let added = MacroExpander.addStubs(for: template.prompts.map(\.text), to: &document.macros)
+        if !added.isEmpty {
+            let list = added.map { "<\($0)>" }.joined(separator: ", ")
+            macroStubNotice = "The template references \(added.count) macro\(added.count == 1 ? "" : "s") this project didn't have: \(list). Fill them in on the Macros tab."
         }
         onChanged()
     }
@@ -836,8 +853,8 @@ struct DatasetBuilderView: View {
             position: document.entries.count + 1,
             defaultConfigJSON: provenance.configJSON ?? document.defaultGenerationConfigJSON
         )
-        entry.generationPrompt = provenance.prompt
-        entry.generationNegativePrompt = provenance.negativePrompt
+        entry.generationPrompt = provenance.editablePrompt
+        entry.generationNegativePrompt = provenance.editableNegativePrompt
         entry.generationConfigJSON = provenance.configJSON ?? document.defaultGenerationConfigJSON
         entry.referenceImageIDs = provenance.referenceImageIDs ?? []
         entry.useCustomSeed = true
@@ -901,8 +918,8 @@ struct DatasetBuilderView: View {
               let provenance = document.entries[entryIdx].images[imgIdx].provenance
         else { return }
 
-        document.entries[entryIdx].generationPrompt = provenance.prompt
-        document.entries[entryIdx].generationNegativePrompt = provenance.negativePrompt
+        document.entries[entryIdx].generationPrompt = provenance.editablePrompt
+        document.entries[entryIdx].generationNegativePrompt = provenance.editableNegativePrompt
         document.entries[entryIdx].generationSeed = provenance.seed
         document.entries[entryIdx].useCustomSeed = true
         if let configJSON = provenance.configJSON {

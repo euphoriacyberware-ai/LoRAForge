@@ -11,6 +11,13 @@ struct ProjectDocument: Codable {
     var entries: [EntryDocument]
     var referenceImages: [ReferenceImageDocument]
     var defaultGenerationConfigJSON: String
+    /// Named prompt snippets referenced from entry prompts as `<Name>`.
+    var macros: [ProjectMacro]
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, createdAt, categoryOrder, categoryEnabled, lastExportBaseName
+        case entries, referenceImages, defaultGenerationConfigJSON, macros
+    }
 
     init(name: String, categories: [TagCategory]) {
         self.id = UUID()
@@ -21,6 +28,7 @@ struct ProjectDocument: Codable {
         self.entries = []
         self.referenceImages = []
         self.defaultGenerationConfigJSON = UserDefaults.standard.string(forKey: "defaultGenerationConfig") ?? ""
+        self.macros = []
     }
 
     init(
@@ -31,7 +39,9 @@ struct ProjectDocument: Codable {
         categoryEnabled: [UUID: Bool],
         entries: [EntryDocument],
         referenceImages: [ReferenceImageDocument],
-        defaultGenerationConfigJSON: String
+        defaultGenerationConfigJSON: String,
+        lastExportBaseName: String? = nil,
+        macros: [ProjectMacro] = []
     ) {
         self.id = id
         self.name = name
@@ -41,6 +51,23 @@ struct ProjectDocument: Codable {
         self.entries = entries
         self.referenceImages = referenceImages
         self.defaultGenerationConfigJSON = defaultGenerationConfigJSON
+        self.lastExportBaseName = lastExportBaseName
+        self.macros = macros
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+        categoryOrder = try c.decode([UUID].self, forKey: .categoryOrder)
+        categoryEnabled = try c.decode([UUID: Bool].self, forKey: .categoryEnabled)
+        lastExportBaseName = try c.decodeIfPresent(String.self, forKey: .lastExportBaseName)
+        entries = try c.decode([EntryDocument].self, forKey: .entries)
+        referenceImages = try c.decode([ReferenceImageDocument].self, forKey: .referenceImages)
+        defaultGenerationConfigJSON = try c.decode(String.self, forKey: .defaultGenerationConfigJSON)
+        // Projects created before macros existed have no key
+        macros = try c.decodeIfPresent([ProjectMacro].self, forKey: .macros) ?? []
     }
 
     var totalImageCount: Int {
@@ -191,6 +218,26 @@ struct ImageProvenance: Codable {
     let seed: Int64
     var configJSON: String?
     var referenceImageIDs: [UUID]?
+    /// Prompt as written in the entry, before macro expansion. Nil when it
+    /// matched `prompt` or the image predates macros.
+    var sourcePrompt: String? = nil
+    var sourceNegativePrompt: String? = nil
+
+    /// The entry-side prompt to restore on recall or clone.
+    var editablePrompt: String { sourcePrompt ?? prompt }
+    var editableNegativePrompt: String { sourceNegativePrompt ?? negativePrompt }
+}
+
+struct ProjectMacro: Codable, Identifiable, Hashable {
+    let id: UUID
+    var name: String
+    var text: String
+
+    init(id: UUID = UUID(), name: String, text: String = "") {
+        self.id = id
+        self.name = name
+        self.text = text
+    }
 }
 
 struct ReferenceImageDocument: Codable, Identifiable {

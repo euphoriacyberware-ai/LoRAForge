@@ -65,8 +65,14 @@ struct ImageInspectorView: View {
         return VStack(alignment: .leading, spacing: 8) {
             sectionHeader("Generation settings")
             promptRow("Prompt", value: provenance.prompt)
+            if let source = provenance.sourcePrompt {
+                promptRow("Prompt as written", value: source)
+            }
             if !provenance.negativePrompt.isEmpty {
                 promptRow("Negative", value: provenance.negativePrompt)
+            }
+            if let source = provenance.sourceNegativePrompt {
+                promptRow("Negative as written", value: source)
             }
             settingRow("Model", value: config?.model.truncatedFilename ?? dash)
             settingRow("Sampler", value: config.map { samplerDisplayName($0.sampler) } ?? dash)
