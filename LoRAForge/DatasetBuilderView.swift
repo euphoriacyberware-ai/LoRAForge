@@ -595,8 +595,14 @@ struct DatasetBuilderView: View {
 
         let startPosition = (document.entries.map(\.position).max() ?? 0) + 1
         for (index, tp) in template.prompts.sorted(by: { $0.order < $1.order }).enumerated() {
+            let savedName = tp.entryName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
             let promptPrefix = String(tp.text.prefix(30)).trimmingCharacters(in: .whitespaces)
-            let name = promptPrefix.isEmpty ? "Entry \(startPosition + index)" : promptPrefix
+            let name: String
+            if !savedName.isEmpty {
+                name = savedName
+            } else {
+                name = promptPrefix.isEmpty ? "Entry \(startPosition + index)" : promptPrefix
+            }
             var entry = EntryDocument(
                 name: name,
                 position: startPosition + index,
@@ -1389,7 +1395,8 @@ private struct SaveTemplateSheet: View {
                 order: index,
                 text: entry.generationPrompt,
                 sourceSlotIndex: nil,
-                generateCount: 1
+                generateCount: 1,
+                entryName: entry.name
             )
         }
         let template = Template(

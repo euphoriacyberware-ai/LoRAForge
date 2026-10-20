@@ -164,7 +164,8 @@ struct TemplateLibraryView: View {
                     order: prompt.order,
                     text: prompt.text,
                     sourceSlotIndex: prompt.sourceSlotIndex,
-                    generateCount: prompt.generateCount
+                    generateCount: prompt.generateCount,
+                    entryName: prompt.entryName
                 )
             }
         )
@@ -303,7 +304,7 @@ private struct TemplateEditorPane: View {
     private func promptRow(index: Int, prompt: TemplatePrompt) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Prompt \(index + 1)")
+                Text(prompt.entryName.flatMap { $0.isEmpty ? nil : $0 } ?? "Prompt \(index + 1)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -317,6 +318,19 @@ private struct TemplateEditorPane: View {
                 }
                 .buttonStyle(.borderless)
             }
+
+            TextField("Entry name", text: Binding(
+                get: {
+                    template.prompts.first(where: { $0.id == prompt.id })?.entryName ?? ""
+                },
+                set: { newValue in
+                    if let idx = template.prompts.firstIndex(where: { $0.id == prompt.id }) {
+                        template.prompts[idx].entryName = newValue.isEmpty ? nil : newValue
+                        saveTemplate()
+                    }
+                }
+            ), prompt: Text("Derived from prompt"))
+            .textFieldStyle(.roundedBorder)
 
             TextEditor(text: Binding(
                 get: {
