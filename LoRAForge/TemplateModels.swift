@@ -17,6 +17,8 @@ struct TemplatePrompt: Codable, Identifiable {
     var text: String
     var sourceSlotIndex: Int?
     var generateCount: Int
+    /// Name given to the entry created from this prompt. Nil means derive it from the prompt.
+    var entryName: String? = nil
 }
 
 // MARK: - Template Export Envelope
@@ -42,7 +44,7 @@ struct TemplateExportEnvelope: Codable {
     }
 
     private enum PromptCodingKeys: String, CodingKey {
-        case order, text, sourceSlotIndex, generateCount
+        case order, text, sourceSlotIndex, generateCount, entryName
     }
 
     func encode(to encoder: Encoder) throws {
@@ -58,6 +60,7 @@ struct TemplateExportEnvelope: Codable {
             try promptContainer.encode(prompt.text, forKey: .text)
             try promptContainer.encodeIfPresent(prompt.sourceSlotIndex, forKey: .sourceSlotIndex)
             try promptContainer.encode(prompt.generateCount, forKey: .generateCount)
+            try promptContainer.encodeIfPresent(prompt.entryName, forKey: .entryName)
         }
     }
 
@@ -76,7 +79,8 @@ struct TemplateExportEnvelope: Codable {
                 order: try promptContainer.decode(Int.self, forKey: .order),
                 text: try promptContainer.decode(String.self, forKey: .text),
                 sourceSlotIndex: try promptContainer.decodeIfPresent(Int.self, forKey: .sourceSlotIndex),
-                generateCount: try promptContainer.decode(Int.self, forKey: .generateCount)
+                generateCount: try promptContainer.decode(Int.self, forKey: .generateCount),
+                entryName: try promptContainer.decodeIfPresent(String.self, forKey: .entryName)
             ))
         }
         template = Template(id: UUID(), name: name, createdAt: createdAt, prompts: prompts)
