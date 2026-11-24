@@ -53,6 +53,10 @@ struct GenerationSettingsForm: View {
             }
 
             Section("Size") {
+                SizeControls(width: Int(config.width), height: Int(config.height)) { width, height in
+                    model.set("width", to: GenerationSettingsWriter.int(width))
+                    model.set("height", to: GenerationSettingsWriter.int(height))
+                }
                 IntField(
                     title: "Width",
                     value: binding(Int(config.width), GenerationSettingsWriter.int, key: "width"),
@@ -315,5 +319,120 @@ private struct FloatField: View {
             Stepper(title, value: $value, in: range, step: step)
                 .labelsHidden()
         }
+    }
+}
+
+// MARK: - Size
+
+/// Aspect ratio buttons, an orientation switch and megapixel presets over width and height.
+private struct SizeControls: View {
+    let width: Int
+    let height: Int
+    let apply: (_ width: Int, _ height: Int) -> Void
+
+    private var landscape: Bool { ImageSize.isLandscape(width: width, height: height) }
+    private var matchedRatio: AspectRatio? { ImageSize.matchingRatio(width: width, height: height) }
+    private var megapixels: Double { ImageSize.megapixels(width: width, height: height) }
+
+    var body: some View {
+        LabeledContent("Aspect ratio") {
+            HStack(spacing: 6) {
+                ForEach(AspectRatio.common) { ratio in
+                    RatioButton(ratio: ratio, landscape: landscape, isSelected: ratio == matchedRatio) {
+                        // Keep the current pixel count and orientation.
+                        let size = ImageSize.dimensions(ratio: ratio, landscape: landscape, megapixels: megapixels)
+                        apply(size.width, size.height)
+                    }
+                }
+                if matchedRatio == nil {
+                    Text("Custom")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Divider().frame(height: 28)
+                Button {
+                    apply(height, width)
+                } label: {
+                    Label(
+                        landscape ? "Switch to portrait" : "Switch to landscape",
+                        systemImage: landscape ? "rectangle.portrait.rotate" : "rectangle.landscape.rotate"
+                    )
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .disabled(width == height)
+                .help(width == height ? "Square images have no orientation"
+                      : landscape ? "Switch to portrait" : "Switch to landscape")
+            }
+        }
+
+        LabeledContent("Megapixels") {
+            HStack(spacing: 8) {
+                Picker("Megapixels", selection: Binding(
+                    get: { ImageSize.matchingPreset(width: width, height: height) },
+                    set: { preset in
+                        guard let preset else { return }
+                        applyMegapixels(preset)
+                    }
+                )) {
+                    ForEach(ImageSize.megapixelPresets, id: \.self) { preset in
+                        Text(preset.formatted()).tag(Optional(preset))
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                Text("\(width) × \(height) · \(megapixels.formatted(.number.precision(.fractionLength(2)))) MP")
+                    .font(.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    /// Keeps the matched ratio, or the exact current proportion when custom, and orientation.
+    private func applyMegapixels(_ preset: Double) {
+        let size: (width: Int, height: Int)
+        if let matchedRatio {
+            size = ImageSize.dimensions(ratio: matchedRatio, landscape: landscape, megapixels: preset)
+        } else {
+            let proportion = Double(max(width, height)) / Double(max(min(width, height), 1))
+            size = ImageSize.dimensions(ratio: proportion, landscape: landscape, pixels: preset * ImageSize.megapixel)
+        }
+        apply(size.width, size.height)
+    }
+}
+
+/// A ratio drawn as a small rectangle in its proportions, with its label underneath.
+private struct RatioButton: View {
+    let ratio: AspectRatio
+    let landscape: Bool
+    let isSelected: Bool
+    let action: () -> Void
+
+    private let box: CGFloat = 26
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                let long = box
+                let short = box * CGFloat(ratio.short) / CGFloat(ratio.long)
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(isSelected ? Color.accentColor.opacity(0.35) : Color.clear)
+                    .strokeBorder(isSelected ? Color.accentColor : Color.secondary, lineWidth: 1.5)
+                    .frame(width: landscape ? long : short, height: landscape ? short : long)
+                    .frame(width: box, height: box)
+                Text(ratio.label(landscape: landscape))
+                    .font(.caption2)
+                    .monospacedDigit()
+                    .foregroundStyle(isSelected ? Color.accentColor : Color.secondary)
+            }
+            .padding(.horizontal, 2)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("\(ratio.label(landscape: landscape)) aspect ratio")
+        .accessibilityLabel("\(ratio.label(landscape: landscape)) aspect ratio")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
