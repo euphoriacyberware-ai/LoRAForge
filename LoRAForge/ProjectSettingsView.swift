@@ -10,7 +10,6 @@ struct ProjectSettingsView: View {
 
     @Environment(TagRepository.self) private var repo
     @Environment(GenerationPresetRepository.self) private var presetRepo
-    @Environment(\.dismiss) private var dismiss
 
     @State private var categories: [TagCategory] = []
     @State private var presets: [SDGenerationPreset] = []
@@ -24,43 +23,34 @@ struct ProjectSettingsView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Inline rather than a .principal toolbar item: macOS sheets
-                // don't render principal toolbar items.
-                Picker("", selection: $selectedTab) {
-                    Text("Categories").tag(SettingsTab.categories)
-                    Text("Configuration").tag(SettingsTab.configuration)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+        VStack(spacing: 0) {
+            // Inline: the toolbar's principal position already holds the
+            // project tabs.
+            Picker("", selection: $selectedTab) {
+                Text("Categories").tag(SettingsTab.categories)
+                Text("Configuration").tag(SettingsTab.configuration)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .padding(.top, 8)
+            .padding(.bottom, 4)
 
-                Divider()
+            Divider()
 
-                switch selectedTab {
-                case .categories:
-                    leftPane
-                case .configuration:
-                    rightPane
-                }
+            switch selectedTab {
+            case .categories:
+                leftPane
+            case .configuration:
+                rightPane
             }
-            .navigationTitle("Project settings")
-            #if os(macOS)
-            .frame(minWidth: 800, minHeight: 650)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .onAppear {
-                categories = (try? repo.allCategories()) ?? []
-                presets = (try? presetRepo.allPresets()) ?? []
-                initConfigModel()
-            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle(document.name)
+        .onAppear {
+            categories = (try? repo.allCategories()) ?? []
+            presets = (try? presetRepo.allPresets()) ?? []
+            initConfigModel()
         }
     }
 
