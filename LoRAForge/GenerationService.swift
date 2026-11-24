@@ -12,6 +12,8 @@ final class GenerationService {
     private(set) var isConnected = false
     private(set) var lastError: String?
     private(set) var serverCatalog: ServerCatalog = .unavailable
+    /// Installed models and LoRAs, when the server has model browsing on.
+    private(set) var serverModels: ServerModelList?
 
     // Queue state is read straight from the @Observable GenerationQueue, so views
     // track it without a mirroring layer.
@@ -108,11 +110,13 @@ final class GenerationService {
                 do {
                     let reply = try await service.echo()
                     serverCatalog = ServerCatalog(reply: reply)
+                    serverModels = ServerModelList(reply: reply)
                     isConnected = true
                     lastError = nil
                 } catch DrawThingsError.unauthenticated {
                     // v2 throws instead of returning a reply with sharedSecretMissing set.
                     serverCatalog = .sharedSecretMissing
+                    serverModels = nil
                     isConnected = true
                     lastError = "Server requires a shared secret"
                 } catch {
@@ -145,6 +149,7 @@ final class GenerationService {
         queue = nil
         isConnected = false
         serverCatalog = .unavailable
+        serverModels = nil
     }
 
     // MARK: - Enqueue

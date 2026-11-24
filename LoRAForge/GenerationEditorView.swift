@@ -20,7 +20,7 @@ struct GenerationEditorView: View {
     @State private var showingExpandedPreview = false
 
     private enum EditorTab: Hashable {
-        case prompt, configuration
+        case prompt, configuration, configurationJSON
     }
 
     var body: some View {
@@ -31,6 +31,7 @@ struct GenerationEditorView: View {
                 Picker("", selection: $selectedTab) {
                     Text("Prompt").tag(EditorTab.prompt)
                     Text("Configuration").tag(EditorTab.configuration)
+                    Text("Configuration JSON").tag(EditorTab.configurationJSON)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
@@ -44,7 +45,9 @@ struct GenerationEditorView: View {
                 case .prompt:
                     promptTab
                 case .configuration:
-                    configPanel
+                    configPanel(showsJSON: false)
+                case .configurationJSON:
+                    configPanel(showsJSON: true)
                 }
             }
             .navigationTitle("Entry generation editor")
@@ -337,9 +340,11 @@ struct GenerationEditorView: View {
             }
     }
 
-    // MARK: - Configuration tab
+    // MARK: - Configuration tabs
 
-    private var configPanel: some View {
+    /// Both configuration tabs share the preset menu and note; only the editor in the
+    /// middle differs. They edit the same `ConfigEditorModel`.
+    private func configPanel(showsJSON: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text("Generation configuration")
@@ -362,11 +367,17 @@ struct GenerationEditorView: View {
             }
 
             if let configModel {
-                ConfigEditorPanel(model: configModel)
-                    .onChange(of: configModel.text) {
-                        entry.generationConfigJSON = configModel.text
-                        onChanged()
+                Group {
+                    if showsJSON {
+                        ConfigEditorPanel(model: configModel)
+                    } else {
+                        GenerationSettingsForm(model: configModel)
                     }
+                }
+                .onChange(of: configModel.text) {
+                    entry.generationConfigJSON = configModel.text
+                    onChanged()
+                }
             }
 
             Text("Seed and batch size are overridden by the app.")
