@@ -330,7 +330,15 @@ private struct SizeControls: View {
     let height: Int
     let apply: (_ width: Int, _ height: Int) -> Void
 
-    private var landscape: Bool { ImageSize.isLandscape(width: width, height: height) }
+    /// The orientation a square size reads as. Square sizes have no orientation of their own,
+    /// but the switch still decides how the ratio buttons are drawn and which way the next
+    /// ratio picked from 1:1 faces. Follows the size whenever it isn't square.
+    @State private var squareIsLandscape = true
+
+    private var isSquare: Bool { width == height }
+    private var landscape: Bool {
+        isSquare ? squareIsLandscape : ImageSize.isLandscape(width: width, height: height)
+    }
     private var matchedRatio: AspectRatio? { ImageSize.matchingRatio(width: width, height: height) }
     private var megapixels: Double { ImageSize.megapixels(width: width, height: height) }
 
@@ -351,7 +359,8 @@ private struct SizeControls: View {
                 }
                 Divider().frame(height: 28)
                 Button {
-                    apply(height, width)
+                    squareIsLandscape = !landscape
+                    if !isSquare { apply(height, width) }
                 } label: {
                     Label(
                         landscape ? "Switch to portrait" : "Switch to landscape",
@@ -360,10 +369,11 @@ private struct SizeControls: View {
                 }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.borderless)
-                .disabled(width == height)
-                .help(width == height ? "Square images have no orientation"
-                      : landscape ? "Switch to portrait" : "Switch to landscape")
+                .help(landscape ? "Switch to portrait" : "Switch to landscape")
             }
+        }
+        .onChange(of: [width, height], initial: true) {
+            if !isSquare { squareIsLandscape = width > height }
         }
 
         LabeledContent("Megapixels") {
