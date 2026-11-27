@@ -13,6 +13,7 @@
 		A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152930280BD00049F8D7 /* TaggingCore */; };
 		A4B5152B30280BD00049F8D7 /* TaggingCore in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152C30280BD00049F8D7 /* TaggingCore */; };
 		A4B5152D30280BD00049F8D7 /* DrawThingsClient in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5152E30280BD00049F8D7 /* DrawThingsClient */; };
+		A4B5153F30280BD00049F8D7 /* DrawThingsKit in Frameworks */ = {isa = PBXBuildFile; productRef = A4B5154030280BD00049F8D7 /* DrawThingsKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -79,6 +80,7 @@
 				A4B5152330280BCE0049F8D7 /* DTConfigBridge in Frameworks */,
 				A4B5152A30280BD00049F8D7 /* TaggingCore in Frameworks */,
 				A4B5152D30280BD00049F8D7 /* DrawThingsClient in Frameworks */,
+				A4B5153F30280BD00049F8D7 /* DrawThingsKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -145,6 +147,7 @@
 				A4B5152430280BCE0049F8D7 /* DTConfigEditorKit */,
 				A4B5152930280BD00049F8D7 /* TaggingCore */,
 				A4B5152E30280BD00049F8D7 /* DrawThingsClient */,
+				A4B5154030280BD00049F8D7 /* DrawThingsKit */,
 			);
 			productName = LoRAForge;
 			productReference = A4B514E4302809A90049F8D7 /* LoRAForge.app */;
@@ -435,7 +438,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 261019;
+				CURRENT_PROJECT_VERSION = 261126;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 3CC4EX7YW2;
 				ENABLE_APP_SANDBOX = YES;
@@ -470,7 +473,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 0.5.1;
+				MARKETING_VERSION = 0.5.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForge";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -494,7 +497,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 261019;
+				CURRENT_PROJECT_VERSION = 261126;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 3CC4EX7YW2;
 				ENABLE_APP_SANDBOX = YES;
@@ -529,7 +532,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
-				MARKETING_VERSION = 0.5.1;
+				MARKETING_VERSION = 0.5.2;
 				PRODUCT_BUNDLE_IDENTIFIER = "euphoria-ai.LoRAForge";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -747,6 +750,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThings-Swift" */;
 			productName = DrawThingsClient;
+		};
+		A4B5154030280BD00049F8D7 /* DrawThingsKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A4B5151E30280A470049F8D7 /* XCRemoteSwiftPackageReference "DrawThings-Swift" */;
+			productName = DrawThingsKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

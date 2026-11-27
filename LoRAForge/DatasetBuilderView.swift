@@ -508,7 +508,7 @@ struct DatasetBuilderView: View {
                 } label: {
                     Label("Add", systemImage: "photo.on.rectangle")
                 }
-                .help("Add to Reference Library")
+                .help("Add to references")
             }
 
             Divider().frame(height: 20)

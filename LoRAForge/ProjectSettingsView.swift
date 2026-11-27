@@ -10,7 +10,6 @@ struct ProjectSettingsView: View {
 
     @Environment(TagRepository.self) private var repo
     @Environment(GenerationPresetRepository.self) private var presetRepo
-    @Environment(\.dismiss) private var dismiss
 
     @State private var categories: [TagCategory] = []
     @State private var presets: [SDGenerationPreset] = []
@@ -20,47 +19,41 @@ struct ProjectSettingsView: View {
     @State private var selectedTab: SettingsTab = .categories
 
     private enum SettingsTab: Hashable {
-        case categories, configuration
+        case categories, configuration, configurationJSON
     }
 
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Inline rather than a .principal toolbar item: macOS sheets
-                // don't render principal toolbar items.
-                Picker("", selection: $selectedTab) {
-                    Text("Categories").tag(SettingsTab.categories)
-                    Text("Configuration").tag(SettingsTab.configuration)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .fixedSize()
-                .padding(.top, 8)
-                .padding(.bottom, 4)
+        VStack(spacing: 0) {
+            // Inline: the toolbar's principal position already holds the
+            // project tabs.
+            Picker("", selection: $selectedTab) {
+                Text("Categories").tag(SettingsTab.categories)
+                Text("Configuration").tag(SettingsTab.configuration)
+                Text("Configuration JSON").tag(SettingsTab.configurationJSON)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
+            .padding(.top, 8)
+            .padding(.bottom, 4)
 
-                Divider()
+            Divider()
 
-                switch selectedTab {
-                case .categories:
-                    leftPane
-                case .configuration:
-                    rightPane
-                }
+            switch selectedTab {
+            case .categories:
+                leftPane
+            case .configuration:
+                configurationPane(showsJSON: false)
+            case .configurationJSON:
+                configurationPane(showsJSON: true)
             }
-            .navigationTitle("Project settings")
-            #if os(macOS)
-            .frame(minWidth: 800, minHeight: 650)
-            #endif
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-            .onAppear {
-                categories = (try? repo.allCategories()) ?? []
-                presets = (try? presetRepo.allPresets()) ?? []
-                initConfigModel()
-            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .navigationTitle(document.name)
+        .onAppear {
+            categories = (try? repo.allCategories()) ?? []
+            presets = (try? presetRepo.allPresets()) ?? []
+            initConfigModel()
         }
     }
 
@@ -110,9 +103,11 @@ struct ProjectSettingsView: View {
         }
     }
 
-    // MARK: - Configuration tab
+    // MARK: - Configuration tabs
 
-    private var rightPane: some View {
+    /// Both configuration tabs share the preset menu, notes and actions; only the editor
+    /// in the middle differs. They edit the same `ConfigEditorModel`.
+    private func configurationPane(showsJSON: Bool) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Default generation configuration")
                 .font(.headline)
@@ -137,11 +132,17 @@ struct ProjectSettingsView: View {
             }
 
             if let configModel {
-                ConfigEditorPanel(model: configModel)
-                    .onChange(of: configModel.text) {
-                        document.defaultGenerationConfigJSON = configModel.text
-                        onChanged()
+                Group {
+                    if showsJSON {
+                        ConfigEditorPanel(model: configModel)
+                    } else {
+                        GenerationSettingsForm(model: configModel)
                     }
+                }
+                .onChange(of: configModel.text) {
+                    document.defaultGenerationConfigJSON = configModel.text
+                    onChanged()
+                }
             }
 
             Text("Seed and batch size are overridden by the app.")

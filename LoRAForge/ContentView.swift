@@ -11,8 +11,9 @@ enum SidebarItem: Hashable {
 
 enum ProjectTab: String, CaseIterable {
     case datasetBuilder = "Dataset Builder"
-    case referenceLibrary = "Reference Library"
+    case referenceLibrary = "References"
     case macros = "Macros"
+    case settings = "Settings"
 }
 
 struct ContentView: View {
@@ -31,7 +32,6 @@ struct ContentView: View {
     @State private var duplicatingProject: LibraryManager.ProjectInfo?
     @State private var duplicateName = ""
     @State private var showingQueuePopover = false
-    @State private var showingProjectSettings = false
     @State private var importResult: LegacyImporter.BatchImportResult?
     @State private var showingImportResult = false
     @State private var importError: String?
@@ -674,6 +674,17 @@ struct ContentView: View {
                         bundleURL: library.bundleURL(for: id) ?? URL(filePath: "/"),
                         onChanged: { saveCurrentProject() }
                     )
+                case .settings:
+                    ProjectSettingsView(
+                        document: Binding(
+                            get: { currentDocument! },
+                            set: { currentDocument = $0 }
+                        ),
+                        onChanged: { saveCurrentProject() }
+                    )
+                    // Fresh identity per project: the view loads its config
+                    // editor model from the document on appear.
+                    .id(id)
                 }
             } else {
                 ContentUnavailableView(
@@ -711,25 +722,6 @@ struct ContentView: View {
                           ? "All entries have a final image"
                           : "Generate \(generateUnfilledCount)× for \(unfilled.count) entr\(unfilled.count == 1 ? "y" : "ies") without a final — \(generateUnfilledCount * unfilled.count) total")
                 }
-
-                // Project settings — hidden on Tag Library
-                if case .project = sidebarSelection, currentDocument != nil {
-                    Button { showingProjectSettings = true } label: {
-                        Label("Project settings", systemImage: "folder.badge.gearshape")
-                    }
-                }
-
-            }
-        }
-        .sheet(isPresented: $showingProjectSettings) {
-            if currentDocument != nil {
-                ProjectSettingsView(
-                    document: Binding(
-                        get: { currentDocument! },
-                        set: { currentDocument = $0 }
-                    ),
-                    onChanged: { saveCurrentProject() }
-                )
             }
         }
     }
