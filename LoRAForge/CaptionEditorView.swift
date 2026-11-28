@@ -66,11 +66,11 @@ struct CaptionEditorView: View {
                     profiles: ollamaProfiles,
                     onSelect: { profile in
                         showingProfilePicker = false
-                        runOllama(profile: profile)
+                        runAutoCaption(profile: profile)
                     }
                 )
             }
-            .alert("Ollama error", isPresented: .init(
+            .alert("Captioning error", isPresented: .init(
                 get: { ollamaError != nil },
                 set: { if !$0 { ollamaError = nil } }
             )) {
@@ -173,7 +173,7 @@ struct CaptionEditorView: View {
             Picker("Mode", selection: $entry.captionMode) {
                 Text("Tagged").tag(CaptionMode.tagged)
                 Text("Manual").tag(CaptionMode.manual)
-                Text("Ollama").tag(CaptionMode.ollama)
+                Text("Auto").tag(CaptionMode.ollama)
             }
             .pickerStyle(.segmented)
             .disabled(entry.isLocked)
@@ -213,13 +213,13 @@ struct CaptionEditorView: View {
                 )
             }
 
-            // Ollama wand
+            // Auto-caption wand
             Button { showingProfilePicker = true } label: {
                 if isOllamaRunning {
                     ProgressView()
                         .controlSize(.small)
                 } else {
-                    Label("Ollama", systemImage: "wand.and.stars")
+                    Label("Auto-caption", systemImage: "wand.and.stars")
                 }
             }
             .disabled(entry.finalImage == nil || entry.isLocked || isOllamaRunning)
@@ -329,22 +329,37 @@ struct CaptionEditorView: View {
         }
     }
 
-    private func runOllama(profile: SDOllamaProfile) {
+    /// The entry's trigger: the canonical string of its Subject tag.
+    private var trigger: String? {
+        let subjectTags = allTags[BuiltInCategory.subject.id] ?? []
+        let assigned = Set(entry.assignments.map(\.tagID))
+        return subjectTags.first { assigned.contains($0.id) }?.canonicalString
+    }
+
+    private func runAutoCaption(profile: SDOllamaProfile) {
         guard let finalImg = entry.finalImage else { return }
         let imageURL = bundleURL.appending(path: "images/\(finalImg.filename)")
         guard let imageData = try? Data(contentsOf: imageURL) else {
             ollamaError = "Could not load the final image."
             return
         }
+        let instruction: String
+        do {
+            instruction = try CaptionInstruction.resolve(profile.instruction, trigger: trigger)
+        } catch {
+            ollamaError = error.localizedDescription
+            return
+        }
+        let settings = CaptionRequestSettings(
+            api: profile.api, endpoint: profile.endpoint,
+            model: profile.model, disablesReasoning: profile.disablesReasoning
+        )
 
         isOllamaRunning = true
         Task {
             do {
-                let response = try await OllamaClient.generate(
-                    endpoint: profile.endpoint,
-                    model: profile.model,
-                    instruction: profile.instruction,
-                    imageData: imageData
+                let response = try await CaptionClient.caption(
+                    settings: settings, instruction: instruction, imageData: imageData
                 )
                 previousCaptionText = entry.manualCaptionText
                 entry.captionMode = .ollama
@@ -393,7 +408,7 @@ private struct OllamaProfilePickerSheet: View {
         NavigationStack {
             List {
                 if profiles.isEmpty {
-                    Text("No Ollama profiles configured. Add one in Connections.")
+                    Text("No captioning profiles configured. Add one in Settings → Connections.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(profiles) { profile in
@@ -402,7 +417,7 @@ private struct OllamaProfilePickerSheet: View {
                         } label: {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(profile.name).font(.headline)
-                                Text("\(profile.model) — \(profile.endpoint)")
+                                Text("\(profile.api.shortName) · \(profile.model.isEmpty ? "server's model" : profile.model) — \(profile.endpoint)")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 Text(profile.instruction)
@@ -415,7 +430,7 @@ private struct OllamaProfilePickerSheet: View {
                     }
                 }
             }
-            .navigationTitle("Choose Ollama profile")
+            .navigationTitle("Choose captioning profile")
             #if os(macOS)
             .frame(minWidth: 350, minHeight: 250)
             #endif
