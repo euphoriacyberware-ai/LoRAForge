@@ -52,7 +52,7 @@ struct GenerationEditorView: View {
             }
             .navigationTitle("Entry generation editor")
             #if os(macOS)
-            .frame(minWidth: 720, idealWidth: 1000, minHeight: 550, idealHeight: 650)
+            .frame(minWidth: 1200, idealWidth: 1400, minHeight: 800, idealHeight: 900)
             #endif
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -66,19 +66,26 @@ struct GenerationEditorView: View {
         }
     }
 
-    // MARK: - Prompt tab: prompts (⅔) + seed and references (⅓)
+    // MARK: - Prompt tab: prompts (flexible) + seed and references (fixed width)
+
+    /// Reference tiles are a fixed size so the panel's height never depends on its width.
+    /// Width-dependent tiles fed back through the scroll bar: a tall image overflowed the
+    /// panel, the scroll bar narrowed it, the tiles shrank and fitted, the scroll bar went
+    /// away, and the layout flickered between the two.
+    private static let referenceTileSize: CGFloat = 160
+    private static let referenceTileSpacing: CGFloat = 8
+    private static let sidePanelWidth: CGFloat = referenceTileSize * 2 + referenceTileSpacing + 32
 
     private var promptTab: some View {
-        GeometryReader { geo in
-            HStack(spacing: 0) {
-                promptPanel
-                    .frame(width: geo.size.width * 2 / 3)
-                Divider()
-                ScrollView {
-                    seedAndReferencesPanel
-                }
+        HStack(spacing: 0) {
+            promptPanel
                 .frame(maxWidth: .infinity)
+            Divider()
+            ScrollView {
+                seedAndReferencesPanel
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .frame(width: Self.sidePanelWidth)
         }
     }
 
@@ -249,7 +256,10 @@ struct GenerationEditorView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 8) {
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.fixed(Self.referenceTileSize), spacing: Self.referenceTileSpacing), count: 2),
+                spacing: Self.referenceTileSpacing
+            ) {
                 ForEach(0..<EntryDocument.maxReferenceImages, id: \.self) { slot in
                     refSlotView(slot: slot)
                 }
@@ -286,22 +296,22 @@ struct GenerationEditorView: View {
                 let imageURL = bundleURL.appending(path: "references/\(refImage.filename)")
                 #if os(macOS)
                 if let nsImage = NSImage(contentsOf: imageURL) {
-                    Image(nsImage: nsImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(minHeight: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    referenceTile {
+                        Image(nsImage: nsImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    }
                 } else {
                     emptySlot(slot: slot)
                 }
                 #else
                 if let data = try? Data(contentsOf: imageURL),
                    let uiImage = UIImage(data: data) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(minHeight: 80)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                    referenceTile {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    }
                 } else {
                     emptySlot(slot: slot)
                 }
@@ -324,10 +334,18 @@ struct GenerationEditorView: View {
         }
     }
 
+    /// A fixed square tile; the image is fitted inside it whatever its proportions.
+    private func referenceTile(@ViewBuilder _ image: () -> some View) -> some View {
+        RoundedRectangle(cornerRadius: 6)
+            .fill(Color.gray.opacity(0.1))
+            .frame(width: Self.referenceTileSize, height: Self.referenceTileSize)
+            .overlay { image().clipShape(RoundedRectangle(cornerRadius: 4)) }
+    }
+
     private func emptySlot(slot: Int) -> some View {
         RoundedRectangle(cornerRadius: 6)
             .fill(Color.gray.opacity(0.1))
-            .aspectRatio(1, contentMode: .fit)
+            .frame(width: Self.referenceTileSize, height: Self.referenceTileSize)
             .overlay {
                 Image(systemName: "photo")
                     .foregroundStyle(.quaternary)

@@ -54,7 +54,7 @@ struct CaptionEditorView: View {
     var body: some View {
         NavigationStack {
             captionEditorContent
-            .navigationTitle(entry.name)
+            .navigationTitle("\(String(format: "%03d", entry.position)) · \(entry.name)")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
@@ -80,7 +80,7 @@ struct CaptionEditorView: View {
             }
         }
         #if os(macOS)
-        .frame(minWidth: 900, idealWidth: 1100, minHeight: 600, idealHeight: 700)
+        .frame(minWidth: 1200, idealWidth: 1400, minHeight: 800, idealHeight: 900)
         #endif
     }
 
@@ -88,12 +88,13 @@ struct CaptionEditorView: View {
     private var captionEditorContent: some View {
         #if os(macOS)
         HStack(spacing: 0) {
+            // The image is the reference the caption is written from, so it takes the
+            // space the editor doesn't need.
             imageWell
-                .frame(minWidth: 300, maxWidth: 500)
+                .frame(minWidth: 480, maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             editorPanel
-                .frame(minWidth: 400)
-                .layoutPriority(1)
+                .frame(minWidth: 620, idealWidth: 680, maxWidth: 720)
         }
         #else
         ScrollView {
@@ -458,8 +459,11 @@ private struct TagRowView: View {
         return Array(availableTags
             .filter { !assignedIDs.contains($0.id) && (tagFrequency[$0.id] ?? 0) > 0 }
             .sorted { (tagFrequency[$0.id] ?? 0) > (tagFrequency[$1.id] ?? 0) }
-            .prefix(5))
+            .prefix(Self.quickTagCount))
     }
+
+    /// How many frequently used tags show under an empty category row.
+    private static let quickTagCount = 8
 
     private var categoryLabel: String {
         if let prefix = category.prefix, !prefix.isEmpty {

@@ -36,6 +36,11 @@ struct ImageSizeTests {
         }
     }
 
+    @Test func twoToOneIsRecognised() {
+        #expect(ImageSize.matchingRatio(width: 1024, height: 512)?.label == "2:1")
+        #expect(AspectRatio(long: 2, short: 1).label(landscape: false) == "1:2")
+    }
+
     @Test func closeRatiosAreNotConfused() {
         #expect(ImageSize.matchingRatio(width: 1280, height: 1024)?.label == "5:4")
         #expect(ImageSize.matchingRatio(width: 1024, height: 768)?.label == "4:3")
@@ -43,7 +48,8 @@ struct ImageSizeTests {
     }
 
     @Test func oddProportionIsCustom() {
-        #expect(ImageSize.matchingRatio(width: 1024, height: 512) == nil)  // 2:1, between 16:9 and 21:9
+        #expect(ImageSize.matchingRatio(width: 1024, height: 640) == nil)  // 1.6, between 3:2 and 16:9
+        #expect(ImageSize.matchingRatio(width: 1344, height: 576) == nil)  // 21:9 is no longer offered
         #expect(ImageSize.matchingRatio(width: 1152, height: 1024) == nil) // 1.125
     }
 
