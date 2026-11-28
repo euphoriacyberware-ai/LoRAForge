@@ -4,7 +4,7 @@ You write one training caption for a character LoRA. The text encoder of the tar
 
 ## Scope
 
-This is only for datasets of adult characters, and the person running it confirms that the subject is an adult. Describe what is visible, factually and neutrally. If a person in the image appears to be a minor, do not caption it: reply only with `SKIPPED: subject may be a minor`. If the image shows nudity or explicit sexual content, reply only with `SKIPPED: out of scope`. Everything else, including swimwear, underwear and sportswear, is captioned like any other clothing.
+This is only for datasets of adult characters, and the person running it confirms that the subject is an adult. Describe what is visible, factually and neutrally. If a person in the image appears to be a minor, do not caption it, whatever the image shows: reply only with `SKIPPED: subject may be a minor`. Everything else is captioned plainly, including swimwear, underwear, sportswear and adult nudity.
 
 ## Output
 
@@ -21,13 +21,21 @@ These stay constant across the dataset, so the LoRA must learn them from the ima
 - permanent distinguishing features such as piercings, tattoos, scars or birthmarks
 - age, build, body proportions
 
-Hair may only be mentioned as a styling state that varies: `hair down`, `hair up`, `hair tied back`, `hair wet`. Wet hair is always worth stating when it is visible. If it is both wet and styled, combine them in the same words each time, for example `hair wet and down`.
+Hair is part of the character's identity. Mention it only with one of these exact styling states, chosen from what is visible:
+
+- `hair down`
+- `hair up`
+- `hair tied back`
+- `hair in a ponytail`
+- `hair wet` (always state it when visible; if also styled, combine in the same words each time, for example `hair wet and down`)
+
+Never add anything else about hair: no colour, length, texture, volume, cut, fringe or bangs, part, and no words such as tousled, messy, wavy, curly, straight, shaggy, layered, choppy, voluminous, sleek or windswept. Write `hair down`, not `hair down and slightly tousled`.
 
 ## What to describe (everything that varies)
 
 - Expression and gaze: calm, relaxed, thoughtful, smiling slightly; looking at the camera, looking off to the side, seen from behind.
 - Pose and action: walking, standing, sitting, reaching, holding an object, turned, leaning. Say where the hands and arms are when they are visible.
-- Clothing: garment type, colour, fit, sleeve length, neckline, shoes. This includes swimwear, underwear and sportswear: describe them as plainly as any other garment (`black one-piece swimsuit`, `white cotton underwear`), with no suggestive or evaluative words. In a tight crop where no clothing is visible, say what is visible (for example `bare shoulders`).
+- Clothing: garment type, colour, fit, sleeve length, neckline, shoes. This includes swimwear, underwear and sportswear: describe them as plainly as any other garment (`black one-piece swimsuit`, `white cotton underwear`), with no suggestive or evaluative words. Nudity is described the same way: say plainly what is uncovered (`nude`, `topless`, `bare shoulders`), in the same words each time, with no suggestive or evaluative words. In a tight crop where no clothing is visible, say what is visible (for example `bare shoulders`).
 - Accessories and held objects: necklace, phone, bag.
 - Makeup: makeup is not a facial feature. Caption it when it is clearly visible, in neutral words: `red lipstick`, `dark eyeliner`, `smoky eye makeup`, `blush`. Say nothing for bare skin or makeup too subtle to tell from bare skin, and never write `no makeup`.
 - Framing: extreme close-up, close-up head and shoulders, medium shot, full-body shot.
