@@ -209,30 +209,7 @@ struct ProjectSettingsView: View {
     }
 
     private func reRenderAllCaptions() {
-        let enabledCats: [TagCategory] = ProjectCategories.resolve(categories, order: document.categoryOrder, enabled: document.categoryEnabled)
-            .filter(\.isEnabled)
-        let allTags: [UUID: Tag] = categories.compactMap { cat in
-            (try? repo.tags(in: cat.id))?.map { (cat.id, $0) }
-        }
-        .flatMap { $0 }
-        .reduce(into: [UUID: Tag]()) { $0[$1.1.id] = $1.1 }
-
-        for index in document.entries.indices {
-            let entry = document.entries[index]
-            guard entry.captionMode == .tagged else { continue }
-            let domainAssignments = entry.assignments.map {
-                TagAssignment(tagID: $0.tagID, selectionOrder: $0.selectionOrder)
-            }
-            let rendered = CaptionRenderer.render(
-                assignments: domainAssignments, tags: allTags, categories: enabledCats
-            )
-            if entry.isLocked {
-                document.entries[index].driftDetected = (rendered != entry.lockedCaptionText)
-            } else {
-                document.entries[index].captionPreviewText = rendered
-                document.entries[index].driftDetected = false
-            }
-        }
+        CaptionRefresher(document: document, repo: repo).refresh(&document.entries)
         onChanged()
     }
 }

@@ -8,8 +8,12 @@ import DTConfigBridge
 /// Reads from `model.configuration` and writes one key at a time with `model.set(_:to:)`,
 /// so keys the form doesn't show, unknown keys and the document's layout are left alone.
 /// Hosts persist through their existing `.onChange(of: model.text)`.
+///
+/// With `applyKeys`, as in the bulk generation settings sheet, each setting gets an Apply
+/// checkbox for its configuration keys; editing a setting ticks it.
 struct GenerationSettingsForm: View {
     let model: ConfigEditorModel
+    var applyKeys: Binding<Set<String>>? = nil
 
     @Environment(GenerationService.self) private var generation
 
@@ -56,33 +60,41 @@ struct GenerationSettingsForm: View {
     @ViewBuilder
     private func primarySections(_ config: DrawThingsConfiguration) -> some View {
         Section("Model") {
-            ModelFileField(
-                title: "Model",
-                file: binding(config.model, { .string($0) }, key: "model"),
-                choices: generation.serverModels?.models,
-                unavailableHint: listHint
-            )
-            Picker("Sampler", selection: binding(config.sampler, GenerationSettingsWriter.sampler, key: "sampler")) {
-                ForEach(GenerationSettingsWriter.allSamplers, id: \.rawValue) { sampler in
-                    Text(GenerationSettingsWriter.samplerName(sampler)).tag(sampler)
+            applying("model") {
+                ModelFileField(
+                    title: "Model",
+                    file: binding(config.model, { .string($0) }, key: "model"),
+                    choices: generation.serverModels?.models,
+                    unavailableHint: listHint
+                )
+            }
+            applying("sampler") {
+                Picker("Sampler", selection: binding(config.sampler, GenerationSettingsWriter.sampler, key: "sampler")) {
+                    ForEach(GenerationSettingsWriter.allSamplers, id: \.rawValue) { sampler in
+                        Text(GenerationSettingsWriter.samplerName(sampler)).tag(sampler)
+                    }
                 }
             }
-            IntField(
-                title: "Steps",
-                value: binding(Int(config.steps), GenerationSettingsWriter.int, key: "steps"),
-                range: 1...150, step: 1
-            )
-            FloatField(
-                title: "CFG",
-                value: binding(config.guidanceScale, GenerationSettingsWriter.float, key: "guidanceScale"),
-                range: 0...30, step: 0.5
-            )
+            applying("steps") {
+                IntField(
+                    title: "Steps",
+                    value: binding(Int(config.steps), GenerationSettingsWriter.int, key: "steps"),
+                    range: 1...150, step: 1
+                )
+            }
+            applying("guidanceScale") {
+                FloatField(
+                    title: "CFG",
+                    value: binding(config.guidanceScale, GenerationSettingsWriter.float, key: "guidanceScale"),
+                    range: 0...30, step: 0.5
+                )
+            }
         }
 
-        Section("Size") {
+        Section {
             SizeControls(width: Int(config.width), height: Int(config.height)) { width, height in
-                model.set("width", to: GenerationSettingsWriter.int(width))
-                model.set("height", to: GenerationSettingsWriter.int(height))
+                write("width", GenerationSettingsWriter.int(width))
+                write("height", GenerationSettingsWriter.int(height))
             }
             IntField(
                 title: "Width",
@@ -94,21 +106,27 @@ struct GenerationSettingsForm: View {
                 value: binding(Int(config.height), GenerationSettingsWriter.int, key: "height"),
                 range: 64...4096, step: 64
             )
+        } header: {
+            sectionHeader("Size", keys: "width", "height")
         }
 
         Section("Shift") {
-            Toggle("Resolution dependent shift", isOn: binding(
-                config.resolutionDependentShift, { .bool($0) }, key: "resolutionDependentShift"
-            ))
-            FloatField(
-                title: "Shift",
-                value: binding(config.shift, GenerationSettingsWriter.float, key: "shift"),
-                range: 0...10, step: 0.05
-            )
-            .disabled(config.resolutionDependentShift)
-            .help(config.resolutionDependentShift
-                  ? "Draw Things calculates shift from the resolution while resolution dependent shift is on."
-                  : "")
+            applying("resolutionDependentShift") {
+                Toggle("Resolution dependent shift", isOn: binding(
+                    config.resolutionDependentShift, { .bool($0) }, key: "resolutionDependentShift"
+                ))
+            }
+            applying("shift") {
+                FloatField(
+                    title: "Shift",
+                    value: binding(config.shift, GenerationSettingsWriter.float, key: "shift"),
+                    range: 0...10, step: 0.05
+                )
+                .disabled(config.resolutionDependentShift)
+                .help(config.resolutionDependentShift
+                      ? "Draw Things calculates shift from the resolution while resolution dependent shift is on."
+                      : "")
+            }
         }
     }
 
@@ -118,36 +136,42 @@ struct GenerationSettingsForm: View {
         loraSection(config)
 
         Section("Refiner") {
-            ModelFileField(
-                title: "Refiner model",
-                file: Binding(
-                    get: { config.refinerModel ?? "" },
-                    set: { model.set("refinerModel", to: GenerationSettingsWriter.refinerModel($0.isEmpty ? nil : $0)) }
-                ),
-                choices: generation.serverModels?.models,
-                unavailableHint: listHint,
-                placeholder: "None",
-                allowsNone: true
-            )
-            LabeledContent("Refiner start") {
-                HStack {
-                    Slider(
-                        value: binding(config.refinerStart, GenerationSettingsWriter.float, key: "refinerStart"),
-                        in: 0...1
-                    )
-                    Text(config.refinerStart, format: .percent.precision(.fractionLength(0)))
-                        .monospacedDigit()
-                        .frame(width: 44, alignment: .trailing)
-                }
+            applying("refinerModel") {
+                ModelFileField(
+                    title: "Refiner model",
+                    file: Binding(
+                        get: { config.refinerModel ?? "" },
+                        set: { write("refinerModel", GenerationSettingsWriter.refinerModel($0.isEmpty ? nil : $0)) }
+                    ),
+                    choices: generation.serverModels?.models,
+                    unavailableHint: listHint,
+                    placeholder: "None",
+                    allowsNone: true
+                )
             }
-            .disabled(config.refinerModel == nil)
-            .help("The share of the steps after which the refiner model takes over.")
+            applying("refinerStart") {
+                LabeledContent("Refiner start") {
+                    HStack {
+                        Slider(
+                            value: binding(config.refinerStart, GenerationSettingsWriter.float, key: "refinerStart"),
+                            in: 0...1
+                        )
+                        Text(config.refinerStart, format: .percent.precision(.fractionLength(0)))
+                            .monospacedDigit()
+                            .frame(width: 44, alignment: .trailing)
+                    }
+                }
+                .disabled(config.refinerModel == nil)
+                .help("The share of the steps after which the refiner model takes over.")
+            }
         }
 
         Section("Color") {
-            Toggle("Color calibration", isOn: binding(
-                config.colorCalibration == .lab, GenerationSettingsWriter.colorCalibration, key: "colorCalibration"
-            ))
+            applying("colorCalibration") {
+                Toggle("Color calibration", isOn: binding(
+                    config.colorCalibration == .lab, GenerationSettingsWriter.colorCalibration, key: "colorCalibration"
+                ))
+            }
         }
     }
 
@@ -194,7 +218,7 @@ struct GenerationSettingsForm: View {
                 Label("Add LoRA", systemImage: "plus")
             }
         } header: {
-            Text("LoRAs")
+            sectionHeader("LoRAs", keys: "loras")
         } footer: {
             if config.loras.contains(where: { $0.mode != .all }) {
                 Text("Some LoRAs apply only to the base or refiner model. Change that on the Configuration JSON tab.")
@@ -207,10 +231,52 @@ struct GenerationSettingsForm: View {
     private func updateLoRAs(_ config: DrawThingsConfiguration, _ change: (inout [LoRAConfig]) -> Void) {
         var loras = config.loras
         change(&loras)
-        model.set("loras", to: GenerationSettingsWriter.loras(loras))
+        write("loras", GenerationSettingsWriter.loras(loras))
     }
 
     // MARK: - Helpers
+
+    /// Writes one key, ticking its Apply checkbox when the form has them.
+    private func write(_ key: String, _ value: JSONValue) {
+        model.set(key, to: value)
+        applyKeys?.wrappedValue.insert(key)
+    }
+
+    private func applyBinding(_ keys: [String]) -> Binding<Bool>? {
+        guard let applyKeys else { return nil }
+        return Binding(
+            get: { keys.allSatisfy(applyKeys.wrappedValue.contains) },
+            set: { on in
+                if on { applyKeys.wrappedValue.formUnion(keys) } else { applyKeys.wrappedValue.subtract(keys) }
+            }
+        )
+    }
+
+    /// The row with a leading Apply checkbox for `keys`, or the row alone outside bulk editing.
+    @ViewBuilder
+    private func applying(_ keys: String..., @ViewBuilder content: () -> some View) -> some View {
+        if let isOn = applyBinding(keys) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                ApplyCheckbox(isOn: isOn)
+                content()
+            }
+        } else {
+            content()
+        }
+    }
+
+    /// A section title with an Apply checkbox covering the whole section when bulk editing.
+    @ViewBuilder
+    private func sectionHeader(_ title: String, keys: String...) -> some View {
+        if let isOn = applyBinding(keys) {
+            HStack(spacing: 8) {
+                ApplyCheckbox(isOn: isOn)
+                Text(title)
+            }
+        } else {
+            Text(title)
+        }
+    }
 
     /// A binding that shows the configuration's value and writes changes to one key.
     private func binding<Value: Equatable>(
@@ -220,7 +286,7 @@ struct GenerationSettingsForm: View {
             get: { value },
             set: { newValue in
                 guard newValue != value else { return }
-                model.set(key, to: encode(newValue))
+                write(key, encode(newValue))
             }
         )
     }
@@ -238,6 +304,20 @@ struct GenerationSettingsForm: View {
 }
 
 // MARK: - Fields
+
+/// The bulk editor's per-setting checkbox.
+private struct ApplyCheckbox: View {
+    @Binding var isOn: Bool
+
+    var body: some View {
+        Toggle("Apply to every entry", isOn: $isOn)
+            .labelsHidden()
+            #if os(macOS)
+            .toggleStyle(.checkbox)
+            #endif
+            .help("Apply this setting to every entry")
+    }
+}
 
 /// A filename field with a menu of the server's files. Typed names are always accepted, so a
 /// file the server doesn't list is kept.
