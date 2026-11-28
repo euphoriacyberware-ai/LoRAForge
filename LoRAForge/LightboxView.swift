@@ -73,12 +73,13 @@ private class LightboxWindowDelegate: NSObject, NSWindowDelegate {
 // MARK: - Lightbox View
 
 struct LightboxView: View {
-    @Binding var document: ProjectDocument
+    /// Kept current by the owning view; see `ImageViewerModel`.
+    let model: ImageViewerModel
     let bundleURL: URL
     let initialEntryID: UUID
     let initialImageID: UUID
-    let visibleRanks: Set<ImageRank>
-    let onChanged: () -> Void
+    /// Changes an image's rank in the project (entry ID, image ID, new rank).
+    let onSetRank: (UUID, UUID, ImageRank) -> Void
     var onDismiss: (() -> Void)?
 
     @State private var currentEntryID: UUID
@@ -86,20 +87,18 @@ struct LightboxView: View {
     @State private var zoomLevel: Int = 0 // 0 = fit, 1..5 = zoom steps
     @State private var nativeImageSize: CGSize = .zero
     @State private var discardFinalAlert: LightboxDiscardAlert?
-    @State private var rankVersion = 0
     @FocusState private var isFocused: Bool
     @Environment(\.dismiss) private var dismiss
 
     // zoomLevel 1 = 50%, 2 = 75%, 3 = 100%, 4 = 150%, 5 = 200%
     private static let zoomSteps: [CGFloat] = [0.5, 0.75, 1.0, 1.5, 2.0]
 
-    init(document: Binding<ProjectDocument>, bundleURL: URL, initialEntryID: UUID, initialImageID: UUID, visibleRanks: Set<ImageRank>, onChanged: @escaping () -> Void, onDismiss: (() -> Void)? = nil) {
-        self._document = document
+    init(model: ImageViewerModel, bundleURL: URL, initialEntryID: UUID, initialImageID: UUID, onSetRank: @escaping (UUID, UUID, ImageRank) -> Void, onDismiss: (() -> Void)? = nil) {
+        self.model = model
         self.bundleURL = bundleURL
         self.initialEntryID = initialEntryID
         self.initialImageID = initialImageID
-        self.visibleRanks = visibleRanks
-        self.onChanged = onChanged
+        self.onSetRank = onSetRank
         self.onDismiss = onDismiss
         self._currentEntryID = State(initialValue: initialEntryID)
         self._currentImageID = State(initialValue: initialImageID)
@@ -113,22 +112,21 @@ struct LightboxView: View {
         }
     }
 
-    private var filteredEntries: [EntryDocument] {
-        document.entries.filter { entry in
-            entry.images.contains { visibleRanks.contains($0.rank) }
-        }
+    private var filteredEntries: [ImageViewerContent.Entry] {
+        model.content.navigableEntries
     }
 
-    private var currentEntry: EntryDocument? {
-        document.entries.first { $0.id == currentEntryID }
+    private var currentEntry: ImageViewerContent.Entry? {
+        model.content.entry(currentEntryID)
     }
 
-    private var currentVisibleImages: [ImageDocument] {
-        currentEntry?.images.filter { visibleRanks.contains($0.rank) } ?? []
+    /// The current entry's images; the content holds only visible ranks.
+    private var currentVisibleImages: [ImageViewerContent.Image] {
+        currentEntry?.images ?? []
     }
 
-    private var currentImage: ImageDocument? {
-        currentEntry?.images.first { $0.id == currentImageID }
+    private var currentImage: ImageViewerContent.Image? {
+        currentVisibleImages.first { $0.id == currentImageID }
     }
 
     private var currentImageIndex: Int? {
@@ -165,6 +163,20 @@ struct LightboxView: View {
         }
         .task(id: currentImageID) {
             loadNativeSize()
+        }
+        // The project changed: images arrived, were removed, or changed rank. Stay on the
+        // current image while it's still visible; otherwise move to a neighbour or close.
+        .onChange(of: model.content) { old, new in
+            let selection = ImageViewerContent.Selection(entryID: currentEntryID, imageID: currentImageID)
+            guard let next = new.reconciled(selection, from: old) else {
+                closeLightbox()
+                return
+            }
+            if next != selection {
+                currentEntryID = next.entryID
+                currentImageID = next.imageID
+                zoomLevel = 0
+            }
         }
         .focusable()
         .focusEffectDisabled()
@@ -338,7 +350,6 @@ struct LightboxView: View {
                 .help("Discard")
             }
         }
-        .id(rankVersion)
     }
 
     // MARK: - Navigation
@@ -379,7 +390,7 @@ struct LightboxView: View {
         guard let entryIdx = filteredEntries.firstIndex(where: { $0.id == currentEntryID }),
               entryIdx > 0 else { return }
         let newEntry = filteredEntries[entryIdx - 1]
-        let newImages = newEntry.images.filter { visibleRanks.contains($0.rank) }
+        let newImages = newEntry.images
         guard !newImages.isEmpty else { return }
         let targetIdx = min(currentImageIndex ?? 0, newImages.count - 1)
         currentEntryID = newEntry.id
@@ -391,7 +402,7 @@ struct LightboxView: View {
         guard let entryIdx = filteredEntries.firstIndex(where: { $0.id == currentEntryID }),
               entryIdx < filteredEntries.count - 1 else { return }
         let newEntry = filteredEntries[entryIdx + 1]
-        let newImages = newEntry.images.filter { visibleRanks.contains($0.rank) }
+        let newImages = newEntry.images
         guard !newImages.isEmpty else { return }
         let targetIdx = min(currentImageIndex ?? 0, newImages.count - 1)
         currentEntryID = newEntry.id
@@ -410,41 +421,9 @@ struct LightboxView: View {
         applyRank(newRank)
     }
 
+    /// The owning view applies the change; the viewer follows through `model.content`.
     private func applyRank(_ newRank: ImageRank) {
-        guard let entryIdx = document.entries.firstIndex(where: { $0.id == currentEntryID }),
-              let imgIdx = document.entries[entryIdx].images.firstIndex(where: { $0.id == currentImageID }) else { return }
-
-        let oldVisibleIndex = currentImageIndex ?? 0
-
-        if newRank == .final {
-            for i in document.entries[entryIdx].images.indices {
-                if document.entries[entryIdx].images[i].rank == .final {
-                    document.entries[entryIdx].images[i].rank = .shortlist
-                }
-            }
-        }
-
-        document.entries[entryIdx].images[imgIdx].rank = newRank
-        rankVersion += 1
-        onChanged()
-
-        if !visibleRanks.contains(newRank) {
-            let remaining = currentVisibleImages
-            if !remaining.isEmpty {
-                let targetIdx = min(oldVisibleIndex, remaining.count - 1)
-                currentImageID = remaining[targetIdx].id
-            } else {
-                let entries = filteredEntries
-                if let nextEntry = entries.first,
-                   let firstImage = nextEntry.images.first(where: { visibleRanks.contains($0.rank) }) {
-                    currentEntryID = nextEntry.id
-                    currentImageID = firstImage.id
-                } else {
-                    closeLightbox()
-                }
-            }
-            zoomLevel = 0
-        }
+        onSetRank(currentEntryID, currentImageID, newRank)
     }
 
     // MARK: - Helpers
@@ -481,7 +460,8 @@ private struct LightboxDiscardAlert: Identifiable {
 // MARK: - Reference Lightbox View
 
 struct ReferenceLightboxView: View {
-    let referenceImages: [ReferenceImageDocument]
+    /// Kept current by the owning view; see `ReferenceViewerModel`.
+    let model: ReferenceViewerModel
     let bundleURL: URL
     let initialRefID: UUID
     var onDismiss: (() -> Void)?
@@ -494,8 +474,8 @@ struct ReferenceLightboxView: View {
 
     private static let zoomSteps: [CGFloat] = [0.5, 0.75, 1.0, 1.5, 2.0]
 
-    init(referenceImages: [ReferenceImageDocument], bundleURL: URL, initialRefID: UUID, onDismiss: (() -> Void)? = nil) {
-        self.referenceImages = referenceImages
+    init(model: ReferenceViewerModel, bundleURL: URL, initialRefID: UUID, onDismiss: (() -> Void)? = nil) {
+        self.model = model
         self.bundleURL = bundleURL
         self.initialRefID = initialRefID
         self.onDismiss = onDismiss
@@ -510,7 +490,11 @@ struct ReferenceLightboxView: View {
         }
     }
 
-    private var currentRef: ReferenceImageDocument? {
+    private var referenceImages: [ReferenceViewerContent.Image] {
+        model.content.images
+    }
+
+    private var currentRef: ReferenceViewerContent.Image? {
         referenceImages.first { $0.id == currentRefID }
     }
 
@@ -538,6 +522,17 @@ struct ReferenceLightboxView: View {
         }
         .task(id: currentRefID) {
             loadNativeSize()
+        }
+        // References were added or deleted: stay put, or move to a neighbour, or close.
+        .onChange(of: model.content) { old, new in
+            guard let next = new.reconciled(currentRefID, from: old) else {
+                closeLightbox()
+                return
+            }
+            if next != currentRefID {
+                currentRefID = next
+                zoomLevel = 0
+            }
         }
         .focusable()
         .focusEffectDisabled()

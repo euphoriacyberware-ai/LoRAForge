@@ -28,6 +28,7 @@ struct DatasetBuilderView: View {
     @State private var showingLoadTemplate = false
     @State private var selectedImageIDs: Set<UUID> = []
     @State private var lightboxTarget: LightboxTarget?
+    @State private var viewerModel = ImageViewerModel()
     #if os(macOS)
     @State private var lightboxManager = LightboxWindowManager()
     #endif
@@ -435,15 +436,18 @@ struct DatasetBuilderView: View {
             selectedImageIDs.removeAll()
             return .handled
         }
+        // Keeps the Image Viewer's window current; it can't observe `document` itself.
+        .onChange(of: ImageViewerContent(document: document, visibleRanks: rankVisibility), initial: true) { _, content in
+            viewerModel.content = content
+        }
         #if os(iOS)
         .fullScreenCover(item: $lightboxTarget) { target in
             LightboxView(
-                document: $document,
+                model: viewerModel,
                 bundleURL: bundleURL,
                 initialEntryID: target.entryID,
                 initialImageID: target.imageID,
-                visibleRanks: rankVisibility,
-                onChanged: onChanged
+                onSetRank: { setRank(imageID: $1, entryID: $0, to: $2) }
             )
         }
         #else
@@ -451,12 +455,11 @@ struct DatasetBuilderView: View {
             if let target {
                 lightboxManager.show(
                     LightboxView(
-                        document: $document,
+                        model: viewerModel,
                         bundleURL: bundleURL,
                         initialEntryID: target.entryID,
                         initialImageID: target.imageID,
-                        visibleRanks: rankVisibility,
-                        onChanged: onChanged,
+                        onSetRank: { setRank(imageID: $1, entryID: $0, to: $2) },
                         onDismiss: { lightboxTarget = nil }
                     ),
                     onClose: { lightboxTarget = nil }
