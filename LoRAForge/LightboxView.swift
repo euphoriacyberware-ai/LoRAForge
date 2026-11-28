@@ -29,7 +29,7 @@ final class LightboxWindowManager {
             defer: false
         )
         win.minSize = NSSize(width: 800, height: 600)
-        win.title = "Lightbox"
+        win.title = "Image Viewer"
         win.isReleasedWhenClosed = false
         win.contentView = NSHostingView(rootView: content)
         win.center()
@@ -137,7 +137,7 @@ struct LightboxView: View {
 
     private var imagePositionLabel: String {
         guard let entry = currentEntry, let idx = currentImageIndex else { return "" }
-        return "\(entry.name) \u{00B7} Image \(idx + 1) of \(currentVisibleImages.count)"
+        return "\(String(format: "%03d", entry.position)) \u{00B7} \(entry.name) \u{00B7} Image \(idx + 1) of \(currentVisibleImages.count)"
     }
 
     private var currentImageURL: URL? {
