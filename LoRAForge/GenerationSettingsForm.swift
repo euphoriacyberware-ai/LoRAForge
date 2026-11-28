@@ -26,100 +26,129 @@ struct GenerationSettingsForm: View {
         }
     }
 
+    /// Below this width the two columns stack into one.
+    private static let twoColumnMinWidth: CGFloat = 900
+
+    @State private var availableWidth: CGFloat = 0
+
     private func form(_ config: DrawThingsConfiguration) -> some View {
-        Form {
-            Section("Model") {
-                ModelFileField(
-                    title: "Model",
-                    file: binding(config.model, { .string($0) }, key: "model"),
-                    choices: generation.serverModels?.models,
-                    unavailableHint: listHint
-                )
-                Picker("Sampler", selection: binding(config.sampler, GenerationSettingsWriter.sampler, key: "sampler")) {
-                    ForEach(GenerationSettingsWriter.allSamplers, id: \.rawValue) { sampler in
-                        Text(GenerationSettingsWriter.samplerName(sampler)).tag(sampler)
-                    }
+        Group {
+            if availableWidth >= Self.twoColumnMinWidth {
+                HStack(alignment: .top, spacing: 0) {
+                    Form { primarySections(config) }
+                        .formStyle(.grouped)
+                    Form { secondarySections(config) }
+                        .formStyle(.grouped)
                 }
-                IntField(
-                    title: "Steps",
-                    value: binding(Int(config.steps), GenerationSettingsWriter.int, key: "steps"),
-                    range: 1...150, step: 1
-                )
-                FloatField(
-                    title: "CFG",
-                    value: binding(config.guidanceScale, GenerationSettingsWriter.float, key: "guidanceScale"),
-                    range: 0...30, step: 0.5
-                )
-            }
-
-            Section("Size") {
-                SizeControls(width: Int(config.width), height: Int(config.height)) { width, height in
-                    model.set("width", to: GenerationSettingsWriter.int(width))
-                    model.set("height", to: GenerationSettingsWriter.int(height))
+            } else {
+                Form {
+                    primarySections(config)
+                    secondarySections(config)
                 }
-                IntField(
-                    title: "Width",
-                    value: binding(Int(config.width), GenerationSettingsWriter.int, key: "width"),
-                    range: 64...4096, step: 64
-                )
-                IntField(
-                    title: "Height",
-                    value: binding(Int(config.height), GenerationSettingsWriter.int, key: "height"),
-                    range: 64...4096, step: 64
-                )
-            }
-
-            Section("Shift") {
-                Toggle("Resolution dependent shift", isOn: binding(
-                    config.resolutionDependentShift, { .bool($0) }, key: "resolutionDependentShift"
-                ))
-                FloatField(
-                    title: "Shift",
-                    value: binding(config.shift, GenerationSettingsWriter.float, key: "shift"),
-                    range: 0...10, step: 0.05
-                )
-                .disabled(config.resolutionDependentShift)
-                .help(config.resolutionDependentShift
-                      ? "Draw Things calculates shift from the resolution while resolution dependent shift is on."
-                      : "")
-            }
-
-            loraSection(config)
-
-            Section("Refiner") {
-                ModelFileField(
-                    title: "Refiner model",
-                    file: Binding(
-                        get: { config.refinerModel ?? "" },
-                        set: { model.set("refinerModel", to: GenerationSettingsWriter.refinerModel($0.isEmpty ? nil : $0)) }
-                    ),
-                    choices: generation.serverModels?.models,
-                    unavailableHint: listHint,
-                    placeholder: "None",
-                    allowsNone: true
-                )
-                LabeledContent("Refiner start") {
-                    HStack {
-                        Slider(
-                            value: binding(config.refinerStart, GenerationSettingsWriter.float, key: "refinerStart"),
-                            in: 0...1
-                        )
-                        Text(config.refinerStart, format: .percent.precision(.fractionLength(0)))
-                            .monospacedDigit()
-                            .frame(width: 44, alignment: .trailing)
-                    }
-                }
-                .disabled(config.refinerModel == nil)
-                .help("The share of the steps after which the refiner model takes over.")
-            }
-
-            Section("Color") {
-                Toggle("Color calibration", isOn: binding(
-                    config.colorCalibration == .lab, GenerationSettingsWriter.colorCalibration, key: "colorCalibration"
-                ))
+                .formStyle(.grouped)
             }
         }
-        .formStyle(.grouped)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { availableWidth = $0 }
+    }
+
+    /// Left column: model, size and shift.
+    @ViewBuilder
+    private func primarySections(_ config: DrawThingsConfiguration) -> some View {
+        Section("Model") {
+            ModelFileField(
+                title: "Model",
+                file: binding(config.model, { .string($0) }, key: "model"),
+                choices: generation.serverModels?.models,
+                unavailableHint: listHint
+            )
+            Picker("Sampler", selection: binding(config.sampler, GenerationSettingsWriter.sampler, key: "sampler")) {
+                ForEach(GenerationSettingsWriter.allSamplers, id: \.rawValue) { sampler in
+                    Text(GenerationSettingsWriter.samplerName(sampler)).tag(sampler)
+                }
+            }
+            IntField(
+                title: "Steps",
+                value: binding(Int(config.steps), GenerationSettingsWriter.int, key: "steps"),
+                range: 1...150, step: 1
+            )
+            FloatField(
+                title: "CFG",
+                value: binding(config.guidanceScale, GenerationSettingsWriter.float, key: "guidanceScale"),
+                range: 0...30, step: 0.5
+            )
+        }
+
+        Section("Size") {
+            SizeControls(width: Int(config.width), height: Int(config.height)) { width, height in
+                model.set("width", to: GenerationSettingsWriter.int(width))
+                model.set("height", to: GenerationSettingsWriter.int(height))
+            }
+            IntField(
+                title: "Width",
+                value: binding(Int(config.width), GenerationSettingsWriter.int, key: "width"),
+                range: 64...4096, step: 64
+            )
+            IntField(
+                title: "Height",
+                value: binding(Int(config.height), GenerationSettingsWriter.int, key: "height"),
+                range: 64...4096, step: 64
+            )
+        }
+
+        Section("Shift") {
+            Toggle("Resolution dependent shift", isOn: binding(
+                config.resolutionDependentShift, { .bool($0) }, key: "resolutionDependentShift"
+            ))
+            FloatField(
+                title: "Shift",
+                value: binding(config.shift, GenerationSettingsWriter.float, key: "shift"),
+                range: 0...10, step: 0.05
+            )
+            .disabled(config.resolutionDependentShift)
+            .help(config.resolutionDependentShift
+                  ? "Draw Things calculates shift from the resolution while resolution dependent shift is on."
+                  : "")
+        }
+    }
+
+    /// Right column: LoRAs, refiner and color.
+    @ViewBuilder
+    private func secondarySections(_ config: DrawThingsConfiguration) -> some View {
+        loraSection(config)
+
+        Section("Refiner") {
+            ModelFileField(
+                title: "Refiner model",
+                file: Binding(
+                    get: { config.refinerModel ?? "" },
+                    set: { model.set("refinerModel", to: GenerationSettingsWriter.refinerModel($0.isEmpty ? nil : $0)) }
+                ),
+                choices: generation.serverModels?.models,
+                unavailableHint: listHint,
+                placeholder: "None",
+                allowsNone: true
+            )
+            LabeledContent("Refiner start") {
+                HStack {
+                    Slider(
+                        value: binding(config.refinerStart, GenerationSettingsWriter.float, key: "refinerStart"),
+                        in: 0...1
+                    )
+                    Text(config.refinerStart, format: .percent.precision(.fractionLength(0)))
+                        .monospacedDigit()
+                        .frame(width: 44, alignment: .trailing)
+                }
+            }
+            .disabled(config.refinerModel == nil)
+            .help("The share of the steps after which the refiner model takes over.")
+        }
+
+        Section("Color") {
+            Toggle("Color calibration", isOn: binding(
+                config.colorCalibration == .lab, GenerationSettingsWriter.colorCalibration, key: "colorCalibration"
+            ))
+        }
     }
 
     // MARK: - LoRAs

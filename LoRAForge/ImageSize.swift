@@ -21,7 +21,7 @@ nonisolated struct AspectRatio: Hashable, Identifiable, Sendable {
         AspectRatio(long: 4, short: 3),
         AspectRatio(long: 3, short: 2),
         AspectRatio(long: 16, short: 9),
-        AspectRatio(long: 21, short: 9),
+        AspectRatio(long: 2, short: 1),
     ]
 }
 
