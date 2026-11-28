@@ -1018,11 +1018,6 @@ private struct EntryRow: View {
             entryHeader
                 .frame(width: 420)
                 .padding(8)
-                .draggable(entry.id.uuidString) {
-                    Text(entry.name)
-                        .padding(8)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
-                }
             Divider()
             imageStrip
                 .padding(.vertical, 4)
@@ -1041,6 +1036,36 @@ private struct EntryRow: View {
     }
 
     private var entryHeader: some View {
+        HStack(alignment: .top, spacing: 8) {
+            dragHandle
+
+            // Right: vertical icon buttons. Kept outside the draggable area: inside it, a
+            // click-and-hold on a button starts dragging the entry instead of pressing it.
+            entryButtons
+        }
+        .padding()
+        .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(.thickMaterial, lineWidth: 2)
+        )
+        .contentShape(Rectangle())
+        .contextMenu {
+            Button("Generate", systemImage: "sparkles", action: onGenerate)
+                .disabled(!generation.isConnected)
+            Button("Sweep candidates", systemImage: "wind", action: onSweep)
+            Divider()
+            Button("Insert entry before", systemImage: "arrow.up", action: onInsertBefore)
+            Button("Insert entry after", systemImage: "arrow.down", action: onInsertAfter)
+            Divider()
+            Button("Add images...", systemImage: "photo.badge.plus", action: onImport)
+            Divider()
+            Button("Delete entry", systemImage: "trash", role: .destructive, action: onDeleteEntry)
+        }
+    }
+
+    /// Thumbnail, name and caption: the part of the header that drags to reorder.
+    private var dragHandle: some View {
         HStack(alignment: .top, spacing: 8) {
             // Final image thumbnail
             finalThumbnail
@@ -1089,55 +1114,43 @@ private struct EntryRow: View {
             }
 
             Spacer(minLength: 4)
-
-            // Right: vertical icon buttons
-            VStack(spacing: 4) {
-                Button(action: onEditGeneration) {
-                    Label("Generation settings", systemImage: "slider.horizontal.3")
-                }
-                .help("Generation settings")
-
-                Button(action: onCaption) {
-                    Label("Caption", systemImage: "text.bubble")
-                }
-                .help("Edit caption")
-
-                Button(action: onImport) {
-                    Label("Add images", systemImage: "photo.badge.plus")
-                }
-                .help("Import images")
-                
-                Button(action: onGenerate) {
-                    Label("Generate", systemImage: "sparkles")
-                }
-                .disabled(!generation.isConnected)
-                .help("Generate one image")
-                
-
-            }
-            .labelStyle(.iconOnly)
-            .buttonStyle(.bordered)
-            .font(.system(size: 16))
         }
-        .padding()
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(.thickMaterial, lineWidth: 2)
-        )
         .contentShape(Rectangle())
-        .contextMenu {
-            Button("Generate", systemImage: "sparkles", action: onGenerate)
-                .disabled(!generation.isConnected)
-            Button("Sweep candidates", systemImage: "wind", action: onSweep)
-            Divider()
-            Button("Insert entry before", systemImage: "arrow.up", action: onInsertBefore)
-            Button("Insert entry after", systemImage: "arrow.down", action: onInsertAfter)
-            Divider()
-            Button("Add images...", systemImage: "photo.badge.plus", action: onImport)
-            Divider()
-            Button("Delete entry", systemImage: "trash", role: .destructive, action: onDeleteEntry)
+        .draggable(entry.id.uuidString) {
+            Text(entry.name)
+                .padding(8)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 6))
         }
+    }
+
+    private var entryButtons: some View {
+        VStack(spacing: 4) {
+            Button(action: onEditGeneration) {
+                Label("Generation settings", systemImage: "slider.horizontal.3")
+            }
+            .help("Generation settings")
+
+            Button(action: onCaption) {
+                Label("Caption", systemImage: "text.bubble")
+            }
+            .help("Edit caption")
+
+            Button(action: onImport) {
+                Label("Add images", systemImage: "photo.badge.plus")
+            }
+            .help("Import images")
+            
+            Button(action: onGenerate) {
+                Label("Generate", systemImage: "sparkles")
+            }
+            .disabled(!generation.isConnected)
+            .help("Generate one image")
+            
+
+        }
+        .labelStyle(.iconOnly)
+        .buttonStyle(.bordered)
+        .font(.system(size: 16))
     }
 
     @ViewBuilder
