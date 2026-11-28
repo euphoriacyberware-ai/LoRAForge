@@ -21,6 +21,9 @@ struct DatasetBuilderView: View {
     @State private var macroStubNotice: String?
     @State private var editingGenerationEntryID: UUID?
     @State private var showingAudit = false
+    @State private var showingBulkTags = false
+    @State private var showingBulkSettings = false
+    @State private var pendingDemotion: BulkDemotion?
     @State private var highlightCategoryID: UUID?
     @State private var tagCategoryIndex: [UUID: UUID] = [:]
     @State private var enabledCategories: [TagCategory] = []
@@ -67,6 +70,28 @@ struct DatasetBuilderView: View {
             refreshTagIndex()
         }
         .navigationTitle(document.name)
+        .alert(
+            pendingDemotion.map { "Demote all \($0.from.label.lowercased()) images?" } ?? "",
+            isPresented: Binding(get: { pendingDemotion != nil }, set: { if !$0 { pendingDemotion = nil } }),
+            presenting: pendingDemotion
+        ) { demotion in
+            Button("Demote", role: demotion == .finalToShortlist ? .destructive : nil) {
+                demotion.apply(to: &document.entries)
+                onChanged()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: { demotion in
+            Text(demotionMessage(demotion))
+        }
+        .sheet(isPresented: $showingBulkTags, onDismiss: {
+            refreshDrift()
+            refreshTagIndex()
+        }) {
+            BulkTagEditorView(document: $document, tagFrequency: bulkTagFrequency, onChanged: onChanged)
+        }
+        .sheet(isPresented: $showingBulkSettings) {
+            BulkGenerationSettingsView(document: $document, onChanged: onChanged)
+        }
         .alert("Empty trash?", isPresented: $showingEmptyTrash) {
             Button("Empty trash", role: .destructive) { emptyTrash() }
             Button("Cancel", role: .cancel) {}
@@ -205,7 +230,7 @@ struct DatasetBuilderView: View {
             
             if document.discardedImageCount > 0 {
                 Button { showingEmptyTrash = true } label: {
-                    Label("Empty trash (\(document.discardedImageCount))", systemImage: "trash")
+                    Label("Delete Discarded (\(document.discardedImageCount))", systemImage: "trash")
                 }
             }
 
@@ -264,12 +289,59 @@ struct DatasetBuilderView: View {
 
             Spacer()
 
+            bulkActionsMenu
+
             Button { showingAudit = true } label: {
                 Label("Audit", systemImage: "chart.bar")
             }
         }
         .padding(.horizontal)
         .padding(.vertical, 6)
+    }
+
+    // MARK: - Bulk actions
+
+    private var bulkActionsMenu: some View {
+        Menu {
+            Button("Bulk tag editor…", systemImage: "tag") { showingBulkTags = true }
+                .disabled(document.entries.isEmpty)
+            Button("Bulk generation settings…", systemImage: "slider.horizontal.3") { showingBulkSettings = true }
+                .disabled(document.entries.isEmpty)
+            Menu("Demote all") {
+                ForEach(BulkDemotion.allCases, id: \.self) { demotion in
+                    let count = demotion.count(in: document.entries)
+                    Button("\(demotion.from.label) → \(demotion.to.label) (\(count))") {
+                        pendingDemotion = demotion
+                    }
+                    .disabled(count == 0)
+                }
+            }
+        } label: {
+            Label("Bulk actions", systemImage: "square.stack.3d.up")
+        }
+        .fixedSize()
+        .help("Edit tags, generation settings or ranks on every entry")
+    }
+
+    private func demotionMessage(_ demotion: BulkDemotion) -> String {
+        let images = demotion.count(in: document.entries)
+        let entries = demotion.entryCount(in: document.entries)
+        let what = "\(images) \(demotion.from.label.lowercased()) image\(images == 1 ? "" : "s") across \(entries) entr\(entries == 1 ? "y" : "ies") will become \(demotion.to.label.lowercased())."
+        switch demotion {
+        case .finalToShortlist:
+            return what + " Those entries will have no final image and will not be exported."
+        case .shortlistToCandidate:
+            return what
+        case .candidateToDiscarded:
+            return what + " Nothing is deleted until you empty the trash."
+        }
+    }
+
+    private var bulkTagFrequency: [UUID: Int] {
+        let local = document.entries
+            .flatMap(\.assignments)
+            .reduce(into: [UUID: Int]()) { $0[$1.tagID, default: 0] += 1 }
+        return library.tagFrequencyAcrossProjects().merging(local) { global, local in global + local }
     }
 
     private var highlightedCategory: TagCategory? {
