@@ -156,7 +156,7 @@ struct BulkTagEditorView: View {
             : "\(captions(summary.captionsRewritten)) will be rewritten.")
         let untagged = summary.changed - summary.captionsRewritten
         if untagged > 0 {
-            parts.append("\(entries(untagged)) in Manual or Ollama mode keep their caption text.")
+            parts.append("\(entries(untagged)) in Manual or Auto mode keep their caption text.")
         }
         if summary.lockedSkipped > 0 {
             parts.append("\(entries(summary.lockedSkipped, locked: true)) skipped.")

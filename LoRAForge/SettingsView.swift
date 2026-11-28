@@ -95,7 +95,7 @@ struct ConnectionsSettingsPanel: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             Divider()
             VStack(alignment: .leading, spacing: 0) {
-                Text("Ollama")
+                Text("Captioning")
                     .font(.title2)
                     .fontWeight(.semibold)
                     .padding(.horizontal)
@@ -387,13 +387,7 @@ struct OllamaConnectionPane: View {
     @Environment(OllamaRepository.self) private var repo
     @State private var profiles: [SDOllamaProfile] = []
     @State private var editingProfile: SDOllamaProfile?
-    @State private var showingNew = false
-
-    // New profile fields
-    @State private var newName = ""
-    @State private var newEndpoint = "http://localhost:11434"
-    @State private var newModel = "llava"
-    @State private var newInstruction = "Describe this image in detail."
+    @State private var addingProfile = false
 
     var body: some View {
         Form {
@@ -402,7 +396,7 @@ struct OllamaConnectionPane: View {
                     HStack {
                         VStack(alignment: .leading) {
                             Text(profile.name).font(.headline)
-                            Text("\(profile.model) — \(profile.endpoint)")
+                            Text("\(profile.api.shortName) · \(profile.model.isEmpty ? "server's model" : profile.model) — \(profile.endpoint)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -429,29 +423,16 @@ struct OllamaConnectionPane: View {
                     Text("No profiles configured.")
                         .foregroundStyle(.secondary)
                 }
-            }
-            Section("New profile") {
-                TextField("Name", text: $newName)
-                TextField("Endpoint", text: $newEndpoint)
-                TextField("Model", text: $newModel)
-                TextField("Instruction", text: $newInstruction, axis: .vertical)
-                    .lineLimit(3...6)
-                Button("Add profile") {
-                    guard !newName.isEmpty else { return }
-                    _ = try? repo.addProfile(
-                        name: newName, endpoint: newEndpoint,
-                        model: newModel, instruction: newInstruction
-                    )
-                    newName = ""
-                    refresh()
-                }
-                .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+                Button("Add profile\u{2026}") { addingProfile = true }
             }
         }
         .formStyle(.grouped)
         .onAppear(perform: refresh)
         .sheet(item: $editingProfile) { profile in
             OllamaProfileEditor(profile: profile, repo: repo, onSave: refresh)
+        }
+        .sheet(isPresented: $addingProfile) {
+            OllamaProfileEditor(profile: nil, repo: repo, onSave: refresh)
         }
     }
 
@@ -460,57 +441,104 @@ struct OllamaConnectionPane: View {
     }
 }
 
+/// Creates a captioning profile, or edits one when `profile` is given.
 struct OllamaProfileEditor: View {
-    let profile: SDOllamaProfile
+    let profile: SDOllamaProfile?
     let repo: OllamaRepository
     let onSave: () -> Void
 
     @Environment(\.dismiss) private var dismiss
     @State private var name: String
+    @State private var api: CaptionAPIType
     @State private var endpoint: String
     @State private var model: String
+    @State private var disablesReasoning: Bool
     @State private var instruction: String
 
-    init(profile: SDOllamaProfile, repo: OllamaRepository, onSave: @escaping () -> Void) {
+    init(profile: SDOllamaProfile?, repo: OllamaRepository, onSave: @escaping () -> Void) {
         self.profile = profile
         self.repo = repo
         self.onSave = onSave
-        _name = State(initialValue: profile.name)
-        _endpoint = State(initialValue: profile.endpoint)
-        _model = State(initialValue: profile.model)
-        _instruction = State(initialValue: profile.instruction)
+        _name = State(initialValue: profile?.name ?? "")
+        _api = State(initialValue: profile?.api ?? .ollama)
+        _endpoint = State(initialValue: profile?.endpoint ?? CaptionAPIType.ollama.defaultEndpoint)
+        _model = State(initialValue: profile?.model ?? "llava")
+        _disablesReasoning = State(initialValue: profile?.disablesReasoning ?? true)
+        _instruction = State(initialValue: profile?.instruction ?? "Describe this image in detail.")
     }
 
     var body: some View {
         NavigationStack {
             Form {
-                TextField("Name", text: $name)
-                TextField("Endpoint", text: $endpoint)
-                TextField("Model", text: $model)
-                TextField("Instruction", text: $instruction, axis: .vertical)
-                    .lineLimit(3...6)
+                Section {
+                    TextField("Name", text: $name)
+                    Picker("API", selection: $api) {
+                        ForEach(CaptionAPIType.allCases) { type in
+                            Text(type.displayName).tag(type)
+                        }
+                    }
+                    .onChange(of: api) { old, new in
+                        // Swap in the new type's default address unless one was typed.
+                        if endpoint == old.defaultEndpoint { endpoint = new.defaultEndpoint }
+                    }
+                    TextField("Endpoint", text: $endpoint)
+                    TextField("Model", text: $model, prompt: Text(api == .ollama ? "Required" : "Optional"))
+                    if api == .openAICompatible {
+                        Toggle("Turn off reasoning", isOn: $disablesReasoning)
+                    }
+                } footer: {
+                    if api == .openAICompatible {
+                        Text("The endpoint includes /v1. Local Code ignores the model name and uses the model selected in the app. Turning reasoning off makes captions much faster; with it on, a reasoning model can run out of tokens before answering.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Section {
+                    TextEditor(text: $instruction)
+                        .font(.body.monospaced())
+                        .frame(minHeight: 240)
+                } header: {
+                    Text("Instruction")
+                } footer: {
+                    Text("Sent with every image. {trigger} is replaced with the entry's Subject tag.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             .formStyle(.grouped)
-            .navigationTitle("Edit profile")
+            .navigationTitle(profile == nil ? "New captioning profile" : "Edit captioning profile")
             #if os(macOS)
-            .frame(minWidth: 380, minHeight: 280)
+            .frame(minWidth: 640, idealWidth: 720, minHeight: 600, idealHeight: 700)
             #endif
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
-                        profile.name = name
-                        profile.endpoint = endpoint
-                        profile.model = model
-                        profile.instruction = instruction
-                        try? repo.updateProfile(profile)
-                        onSave()
-                        dismiss()
-                    }
+                    Button(profile == nil ? "Add" : "Save") { save() }
+                        .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
         }
+    }
+
+    private func save() {
+        if let profile {
+            profile.name = name
+            profile.api = api
+            profile.endpoint = endpoint
+            profile.model = model
+            profile.disablesReasoning = disablesReasoning
+            profile.instruction = instruction
+            try? repo.updateProfile(profile)
+        } else {
+            _ = try? repo.addProfile(
+                name: name, endpoint: endpoint, model: model, instruction: instruction,
+                apiType: api, disablesReasoning: disablesReasoning
+            )
+        }
+        onSave()
+        dismiss()
     }
 }
