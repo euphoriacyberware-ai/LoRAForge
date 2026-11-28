@@ -16,6 +16,7 @@ struct ReferenceLibraryView: View {
     @State private var isDropTargeted = false
     @State private var selectedImageIDs: Set<UUID> = []
     @State private var lightboxRefID: UUID?
+    @State private var viewerModel = ReferenceViewerModel()
     #if os(macOS)
     @State private var lightboxManager = LightboxWindowManager()
     #endif
@@ -162,10 +163,14 @@ struct ReferenceLibraryView: View {
             selectedImageIDs.removeAll()
             return .handled
         }
+        // Keeps the Image Viewer's window current; it can't observe `document` itself.
+        .onChange(of: ReferenceViewerContent(referenceImages: document.referenceImages), initial: true) { _, content in
+            viewerModel.content = content
+        }
         #if os(iOS)
         .fullScreenCover(item: $lightboxRefID) { refID in
             ReferenceLightboxView(
-                referenceImages: document.referenceImages,
+                model: viewerModel,
                 bundleURL: bundleURL,
                 initialRefID: refID
             )
@@ -175,7 +180,7 @@ struct ReferenceLibraryView: View {
             if let refID {
                 lightboxManager.show(
                     ReferenceLightboxView(
-                        referenceImages: document.referenceImages,
+                        model: viewerModel,
                         bundleURL: bundleURL,
                         initialRefID: refID,
                         onDismiss: { lightboxRefID = nil }
